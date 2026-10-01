@@ -124,10 +124,10 @@ app.get('/overlay', (req, res) => {
                                 player.play().catch(e => console.log(e));
                             }
 
-                            // 6초 동안 보여준 후 숨김
+                            // 10초 동안 보여준 후 숨김
                             setTimeout(() => {
                                 container.style.display = 'none';
-                            }, 6000);
+                            }, 10000);
                         }
                     } catch (err) {
                         console.error(err);
