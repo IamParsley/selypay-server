@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.use(express.static(__dirname)); // 메인폴더에서 파일들을 웹에서 열어주는 코
+
 // 1. MongoDB 연결
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
