@@ -31,7 +31,7 @@ const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
     amount: { type: Number, default: 0 },
-    message: { type: String, default: "" },
+    message: { type: String, default: "" }, // 앱이 보내주는 전체 텍스트 그대로 저장
     datetime: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
 });
@@ -215,7 +215,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
+// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (앱이 주는 원본 데이터 그대로 저장)
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
     
@@ -240,24 +240,11 @@ app.post('/api/notification', async (req, res) => {
             nickname = message.split("님")[0].trim();
         }
 
-        let cleanMessage = "";
-        if (message.includes(":")) {
-            cleanMessage = message.split(":").slice(1).join(":").trim();
-        } else if (message.includes("후원합니다")) {
-            const parts = message.split("후원합니다");
-            if (parts.length > 1) {
-                cleanMessage = parts[1].replace(/^[\s!,-~]+/, "").trim();
-            }
-        }
-        if (cleanMessage === message) {
-            cleanMessage = ""; 
-        }
-
         const donationData = new Donation({
             streamerId: user._id,
             nickname,
             amount,
-            message: cleanMessage,
+            message: message, // 💡 앱이 보내주는 원본 메시지(문장 전체) 그대로 저장
             datetime: getKSTDateTime()
         });
 
@@ -271,7 +258,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 오버레이 화면
+// 7. 스트리머별 OBS 오버레이 화면 (앱이 주는 대로 자연스럽게 출력)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -352,8 +339,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const messageDiv = document.getElementById('alert-message');
                     const sound = document.getElementById('alert-sound');
                     
-                    textDiv.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원감사합니다!';
+                    // 1번 줄: "닉네임님 X원 후원합니다"
+                    textDiv.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원합니다!';
                     
+                    // 2번 줄: 앱이 보내준 전체 메시지(또는 코멘트) 그대로 표시
                     if (message && message.trim() !== "") {
                         messageDiv.innerText = message;
                         messageDiv.style.display = 'block';
