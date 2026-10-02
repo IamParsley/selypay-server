@@ -263,7 +263,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (앱이 주는 원본 데이터 그대로 저장)
+// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
     
@@ -280,7 +280,11 @@ app.post('/api/notification', async (req, res) => {
         let amount = 0;
         const amountMatch = message.match(/([0-9,]+)\s*원/);
         if (amountMatch) {
-            amount = parseInt(amountMatch[1].replace(/,/g, ''), 10);
+            // 💡 콤마를 제거한 뒤 명확하게 숫자(Number)로 변환
+            const parsed = parseInt(amountMatch[1].replace(/,/g, ''), 10);
+            if (!isNaN(parsed)) {
+                amount = parsed;
+            }
         }
 
         let nickname = "익명";
@@ -291,10 +295,10 @@ app.post('/api/notification', async (req, res) => {
         const donationData = new Donation({
             streamerId: user._id,
             nickname,
-            amount,
-            message: message, // 💡 앱이 보내주는 원본 메시지(문장 전체) 그대로 저장
+            amount, // 💡 숫자로 확실히 변환된 값이 저장됨
+            message: message, 
             datetime: getKSTDateTime(),
-            dateKey: getKSTDateKey() // 💡 후원이 들어온 순간의 KST 날짜 저장
+            dateKey: getKSTDateKey()
         });
 
         await donationData.save();
