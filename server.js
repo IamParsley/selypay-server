@@ -291,16 +291,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-bottom: 15px;
                     display: inline-block;
                 }
-                #alert-text {
-                    color: white; 
-                    font-size: 32px;
-                    font-weight: bold; 
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-                    white-space: nowrap;
-                }
                 #alert-message {
                     color: white; 
-                    font-size: 26px;
+                    font-size: 30px;
                     font-weight: bold;
                     margin-top: 10px;
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
@@ -311,7 +304,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                <div id="alert-text"></div>
                 <div id="alert-message"></div>
             </div>
 
@@ -327,28 +319,19 @@ app.get('/overlay/:apiKey', async (req, res) => {
                             const latest = logs[0];
                             if (latest.datetime !== lastCheckedTime) {
                                 lastCheckedTime = latest.datetime;
-                                showAlert(latest.nickname, latest.amount, latest.message);
+                            showAlert(latest.message); // 원본메세지만 전달
                             }
                         }
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(nickname, amount, message) {
+                function showAlert(message) {
                     const container = document.getElementById('alert-container');
-                    const textDiv = document.getElementById('alert-text');
                     const messageDiv = document.getElementById('alert-message');
                     const sound = document.getElementById('alert-sound');
-                    
-                    // 1번 줄: "닉네임님 X원 후원합니다"
-                    textDiv.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원합니다!';
-                    
-                    // 2번 줄: 앱이 보내준 전체 메시지(또는 코멘트) 그대로 표시
-                    if (message && message.trim() !== "") {
+                                        
+                    // 앱이 보내준 전체 메시지(또는 코멘트) 그대로 표시
                         messageDiv.innerText = message;
-                        messageDiv.style.display = 'block';
-                    } else {
-                        messageDiv.style.display = 'none'; 
-                    }
 
                     container.style.display = 'block';
 
