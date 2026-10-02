@@ -1,7 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose'); // MongoDB연결위해 추가
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 👈 MongoDB Atlas 연결 코드 추가
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
+.catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
 // 미들웨어 설정
 app.use(bodyParser.json());
