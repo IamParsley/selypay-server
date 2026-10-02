@@ -132,7 +132,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 로그인 처리 및 대시보드 리다이렉트 (간단 구현용 API Key 반환)
+// 로그인 처리 및 대시보드 리다이렉트
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -142,19 +142,19 @@ app.post('/api/login', async (req, res) => {
             return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
         }
 
-        // 로그인 성공 시 대시보드 페이지를 바로 보여줌 (API Key와 오버레이 주소 확인용)
+        // 백슬래시 제거 완료된 정상 코드
         res.send(`
             <!DOCTYPE html>
             <html>
-            <head><meta charset="UTF-8"><title>\${user.username} 대시보드</title></head>
+            <head><meta charset="UTF-8"><title>${user.username} 대시보드</title></head>
             <body style="font-family:sans-serif; padding:40px; background:#f4f7f6;">
                 <div style="max-width:600px; margin:0 auto; background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
-                    <h2>환영합니다, \${user.username}님! 🎉</h2>
+                    <h2>환영합니다, ${user.username}님! 🎉</h2>
                     <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
-                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">\${user.apiKey}</div>
+                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">${user.apiKey}</div>
                     
                     <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
-                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">https://\${req.get('host')}/overlay/\${user.apiKey}</div>
+                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">https://${req.get('host')}/overlay/${user.apiKey}</div>
                     
                     <p style="margin-top:30px;"><a href="/login">로그아웃</a></p>
                 </div>
