@@ -126,6 +126,8 @@ app.get('/login', (req, res) => {
                     </div>
                     <button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button>
                 </form>
+                <!-- 👇 회원가입으로 갈 수 있는 링크 추가 -->
+                <p style="text-align:center; margin-top:15px;"><a href="/register" style="color:#ff4757; text-decoration:none;">계정이 없으신가요? 회원가입</a></p>
             </div>
         </body>
         </html>
