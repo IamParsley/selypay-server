@@ -264,10 +264,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 스트리머별 후원 로그 가져오기 API
+// 8. 스트리머별 후원 로그 가져오기 API (수정완료)
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
-        const user = await User.findOne({ req_apiKey: req.params.apiKey } || { apiKey: req.params.apiKey });
+        const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
         const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
