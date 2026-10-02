@@ -33,6 +33,7 @@ const donationSchema = new mongoose.Schema({
     amount: { type: Number, default: 0 },
     message: { type: String, default: "" }, // 앱이 보내주는 전체 텍스트 그대로 저장
     datetime: { type: String, required: true },
+    dateKey: { type: String, required: true }, // 오늘 날짜를 저장할 칸
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -49,6 +50,13 @@ function getKSTDateTime() {
         minute: '2-digit', 
         second: '2-digit' 
     });
+}
+
+// KST 기준 "YYYY-MM-DD" 반환 함수 (밤 12시가 지나면 날짜가 바뀜)
+function getKSTDateKey() {
+    const now = new Date();
+    const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    return kstDate.toISOString().split('T')[0];
 }
 
 // 3. 홈 루트
@@ -169,7 +177,14 @@ app.post('/api/login', async (req, res) => {
                     
                     <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+
+                    <!-- 🏆 오늘의 후원 랭킹 상자 -->
+                    <p style="margin-top:30px;"><b>🏆 오늘의 후원 랭킹 (KST 자정 기준)</b></p>
+                    <div class="log-box" id="rankingList">
+                        <div class="log-item">랭킹을 불러오는 중...</div>
+                    </div>
                     
+                    <!-- 📋 최근 후원 내역 상자 -->
                     <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
                     <div class="log-box" id="donationLogList">
                         <div class="log-item">후원 내역을 불러오는 중...</div>
@@ -179,6 +194,7 @@ app.post('/api/login', async (req, res) => {
                 </div>
 
                 <script>
+                    // 1. 최근 후원 내역 불러오기
                     async function fetchDonationLogs() {
                         try {
                             const response = await fetch('/api/logs/` + user.apiKey + `');
@@ -204,8 +220,37 @@ app.post('/api/login', async (req, res) => {
                         }
                     }
 
+                    // 2. 오늘의 후원 랭킹 불러오기 (추가된 부분)
+                    async function fetchRanking() {
+                        try {
+                            const response = await fetch('/api/ranking/` + user.apiKey + `');
+                            const ranking = await response.json();
+                            const rankContainer = document.getElementById('rankingList');
+                            
+                            rankContainer.innerHTML = '';
+
+                            if (!ranking || ranking.length === 0) {
+                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+
+                            ranking.forEach((item, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalAmount.toLocaleString() + '원 (' + item.count + '회)';
+                                rankContainer.appendChild(div);
+                            });
+                        } catch (e) {
+                            console.error('랭킹 로딩 실패:', e);
+                        }
+                    }
+
+                    // 페이지 로드 시 즉시 실행 및 주기적 갱신
                     fetchDonationLogs();
+                    fetchRanking();
+                    
                     setInterval(fetchDonationLogs, 3000);
+                    setInterval(fetchRanking, 5000);
                 </script>
             </body>
             </html>
@@ -246,6 +291,7 @@ app.post('/api/notification', async (req, res) => {
             amount,
             message: message, // 💡 앱이 보내주는 원본 메시지(문장 전체) 그대로 저장
             datetime: getKSTDateTime()
+            dateKey: getKSTDateKey() // 💡 후원이 들어온 순간의 KST 날짜 저장
         });
 
         await donationData.save();
@@ -359,6 +405,35 @@ app.get('/api/logs/:apiKey', async (req, res) => {
         const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
         res.json(logs);
     } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+// 9. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준)
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+
+        const todayKey = getKSTDateKey();
+
+        // 오늘 날짜(todayKey)에 해당하는 후원만 모아서 닉네임별로 더하기
+        const ranking = await Donation.aggregate([
+            { $match: { streamerId: user._id, dateKey: todayKey } },
+            { 
+                $group: { 
+                    _id: "$nickname", 
+                    totalAmount: { $sum: "$amount" },
+                    count: { $sum: 1 } 
+                } 
+            },
+            { $sort: { totalAmount: -1 } }, // 금액이 큰 순서대로 정렬
+            { $limit: 5 } // 상위 5명까지만
+        ]);
+
+        res.json(ranking);
+    } catch (e) {
+        console.error(e);
         res.status(500).json([]);
     }
 });
