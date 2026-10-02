@@ -307,7 +307,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 <div id="alert-message"></div>
             </div>
 
-            <audio id="alert-sound" src="/cash.mp3"></audio>
+            <audio id="alert-sound" src="/coinsound.mp3"></audio>
 
             <script>
                 let lastCheckedTime = "";
