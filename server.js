@@ -1,10 +1,15 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose'); // MongoDB연결위해 추가
+const mongoose = require('mongoose');
+const crypto = require('crypto'); // 고유 API Key 생성을 위한 모듈
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 👈 MongoDB Atlas 연결 코드 추가
+// 미들웨어 설정
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// 1. MongoDB 연결
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -12,24 +17,27 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 미들웨어 설정
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// 2. Mongoose 스키마 정의 (스트리머 계정 및 후원 내역)
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    apiKey: { type: String, required: true, unique: true },
+    createdAt: { type: Date, default: Date.now }
+});
 
-// 데이터 저장용 배열 (메모리 저장)
-let donationLogs = []; // 후원 알림 (최대 50개)
-let pingLogs = [];     // 서버 핑 수신 로그 (최대 20개)
+const donationSchema = new mongoose.Schema({
+    streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    nickname: { type: String, default: "익명" },
+    amount: { type: Number, default: 0 },
+    message: { type: String, required: true },
+    datetime: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+});
 
-// 한국 시간(KST) 구하는 헬퍼 함수
-function getKSTTime() {
-    return new Date().toLocaleTimeString('ko-KR', { 
-        timeZone: 'Asia/Seoul', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-    });
-}
+const User = mongoose.model('User', userSchema);
+const Donation = mongoose.model('Donation', donationSchema);
 
+// 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { 
         timeZone: 'Asia/Seoul', 
@@ -41,64 +49,172 @@ function getKSTDateTime() {
     });
 }
 
-// 1. 기본 홈 루트 (서버 살아있는지 확인 + 핑 기록 남기기)
+// 3. 홈 루트
 app.get('/', (req, res) => {
-    const timeStr = getKSTDateTime();
-    const pingEntry = `[${timeStr}] 핑 수신 성공 (Alive Check)`;
-    
-    // 핑 로그 배열에 추가 (최대 20개 유지)
-    pingLogs.unshift(pingEntry);
-    if (pingLogs.length > 20) {
-        pingLogs.pop();
-    }
-
-    res.send('SelyPay Server is Running');
+    res.send(`
+        <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
+            <h1>SelyPay 멀티 테넌트 서버 실행 중 🚀</h1>
+            <p><a href="/register">스트리머 회원가입</a> | <a href="/login">로그인</a></p>
+        </div>
+    `);
 });
 
-// 2. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
-app.post('/api/notification', (req, res) => {
-    const message = req.body.message;
-    
-    if (!message) {
-        return res.status(400).json({ success: false, error: 'Message is empty' });
-    }
-
-    console.log("받은 원본 메시지:", message);
-
-    let amount = 0;
-    const amountMatch = message.match(/([0-9,]+)\s*원/);
-    if (amountMatch) {
-        amount = parseInt(amountMatch[1].replace(/,/g, ''), 10);
-    }
-
-    let nickname = "익명";
-    if (message.includes("님")) {
-        nickname = message.split("님")[0].trim();
-    }
-
-    const timeString = getKSTTime();
-
-    const donationData = {
-        time: timeString,
-        datetime: getKSTDateTime(),
-        message: message,
-        nickname: nickname,
-        amount: amount
-    };
-
-    // 후원 내역을 배열 앞에 추가 (최대 50개 유지)
-    donationLogs.unshift(donationData);
-    if (donationLogs.length > 50) {
-        donationLogs.pop();
-    }
-
-    console.log("파싱된 후원 정보:", donationData);
-
-    res.status(200).json({ success: true, data: donationData });
+// 4. 회원가입 페이지
+app.get('/register', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>스트리머 회원가입</title></head>
+        <body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+            <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;">
+                <h2>스트리머 회원가입</h2>
+                <form action="/api/register" method="POST">
+                    <div style="margin-bottom:15px;">
+                        <label>아이디</label><br>
+                        <input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>비밀번호</label><br>
+                        <input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <button type="submit" style="width:100%; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">가입하기</button>
+                </form>
+                <p style="text-align:center; margin-top:15px;"><a href="/login">이미 계정이 있으신가요? 로그인</a></p>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
-// 3. OBS 오버레이 화면
-app.get('/overlay', (req, res) => {
+// 회원가입 처리 API
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const apiKey = 'sely_' + crypto.randomBytes(16).toString('hex'); // 고유 API Key 생성
+
+        const newUser = new User({ username, password, apiKey });
+        await newUser.save();
+
+        res.send(`
+            <script>
+                alert('회원가입 성공! 발급된 API Key를 안전하게 보관하세요.');
+                location.href = '/login';
+            </script>
+        `);
+    } catch (e) {
+        res.send(`<script>alert('회원가입 실패 (중복된 아이디일 수 있습니다)'); history.back();</script>`);
+    }
+});
+
+// 5. 로그인 페이지
+app.get('/login', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>스트리머 로그인</title></head>
+        <body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+            <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;">
+                <h2>스트리머 로그인</h2>
+                <form action="/api/login" method="POST">
+                    <div style="margin-bottom:15px;">
+                        <label>아이디</label><br>
+                        <input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>비밀번호</label><br>
+                        <input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button>
+                </form>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 로그인 처리 및 대시보드 리다이렉트 (간단 구현용 API Key 반환)
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({ username, password });
+
+        if (!user) {
+            return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
+        }
+
+        // 로그인 성공 시 대시보드 페이지를 바로 보여줌 (API Key와 오버레이 주소 확인용)
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>\${user.username} 대시보드</title></head>
+            <body style="font-family:sans-serif; padding:40px; background:#f4f7f6;">
+                <div style="max-width:600px; margin:0 auto; background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                    <h2>환영합니다, \${user.username}님! 🎉</h2>
+                    <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
+                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">\${user.apiKey}</div>
+                    
+                    <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
+                    <div style="background:#eee; padding:10px; font-family:monospace; word-break:break-all; border-radius:5px;">https://\${req.get('host')}/overlay/\${user.apiKey}</div>
+                    
+                    <p style="margin-top:30px;"><a href="/login">로그아웃</a></p>
+                </div>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Server Error');
+    }
+});
+
+// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (API Key 검증)
+app.post('/api/notification', async (req, res) => {
+    const { apiKey, message } = req.body;
+    
+    if (!apiKey || !message) {
+        return res.status(400).json({ success: false, error: 'API Key or Message is missing' });
+    }
+
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Invalid API Key' });
+        }
+
+        let amount = 0;
+        const amountMatch = message.match(/([0-9,]+)\s*원/);
+        if (amountMatch) {
+            amount = parseInt(amountMatch[1].replace(/,/g, ''), 10);
+        }
+
+        let nickname = "익명";
+        if (message.includes("님")) {
+            nickname = message.split("님")[0].trim();
+        }
+
+        const donationData = new Donation({
+            streamerId: user._id,
+            nickname,
+            amount,
+            message,
+            datetime: getKSTDateTime()
+        });
+
+        await donationData.save();
+
+        console.log(`[${user.username}] 후원 수신 성공:`, donationData);
+        res.status(200).json({ success: true, data: donationData });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+// 7. 스트리머별 OBS 오버레이 화면
+app.get('/overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -108,17 +224,10 @@ app.get('/overlay', (req, res) => {
             <style>
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-box {
-                    position: absolute;
-                    bottom: 50px;
-                    left: 50px;
-                    background: rgba(0, 0, 0, 0.8);
-                    color: white;
-                    padding: 20px 30px;
-                    border-radius: 15px;
-                    font-size: 28px;
-                    font-weight: bold;
-                    display: none;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                    position: absolute; bottom: 50px; left: 50px;
+                    background: rgba(0, 0, 0, 0.8); color: white;
+                    padding: 20px 30px; border-radius: 15px; font-size: 28px;
+                    font-weight: bold; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
                     border: 2px solid #ff4757;
                 }
             </style>
@@ -127,10 +236,9 @@ app.get('/overlay', (req, res) => {
             <div id="alert-box"></div>
             <script>
                 let lastCheckedTime = "";
-
                 async function checkNewDonation() {
                     try {
-                        const response = await fetch('/api/logs');
+                        const response = await fetch('/api/logs/${apiKey}');
                         const logs = await response.json();
                         if (logs.length > 0) {
                             const latest = logs[0];
@@ -139,21 +247,14 @@ app.get('/overlay', (req, res) => {
                                 showAlert(latest.nickname, latest.amount, latest.message);
                             }
                         }
-                    } catch (e) {
-                        console.error(e);
-                    }
+                    } catch (e) { console.error(e); }
                 }
-
                 function showAlert(nickname, amount, message) {
                     const box = document.getElementById('alert-box');
                     box.innerText = \`🎉 \${nickname}님 \${amount.toLocaleString()}원 후원감사합니다! 🎉\`;
                     box.style.display = 'block';
-
-                    setTimeout(() => {
-                        box.style.display = 'none';
-                    }, 5000);
+                    setTimeout(() => { box.style.display = 'none'; }, 5000);
                 }
-
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
@@ -161,92 +262,17 @@ app.get('/overlay', (req, res) => {
     `);
 });
 
-// 4. 관리자 페이지 (/admin) - 후원 내역(최대 50개)과 핑 로그(최대 20개) 분리 표시
-app.get('/admin', (req, res) => {
-    let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>SelyPay 관리자</title>
-            <style>
-                body { font-family: 'Malgun Gothic', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-                .container { max-width: 800px; margin: 0 auto; }
-                .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-                h2 { color: #333; margin-top: 0; }
-                .log-item { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 15px; }
-                .log-item:last-child { border-bottom: none; }
-                .ping-item { font-size: 13px; color: #666; padding: 5px 0; border-bottom: 1px dashed #eee; }
-                .scroll-box { max-height: 300px; overflow-y: auto; padding-right: 5px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="card">
-                    <h2>🎁 실시간 후원 내역 (최대 50개)</h2>
-                    <div id="donation-list" class="scroll-box">후원 내역을 불러오는 중...</div>
-                </div>
+// 8. 스트리머별 후원 로그 가져오기 API
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ req_apiKey: req.params.apiKey } || { apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
 
-                <div class="card">
-                    <h2>📡 서버 핑 수신 기록 (최대 20개)</h2>
-                    <div id="ping-list" class="scroll-box">핑 기록을 불러오는 중...</div>
-                </div>
-            </div>
-            <script>
-                async function fetchAllData() {
-                    try {
-                        // 후원 내역 가져오기
-                        const resDonation = await fetch('/api/logs');
-                        const donations = await resDonation.json();
-                        const donationDiv = document.getElementById('donation-list');
-                        
-                        if (donations.length === 0) {
-                            donationDiv.innerHTML = '<p>아직 후원 내역이 없습니다.</p>';
-                        } else {
-                            let donationHtml = '';
-                            donations.forEach(log => {
-                                donationHtml += \`<div class="log-item">[\${log.datetime}] <b>\${log.nickname}</b>님 (<b>\${log.amount.toLocaleString()}원</b>) - <span style="color:#555;">\${log.message}</span></div>\`;
-                            });
-                            donationDiv.innerHTML = donationHtml;
-                        }
-
-                        // 핑 로그 가져오기
-                        const resPing = await fetch('/api/pings');
-                        const pings = await resPing.json();
-                        const pingDiv = document.getElementById('ping-list');
-
-                        if (pings.length === 0) {
-                            pingDiv.innerHTML = '<p>아직 수신된 핑 기록이 없습니다.</p>';
-                        } else {
-                            let pingHtml = '';
-                            pings.forEach(ping => {
-                                pingHtml += \`<div class="ping-item">\${ping}</div>\`;
-                            });
-                            pingDiv.innerHTML = pingHtml;
-                        }
-
-                    } catch (e) {
-                        console.error(e);
-                    }
-                }
-
-                setInterval(fetchAllData, 2000);
-                fetchAllData();
-            </script>
-        </body>
-        </html>
-    `;
-    res.send(html);
-});
-
-// 5. 프론트엔드에서 후원 로그 목록을 가져가는 API
-app.get('/api/logs', (req, res) => {
-    res.json(donationLogs);
-});
-
-// 6. 프론트엔드에서 핑 로그 목록을 가져가는 API
-app.get('/api/pings', (req, res) => {
-    res.json(pingLogs);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json([]);
+    }
 });
 
 // 서버 구동
