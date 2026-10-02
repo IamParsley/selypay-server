@@ -285,32 +285,41 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     transform: translateX(-50%);
                     display: none; 
                     text-align: center;
+                    width: 600px; /* 💡 전체 알림창의 가로 폭을 넉넉하게 잡아주어 글자가 중간에 끊기는 것을 방지합니다 */
                 }
-                /* 문구 위 중앙에 표시될 GIF 이미지 스타일 */
                 #alert-image {
-                    width: 150px; /* 이미지 크기 조절 가능 */
+                    width: 150px; 
                     height: auto;
                     margin-bottom: 15px;
                     display: inline-block;
                 }
-                /* 배경 없는 깔끔한 텍스트 스타일 */
+                /* 1번 줄: 후원 감사 멘트 스타일 */
                 #alert-text {
                     color: white; 
                     font-size: 32px;
                     font-weight: bold; 
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); /* 어떤 화면이든 글자가 잘 보이도록 그림자 효과 */
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+                    white-space: nowrap; /* 글자가 절대 중간에 꺾이지 않고 한 줄로 나오게 고정합니다 */
+                }
+                /* 2번 줄: 후원 메시지 스타일 */
+                #alert-message {
+                    color: #ffd700; /* 메시지는 눈에 띄게 금색(노란색)으로 지정 (원하시면 white 등으로 변경 가능) */
+                    font-size: 26px;
+                    font-weight: bold;
+                    margin-top: 10px;
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
                 }
             </style>
         </head>
         <body>
             <div id="alert-container">
-                <!-- 💡 src 경로에 GitHub에 올리신 GIF 파일명을 적어주세요 (예: /my-gif.gif) -->
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
                 <div id="alert-text"></div>
+                <!-- 💡 메시지가 들어갈 두 번째 줄 영역 추가 -->
+                <div id="alert-message"></div>
             </div>
 
-            // 🔊 HTML 오디오 태그
-            <audio id="alert-sound" src="/coinsound.mp3"></audio>
+            <audio id="alert-sound" src="/cash.mp3"></audio>
 
             <script>
                 let lastCheckedTime = "";
@@ -331,17 +340,26 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 function showAlert(nickname, amount, message) {
                     const container = document.getElementById('alert-container');
                     const textDiv = document.getElementById('alert-text');
-
-                    // 🔊 오디오 엘리먼트 가져오기
+                    const messageDiv = document.getElementById('alert-message'); // 메시지 영역 가져오기
                     const sound = document.getElementById('alert-sound');
                     
+                    // 1번 줄 텍스트 설정
                     textDiv.innerText = \`\${nickname}님 \${amount.toLocaleString()}원 후원감사합니다!\`;
+                    
+                    // 2번 줄 메시지 설정 (메시지가 있을 때만 아래 줄에 보여줍니다)
+                    if (message && message.trim() !== "") {
+                        messageDiv.innerText = message;
+                        messageDiv.style.display = 'block';
+                    } else {
+                        messageDiv.style.display = 'none';
+                    }
+
                     container.style.display = 'block';
 
-                    // 🔊 알림이 뜰 때 소리 재생 (처음부터 재생되도록 설정)
+                    // 효과음 재생
                     sound.currentTime = 0;
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
-                    
+
                     // 5초 후에 알림 숨기기
                     setTimeout(() => { 
                         container.style.display = 'none'; 
