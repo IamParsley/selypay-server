@@ -31,7 +31,7 @@ const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
     amount: { type: Number, default: 0 },
-    message: { type: String, required: true },
+    message: { type: String, default: "" },
     datetime: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
 });
@@ -135,7 +135,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 로그인 처리 및 대시보드 리다이렉트 (최근 후원 내역 UI가 포함된 최신 대시보드)
+// 로그인 처리 및 대시보드 리다이렉트
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -192,12 +192,11 @@ app.post('/api/login', async (req, res) => {
                                 return;
                             }
 
-                            // 최대 20개까지만 잘라서 표시
                             const recentLogs = logs.slice(0, 20);
                             recentLogs.forEach(log => {
                                 const div = document.createElement('div');
                                 div.className = 'log-item';
-                                div.innerHTML = \`<b>[\${log.datetime}]</b> \${log.nickname}님 (\${log.amount.toLocaleString()}원): \${log.message}\`;
+                                div.innerHTML = `<b>[\${log.datetime}]</b> \${log.nickname}님 (\${log.amount.toLocaleString()}원): \${log.message}`;
                                 logContainer.appendChild(div);
                             });
                         } catch (e) {
@@ -205,7 +204,6 @@ app.post('/api/login', async (req, res) => {
                         }
                     }
 
-                    // 페이지 로드 시 불러오기 + 3초마다 자동 새로고침
                     fetchDonationLogs();
                     setInterval(fetchDonationLogs, 3000);
                 </script>
@@ -217,7 +215,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (API Key 검증)
+// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (중복 메시지 정제 로직 추가)
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
     
@@ -242,11 +240,28 @@ app.post('/api/notification', async (req, res) => {
             nickname = message.split("님")[0].trim();
         }
 
+        // 💡 핵심 수정: 앱이 보낸 통문장(message)에서 불필요한 닉네임/금액 부분을 제외하고, 진짜 후원 코멘트만 추출합니다.
+        // 예시: "테스트후원알림님 1원 후원합니다: 테스트후원입니다" -> "테스트후원입니다" 추출
+        let cleanMessage = "";
+        if (message.includes(":")) {
+            cleanMessage = message.split(":").slice(1).join(":").trim();
+        } else if (message.includes("후원합니다")) {
+            // 콜론이 없을 경우 "후원합니다" 뒷부분을 메시지로 취급
+            const parts = message.split("후원합니다");
+            if (parts.length > 1) {
+                cleanMessage = parts[1].replace(/^[\s!,-~]+/, "").trim();
+            }
+        }
+        // 만약 정제된 메시지가 따로 없거나 원본과 같다면, 불필요한 반복을 막기 위해 비워두거나 필요시 처리
+        if (cleanMessage === message) {
+            cleanMessage = ""; 
+        }
+
         const donationData = new Donation({
             streamerId: user._id,
             nickname,
             amount,
-            message,
+            message: cleanMessage, // 💡 순수 코멘트만 저장
             datetime: getKSTDateTime()
         });
 
@@ -285,7 +300,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     transform: translateX(-50%);
                     display: none; 
                     text-align: center;
-                    width: 800px; /* 글자가 꺾이지 않도록 넉넉한 가로 폭 지정 */
+                    width: 800px; 
                 }
                 #alert-image {
                     width: 150px; 
@@ -303,7 +318,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 /* 2번 줄: 후원 메시지 (흰색, 한 줄 고정) */
                 #alert-message {
-                    color: white; /* 💡 노란색에서 흰색으로 변경 */
+                    color: white; 
                     font-size: 26px;
                     font-weight: bold;
                     margin-top: 10px;
@@ -346,12 +361,12 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     // 1번 줄: 닉네임과 금액, 감사 멘트
                     textDiv.innerText = \`\${nickname}님 \${amount.toLocaleString()}원 후원감사합니다!\`;
                     
-                    // 2번 줄: 사용자가 남긴 입금 메시지만 깔끔하게 표시
+                    // 2번 줄: 사용자가 남긴 순수 메시지만 표시 (없으면 숨김)
                     if (message && message.trim() !== "") {
                         messageDiv.innerText = message;
                         messageDiv.style.display = 'block';
                     } else {
-                        messageDiv.style.display = 'none'; // 메시지가 없으면 영역 숨김
+                        messageDiv.style.display = 'none'; 
                     }
 
                     container.style.display = 'block';
