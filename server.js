@@ -126,7 +126,6 @@ app.get('/login', (req, res) => {
                     </div>
                     <button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button>
                 </form>
-                <!-- 👇 회원가입으로 갈 수 있는 링크 추가 -->
                 <p style="text-align:center; margin-top:15px;"><a href="/register" style="color:#ff4757; text-decoration:none;">계정이 없으신가요? 회원가입</a></p>
             </div>
         </body>
@@ -134,7 +133,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 로그인 처리 및 대시보드 리다이렉트
+// 로그인 처리 및 대시보드 리다이렉트 (최근 후원 내역 UI가 포함된 최신 대시보드)
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -144,75 +143,77 @@ app.post('/api/login', async (req, res) => {
             return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
         }
 
-// 로그인 처리 및 대시보드 리다이렉트 API 내부
-res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>${user.username} 대시보드</title>
-        <style>
-            body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-            .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-            .log-box { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
-            .log-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-            .log-item:last-child { border-bottom: none; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h2>환영합니다, ${user.username}님! 🎉</h2>
-            
-            <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
-            <div class="box">${user.apiKey}</div>
-            
-            <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
-            <div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div>
-            
-            <!-- 👇 [추가] 최근 후원 내역 영역 -->
-            <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
-            <div class="log-box" id="donationLogList">
-                <div class="log-item">후원 내역을 불러오는 중...</div>
-            </div>
-
-            <p style="margin-top:30px; text-align:right;"><a href="/login">로그아웃</a></p>
-        </div>
-
-        <script>
-            async function fetchDonationLogs() {
-                try {
-                    const response = await fetch('/api/logs/${user.apiKey}');
-                    const logs = await response.json();
-                    const logContainer = document.getElementById('donationLogList');
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${user.username} 대시보드</title>
+                <style>
+                    body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                    .log-box { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
+                    .log-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+                    .log-item:last-child { border-bottom: none; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2>환영합니다, ${user.username}님! 🎉</h2>
                     
-                    logContainer.innerHTML = '';
+                    <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
+                    <div class="box">${user.apiKey}</div>
+                    
+                    <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
+                    <div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div>
+                    
+                    <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
+                    <div class="log-box" id="donationLogList">
+                        <div class="log-item">후원 내역을 불러오는 중...</div>
+                    </div>
 
-                    if (!logs || logs.length === 0) {
-                        logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
-                        return;
+                    <p style="margin-top:30px; text-align:right;"><a href="/login">로그아웃</a></p>
+                </div>
+
+                <script>
+                    async function fetchDonationLogs() {
+                        try {
+                            const response = await fetch('/api/logs/${user.apiKey}');
+                            const logs = await response.json();
+                            const logContainer = document.getElementById('donationLogList');
+                            
+                            logContainer.innerHTML = '';
+
+                            if (!logs || logs.length === 0) {
+                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+
+                            // 최대 20개까지만 잘라서 표시
+                            const recentLogs = logs.slice(0, 20);
+                            recentLogs.forEach(log => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = \`<b>[\${log.datetime}]</b> \${log.nickname}님 (\${log.amount.toLocaleString()}원): \${log.message}\`;
+                                logContainer.appendChild(div);
+                            });
+                        } catch (e) {
+                            console.error('후원 내역 로딩 실패:', e);
+                        }
                     }
 
-                    // 최대 20개까지만 잘라서 표시
-                    const recentLogs = logs.slice(0, 20);
-                    recentLogs.forEach(log => {
-                        const div = document.createElement('div');
-                        div.className = 'log-item';
-                        div.innerHTML = \`<b>[\${log.datetime}]</b> \${log.nickname}님 (\${log.amount.toLocaleString()}원): \${log.message}\`;
-                        logContainer.appendChild(div);
-                    });
-                } catch (e) {
-                    console.error('후원 내역 로딩 실패:', e);
-                }
-            }
-
-            // 페이지 로드 시 불러오기 + 3초마다 자동 새로고침
-            fetchDonationLogs();
-            setInterval(fetchDonationLogs, 3000);
-        </script>
-    </body>
-    </html>
-`);
+                    // 페이지 로드 시 불러오기 + 3초마다 자동 새로고침
+                    fetchDonationLogs();
+                    setInterval(fetchDonationLogs, 3000);
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Server Error');
+    }
+});
 
 // 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트 (API Key 검증)
 app.post('/api/notification', async (req, res) => {
@@ -310,7 +311,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 스트리머별 후원 로그 가져오기 API (수정완료)
+// 8. 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
