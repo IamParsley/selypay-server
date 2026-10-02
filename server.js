@@ -178,6 +178,9 @@ app.post('/api/login', async (req, res) => {
                     <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
+                    <p style="margin-top:20px;"><b>내 랭킹 OBS 오버레이 주소 (방송용 랭킹판):</b></p>
+                    <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
+
                     <!-- 🏆 오늘의 후원 랭킹 상자 -->
                     <p style="margin-top:30px;"><b>🏆 오늘의 후원 랭킹 (KST 자정 기준)</b></p>
                     <div class="log-box" id="rankingList">
@@ -290,7 +293,7 @@ app.post('/api/notification', async (req, res) => {
             nickname,
             amount,
             message: message, // 💡 앱이 보내주는 원본 메시지(문장 전체) 그대로 저장
-            datetime: getKSTDateTime()
+            datetime: getKSTDateTime(),
             dateKey: getKSTDateKey() // 💡 후원이 들어온 순간의 KST 날짜 저장
         });
 
@@ -436,6 +439,90 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
         console.error(e);
         res.status(500).json([]);
     }
+});
+
+        // 10. 스트리머별 오늘의 후원 랭킹 OBS 오버레이 화면
+app.get('/ranking-overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Ranking Overlay</title>
+            <style>
+                body { 
+                    background-color: transparent; 
+                    margin: 0; 
+                    font-family: 'Malgun Gothic', sans-serif; 
+                }
+                .rank-box {
+                    background: rgba(0, 0, 0, 0.75);
+                    color: white;
+                    padding: 15px;
+                    border-radius: 10px;
+                    width: 300px;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                }
+                .rank-title {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                    text-align: center;
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                    padding-bottom: 8px;
+                    color: #ffd700;
+                }
+                .rank-item {
+                    font-size: 15px;
+                    padding: 6px 0;
+                    display: flex;
+                    justify-content: space-between;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                }
+                .rank-item:last-child { border-bottom: none; }
+            </style>
+        </head>
+        <body>
+            <div class="rank-box">
+                <div class="rank-title">🏆 오늘의 후원 랭킹</div>
+                <div id="ranking-content">불러오는 중...</div>
+            </div>
+
+            <script>
+                async function fetchOverlayRanking() {
+                    try {
+                        const response = await fetch('/api/ranking/` + apiKey + `');
+                        const ranking = await response.json();
+                        const container = document.getElementById('ranking-content');
+                        
+                        container.innerHTML = '';
+
+                        if (!ranking || ranking.length === 0) {
+                            container.innerHTML = '<div style="text-align:center; padding:10px; font-size:14px; color:#aaa;">오늘 아직 후원이 없습니다.</div>';
+                            return;
+                        }
+
+                        ranking.forEach((item, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'rank-item';
+                            div.innerHTML = '<span><b>' + (index + 1) + '.</b> ' + item._id + '님</span><span><b>' + item.totalAmount.toLocaleString() + '원</b></span>';
+                            container.appendChild(div);
+                        });
+                    } catch (e) {
+                        console.error('랭킹 오버레이 로딩 실패:', e);
+                    }
+                }
+
+                fetchOverlayRanking();
+                setInterval(fetchOverlayRanking, 5000); // 5초마다 자동 갱신
+            </script>
+        </body>
+        </html>
+    `);
 });
 
 // 서버 구동
