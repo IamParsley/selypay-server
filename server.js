@@ -285,7 +285,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     transform: translateX(-50%);
                     display: none; 
                     text-align: center;
-                    width: 600px; /* 💡 전체 알림창의 가로 폭을 넉넉하게 잡아주어 글자가 중간에 끊기는 것을 방지합니다 */
+                    width: 800px; /* 글자가 꺾이지 않도록 넉넉한 가로 폭 지정 */
                 }
                 #alert-image {
                     width: 150px; 
@@ -293,21 +293,22 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-bottom: 15px;
                     display: inline-block;
                 }
-                /* 1번 줄: 후원 감사 멘트 스타일 */
+                /* 1번 줄: 후원 감사 멘트 (흰색, 한 줄 고정) */
                 #alert-text {
                     color: white; 
                     font-size: 32px;
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-                    white-space: nowrap; /* 글자가 절대 중간에 꺾이지 않고 한 줄로 나오게 고정합니다 */
+                    white-space: nowrap;
                 }
-                /* 2번 줄: 후원 메시지 스타일 */
+                /* 2번 줄: 후원 메시지 (흰색, 한 줄 고정) */
                 #alert-message {
-                    color: #ffd700; /* 메시지는 눈에 띄게 금색(노란색)으로 지정 (원하시면 white 등으로 변경 가능) */
+                    color: white; /* 💡 노란색에서 흰색으로 변경 */
                     font-size: 26px;
                     font-weight: bold;
                     margin-top: 10px;
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+                    white-space: nowrap;
                 }
             </style>
         </head>
@@ -315,7 +316,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <div id="alert-container">
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
                 <div id="alert-text"></div>
-                <!-- 💡 메시지가 들어갈 두 번째 줄 영역 추가 -->
                 <div id="alert-message"></div>
             </div>
 
@@ -340,18 +340,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 function showAlert(nickname, amount, message) {
                     const container = document.getElementById('alert-container');
                     const textDiv = document.getElementById('alert-text');
-                    const messageDiv = document.getElementById('alert-message'); // 메시지 영역 가져오기
+                    const messageDiv = document.getElementById('alert-message');
                     const sound = document.getElementById('alert-sound');
                     
-                    // 1번 줄 텍스트 설정
+                    // 1번 줄: 닉네임과 금액, 감사 멘트
                     textDiv.innerText = \`\${nickname}님 \${amount.toLocaleString()}원 후원감사합니다!\`;
                     
-                    // 2번 줄 메시지 설정 (메시지가 있을 때만 아래 줄에 보여줍니다)
+                    // 2번 줄: 사용자가 남긴 입금 메시지만 깔끔하게 표시
                     if (message && message.trim() !== "") {
                         messageDiv.innerText = message;
                         messageDiv.style.display = 'block';
                     } else {
-                        messageDiv.style.display = 'none';
+                        messageDiv.style.display = 'none'; // 메시지가 없으면 영역 숨김
                     }
 
                     container.style.display = 'block';
