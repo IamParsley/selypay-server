@@ -7,11 +7,42 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// 최근 후원 내역을 저장할 배열 (메모리 저장)
-let donationLogs = [];
+// 데이터 저장용 배열 (메모리 저장)
+let donationLogs = []; // 후원 알림 (최대 50개)
+let pingLogs = [];     // 서버 핑 수신 로그 (최대 20개)
 
-// 1. 기본 홈 루트 (서버 살아있는지 확인용)
+// 한국 시간(KST) 구하는 헬퍼 함수
+function getKSTTime() {
+    return new Date().toLocaleTimeString('ko-KR', { 
+        timeZone: 'Asia/Seoul', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
+}
+
+function getKSTDateTime() {
+    return new Date().toLocaleString('ko-KR', { 
+        timeZone: 'Asia/Seoul', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
+}
+
+// 1. 기본 홈 루트 (서버 살아있는지 확인 + 핑 기록 남기기)
 app.get('/', (req, res) => {
+    const timeStr = getKSTDateTime();
+    const pingEntry = `[${timeStr}] 핑 수신 성공 (Alive Check)`;
+    
+    // 핑 로그 배열에 추가 (최대 20개 유지)
+    pingLogs.unshift(pingEntry);
+    if (pingLogs.length > 20) {
+        pingLogs.pop();
+    }
+
     res.send('SelyPay Server is Running');
 });
 
@@ -25,40 +56,30 @@ app.post('/api/notification', (req, res) => {
 
     console.log("받은 원본 메시지:", message);
 
-    // [수정된 금액 추출 로직] 메시지 안에서 "숫자 + 원" 패턴을 정확히 캐치
     let amount = 0;
     const amountMatch = message.match(/([0-9,]+)\s*원/);
     if (amountMatch) {
-        // 콤마(,) 제거 후 숫자로 변환 (예: "1,000" -> 1000, "1" -> 1)
         amount = parseInt(amountMatch[1].replace(/,/g, ''), 10);
     }
 
-    // 닉네임 추출 (예: "이서현님 1원..." 형태에서 이름 추출)
     let nickname = "익명";
     if (message.includes("님")) {
         nickname = message.split("님")[0].trim();
     }
 
-        // 한국 시간(Asia/Seoul) 기준으로 시간 포맷팅
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('ko-KR', { 
-        timeZone: 'Asia/Seoul', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-    });
+    const timeString = getKSTTime();
 
-    // 관리자/오버레이에서 쓸 데이터 객체 생성
     const donationData = {
         time: timeString,
+        datetime: getKSTDateTime(),
         message: message,
         nickname: nickname,
         amount: amount
     };
 
-    // 최신 후원 내역을 배열 앞에 추가 (최대 20개 유지)
+    // 후원 내역을 배열 앞에 추가 (최대 50개 유지)
     donationLogs.unshift(donationData);
-    if (donationLogs.length > 20) {
+    if (donationLogs.length > 50) {
         donationLogs.pop();
     }
 
@@ -67,7 +88,7 @@ app.post('/api/notification', (req, res) => {
     res.status(200).json({ success: true, data: donationData });
 });
 
-// 3. OBS 오버레이 화면 (최신 후원을 화면에 띄워줌)
+// 3. OBS 오버레이 화면
 app.get('/overlay', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -104,9 +125,8 @@ app.get('/overlay', (req, res) => {
                         const logs = await response.json();
                         if (logs.length > 0) {
                             const latest = logs[0];
-                            // 새로운 후원이 들어왔을 때만 애니메이션 및 팝업 실행
-                            if (latest.time !== lastCheckedTime) {
-                                lastCheckedTime = latest.time;
+                            if (latest.datetime !== lastCheckedTime) {
+                                lastCheckedTime = latest.datetime;
                                 showAlert(latest.nickname, latest.amount, latest.message);
                             }
                         }
@@ -122,17 +142,17 @@ app.get('/overlay', (req, res) => {
 
                     setTimeout(() => {
                         box.style.display = 'none';
-                    }, 5000); // 5초 동안 표시
+                    }, 5000);
                 }
 
-                setInterval(checkNewDonation, 1000); // 1초마다 새 후원 체크
+                setInterval(checkNewDonation, 1000);
             </script>
         </body>
         </html>
     `);
 });
 
-// 4. 관리자 페이지 (/admin)
+// 4. 관리자 페이지 (/admin) - 후원 내역(최대 50개)과 핑 로그(최대 20개) 분리 표시
 app.get('/admin', (req, res) => {
     let html = `
         <!DOCTYPE html>
@@ -142,40 +162,67 @@ app.get('/admin', (req, res) => {
             <title>SelyPay 관리자</title>
             <style>
                 body { font-family: 'Malgun Gothic', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                h2 { color: #333; }
-                .log-item { padding: 12px; border-bottom: 1px solid #eee; font-size: 16px; }
+                .container { max-width: 800px; margin: 0 auto; }
+                .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+                h2 { color: #333; margin-top: 0; }
+                .log-item { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 15px; }
                 .log-item:last-child { border-bottom: none; }
+                .ping-item { font-size: 13px; color: #666; padding: 5px 0; border-bottom: 1px dashed #eee; }
+                .scroll-box { max-height: 300px; overflow-y: auto; padding-right: 5px; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h2>📱 SelyPay 후원 관리자</h2>
-                <div id="log-list">후원 내역을 불러오는 중...</div>
+                <div class="card">
+                    <h2>🎁 실시간 후원 내역 (최대 50개)</h2>
+                    <div id="donation-list" class="scroll-box">후원 내역을 불러오는 중...</div>
+                </div>
+
+                <div class="card">
+                    <h2>📡 서버 핑 수신 기록 (최대 20개)</h2>
+                    <div id="ping-list" class="scroll-box">핑 기록을 불러오는 중...</div>
+                </div>
             </div>
             <script>
-                async function fetchLogs() {
+                async function fetchAllData() {
                     try {
-                        const res = await fetch('/api/logs');
-                        const logs = await res.json();
-                        const listDiv = document.getElementById('log-list');
+                        // 후원 내역 가져오기
+                        const resDonation = await fetch('/api/logs');
+                        const donations = await resDonation.json();
+                        const donationDiv = document.getElementById('donation-list');
                         
-                        if (logs.length === 0) {
-                            listDiv.innerHTML = '<p>아직 후원 내역이 없습니다.</p>';
-                            return;
+                        if (donations.length === 0) {
+                            donationDiv.innerHTML = '<p>아직 후원 내역이 없습니다.</p>';
+                        } else {
+                            let donationHtml = '';
+                            donations.forEach(log => {
+                                donationHtml += \`<div class="log-item">[\${log.datetime}] <b>\${log.nickname}</b>님 (<b>\${log.amount.toLocaleString()}원</b>) - <span style="color:#555;">\${log.message}</span></div>\`;
+                            });
+                            donationDiv.innerHTML = donationHtml;
                         }
 
-                        let htmlStr = '';
-                        logs.forEach(log => {
-                            htmlStr += \`<div class="log-item">[\${log.time}] <b>\${log.nickname}</b>님 (<b>\${log.amount.toLocaleString()}원</b>)</div>\`;
-                        });
-                        listDiv.innerHTML = htmlStr;
+                        // 핑 로그 가져오기
+                        const resPing = await fetch('/api/pings');
+                        const pings = await resPing.json();
+                        const pingDiv = document.getElementById('ping-list');
+
+                        if (pings.length === 0) {
+                            pingDiv.innerHTML = '<p>아직 수신된 핑 기록이 없습니다.</p>';
+                        } else {
+                            let pingHtml = '';
+                            pings.forEach(ping => {
+                                pingHtml += \`<div class="ping-item">\${ping}</div>\`;
+                            });
+                            pingDiv.innerHTML = pingHtml;
+                        }
+
                     } catch (e) {
                         console.error(e);
                     }
                 }
-                setInterval(fetchLogs, 2000);
-                fetchLogs();
+
+                setInterval(fetchAllData, 2000);
+                fetchAllData();
             </script>
         </body>
         </html>
@@ -183,9 +230,14 @@ app.get('/admin', (req, res) => {
     res.send(html);
 });
 
-// 5. 프론트엔드에서 로그 목록을 가져가는 API
+// 5. 프론트엔드에서 후원 로그 목록을 가져가는 API
 app.get('/api/logs', (req, res) => {
     res.json(donationLogs);
+});
+
+// 6. 프론트엔드에서 핑 로그 목록을 가져가는 API
+app.get('/api/pings', (req, res) => {
+    res.json(pingLogs);
 });
 
 // 서버 구동
