@@ -303,7 +303,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
         <body>
             <div id="alert-container">
                 <!-- 💡 src 경로에 GitHub에 올리신 GIF 파일명을 적어주세요 (예: /my-gif.gif) -->
-                <img id="alert-image" src="/여기에파일명.gif" alt="Alert GIF">
+                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
                 <div id="alert-text"></div>
             </div>
 
