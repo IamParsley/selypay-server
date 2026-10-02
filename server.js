@@ -309,6 +309,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 <div id="alert-text"></div>
             </div>
 
+            // 🔊 HTML 오디오 태그
+            <audio id="alert-sound" src="/coinsound.mp3"></audio>
+
             <script>
                 let lastCheckedTime = "";
                 async function checkNewDonation() {
@@ -328,10 +331,17 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 function showAlert(nickname, amount, message) {
                     const container = document.getElementById('alert-container');
                     const textDiv = document.getElementById('alert-text');
+
+                    // 🔊 오디오 엘리먼트 가져오기
+                    const sound = document.getElementById('alert-sound');
                     
                     textDiv.innerText = \`\${nickname}님 \${amount.toLocaleString()}원 후원감사합니다!\`;
                     container.style.display = 'block';
 
+                    // 🔊 알림이 뜰 때 소리 재생 (처음부터 재생되도록 설정)
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+                    
                     // 5초 후에 알림 숨기기
                     setTimeout(() => { 
                         container.style.display = 'none'; 
