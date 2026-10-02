@@ -150,7 +150,7 @@ app.post('/api/login', async (req, res) => {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>${user.username} 대시보드</title>
+                <title>` + user.username + ` 대시보드</title>
                 <style>
                     body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
                     .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -162,13 +162,13 @@ app.post('/api/login', async (req, res) => {
             </head>
             <body>
                 <div class="container">
-                    <h2>환영합니다, ${user.username}님! 🎉</h2>
+                    <h2>환영합니다, ` + user.username + `님! 🎉</h2>
                     
                     <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
-                    <div class="box">${user.apiKey}</div>
+                    <div class="box">` + user.apiKey + `</div>
                     
                     <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
-                    <div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div>
+                    <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
                     
                     <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
                     <div class="log-box" id="donationLogList">
@@ -181,7 +181,7 @@ app.post('/api/login', async (req, res) => {
                 <script>
                     async function fetchDonationLogs() {
                         try {
-                            const response = await fetch('/api/logs/${user.apiKey}');
+                            const response = await fetch('/api/logs/` + user.apiKey + `');
                             const logs = await response.json();
                             const logContainer = document.getElementById('donationLogList');
                             
@@ -196,7 +196,7 @@ app.post('/api/login', async (req, res) => {
                             recentLogs.forEach(log => {
                                 const div = document.createElement('div');
                                 div.className = 'log-item';
-                                div.innerHTML = `<b>[\${log.datetime}]</b> \${log.nickname}님 (\${log.amount.toLocaleString()}원): \${log.message}`;
+                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
                                 logContainer.appendChild(div);
                             });
                         } catch (e) {
@@ -334,7 +334,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 let lastCheckedTime = "";
                 async function checkNewDonation() {
                     try {
-                        const response = await fetch('/api/logs/${apiKey}');
+                        const response = await fetch('/api/logs/` + apiKey + `');
                         const logs = await response.json();
                         if (logs.length > 0) {
                             const latest = logs[0];
@@ -352,7 +352,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const messageDiv = document.getElementById('alert-message');
                     const sound = document.getElementById('alert-sound');
                     
-                    textDiv.innerText = \`\${nickname}님 \${amount.toLocaleString()}원 후원감사합니다!\`;
+                    textDiv.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원감사합니다!';
                     
                     if (message && message.trim() !== "") {
                         messageDiv.innerText = message;
