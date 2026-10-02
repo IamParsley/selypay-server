@@ -39,9 +39,14 @@ app.post('/api/notification', (req, res) => {
         nickname = message.split("님")[0].trim();
     }
 
-    // 현재 시간 포맷팅 (한국 시간 기준 등)
+        // 한국 시간(Asia/Seoul) 기준으로 시간 포맷팅
     const now = new Date();
-    const timeString = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const timeString = now.toLocaleTimeString('ko-KR', { 
+        timeZone: 'Asia/Seoul', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
 
     // 관리자/오버레이에서 쓸 데이터 객체 생성
     const donationData = {
