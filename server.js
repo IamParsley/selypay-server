@@ -223,7 +223,7 @@ app.post('/api/login', async (req, res) => {
                         }
                     }
 
-                    // 2. 오늘의 후원 랭킹 불러오기 (추가된 부분)
+                    // 2. 오늘의 후원 랭킹 불러오기
                     async function fetchRanking() {
                         try {
                             const response = await fetch('/api/ranking/` + user.apiKey + `');
@@ -280,7 +280,6 @@ app.post('/api/notification', async (req, res) => {
         let amount = 0;
         const amountMatch = message.match(/([0-9,]+)\s*원/);
         if (amountMatch) {
-            // 💡 콤마를 제거한 뒤 명확하게 숫자(Number)로 변환
             const parsed = parseInt(amountMatch[1].replace(/,/g, ''), 10);
             if (!isNaN(parsed)) {
                 amount = parsed;
@@ -295,7 +294,7 @@ app.post('/api/notification', async (req, res) => {
         const donationData = new Donation({
             streamerId: user._id,
             nickname,
-            amount, // 💡 숫자로 확실히 변환된 값이 저장됨
+            amount, 
             message: message, 
             datetime: getKSTDateTime(),
             dateKey: getKSTDateKey()
@@ -311,7 +310,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 오버레이 화면 (앱이 주는 대로 자연스럽게 출력)
+// 7. 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -372,7 +371,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                             const latest = logs[0];
                             if (latest.datetime !== lastCheckedTime) {
                                 lastCheckedTime = latest.datetime;
-                            showAlert(latest.message); // 원본메세지만 전달
+                                showAlert(latest.message);
                             }
                         }
                     } catch (e) { console.error(e); }
@@ -383,9 +382,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const messageDiv = document.getElementById('alert-message');
                     const sound = document.getElementById('alert-sound');
                                         
-                    // 앱이 보내준 전체 메시지(또는 코멘트) 그대로 표시
-                        messageDiv.innerText = message;
-
+                    messageDiv.innerText = message;
                     container.style.display = 'block';
 
                     sound.currentTime = 0;
@@ -397,6 +394,87 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
 
                 setInterval(checkNewDonation, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// 7-1. 방송용 실시간 랭킹 OBS 오버레이 화면 추가
+app.get('/ranking-overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Ranking Overlay</title>
+            <style>
+                body { 
+                    background-color: transparent; 
+                    margin: 0; 
+                    font-family: 'Malgun Gothic', sans-serif; 
+                }
+                .ranking-board {
+                    background: rgba(0, 0, 0, 0.75);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    width: 320px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                }
+                h3 { margin: 0 0 15px 0; font-size: 18px; text-align: center; color: #f1c40f; }
+                .rank-item {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                    font-size: 15px;
+                }
+                .rank-item:last-child { border-bottom: none; }
+                .name { font-weight: bold; }
+                .amount { color: #2ecc71; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="ranking-board">
+                <h3>🏆 오늘의 후원 랭킹</h3>
+                <div id="ranking-content">불러오는 중...</div>
+            </div>
+
+            <script>
+                async function fetchOverlayRanking() {
+                    try {
+                        const response = await fetch('/api/ranking/` + apiKey + `');
+                        const ranking = await response.json();
+                        const container = document.getElementById('ranking-content');
+                        
+                        container.innerHTML = '';
+
+                        if (!ranking || ranking.length === 0) {
+                            container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">오늘 후원 내역이 없습니다.</div>';
+                            return;
+                        }
+
+                        ranking.forEach((item, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'rank-item';
+                            div.innerHTML = \`
+                                <span class="name">\${index + 1}. \${item._id}</span>
+                                <span class="amount">\${item.totalAmount.toLocaleString()}원</span>
+                            \`;
+                            container.appendChild(div);
+                        });
+                    } catch (e) {
+                        console.error('랭킹 오버레이 로딩 실패:', e);
+                    }
+                }
+
+                fetchOverlayRanking();
+                setInterval(fetchOverlayRanking, 5000);
             </script>
         </body>
         </html>
@@ -416,36 +494,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 9. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준)
-app.get('/api/ranking/:apiKey', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json([]);
-
-        const todayKey = getKSTDateKey();
-
-        // 오늘 날짜(todayKey)에 해당하는 후원만 모아서 닉네임별로 더하기
-        const ranking = await Donation.aggregate([
-            { $match: { streamerId: user._id, dateKey: todayKey } },
-            { 
-                $group: { 
-                    _id: "$nickname", 
-                    totalAmount: { $sum: "$amount" },
-                    count: { $sum: 1 } 
-                } 
-            },
-            { $sort: { totalAmount: -1 } }, // 금액이 큰 순서대로 정렬
-            { $limit: 5 } // 상위 5명까지만
-        ]);
-
-        res.json(ranking);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json([]);
-    }
-});
-
- // 10. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 정렬 적용)
+// 9. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 선착순 동점 정렬 적용)
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -459,11 +508,10 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
             { nickname: 1, amount: 1, timestamp: 1 }
         ).sort({ timestamp: 1 });
 
-        // 2. 닉네임별로 금액 합산 및 최초 후원 시간 계산 (메모리 내에서 깔끔하게 그룹화)
+        // 2. 닉네임별로 금액 합산 및 최초 후원 시간 계산
         const rankingMap = {};
 
         todayDonations.forEach(d => {
-            // 💡 랭킹에 표시할 때 닉네임 뒤에 붙은 "님" 자가 있다면 깔끔하게 제거
             let cleanName = d.nickname.trim();
             if (cleanName.endsWith("님")) {
                 cleanName = cleanName.slice(0, -1).trim();
@@ -480,7 +528,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
             rankingMap[cleanName].count += 1;
         });
 
-        // 3. 객체 형태를 배열로 바꾼 뒤 정렬 (1순위: 금액 큰 순, 2순위: 최초 후원 시간 빠른 순)
+        // 3. 배열로 변환 후 정렬 (1순위: 금액 큰 순, 2순위: 최초 후원 시간 빠른 순)
         const rankingList = Object.keys(rankingMap).map(name => {
             return {
                 _id: name,
