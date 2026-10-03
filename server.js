@@ -382,15 +382,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(message) {
+               function showAlert(message) {
                     const container = document.getElementById('alert-container');
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
                                         
-                    // 서버에서 받은 전체 메시지를 첫째 줄과 둘째 줄에 똑같이 띄우되 크기만 다르게 적용
-                    line1.innerText = message; 
-                    line2.innerText = message; 
+                    // 메시지를 줄바꿈(\n 또는 공백/줄바꿈 문자) 기준으로 나눔
+                    const lines = message.split(/\r?\n/);
+                    
+                    // 첫 번째 줄은 큰 글씨용, 두 번째 줄은 기본 크기용에 대입 (만약 두 줄이 안 되면 빈 문자열 처리)
+                    line1.innerText = lines[0] || ''; 
+                    line2.innerText = lines[1] || ''; 
 
                     container.style.display = 'block';
                     sound.currentTime = 0;
@@ -400,7 +403,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                         container.style.display = 'none'; 
                     }, 5000);
                 }
-
+                
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
