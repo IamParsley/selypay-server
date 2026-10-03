@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (첫째 줄/둘째 줄 크기 분리 버전)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (가장 안전하고 확실한 분리 버전)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -334,7 +334,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-right: auto; 
                 }
 
-                /* 첫째 줄 (크고 강조된 글씨) */
+                /* 첫째 줄 (크고 강조된 글씨: 예 - 후원 금액이나 닉네임) */
                 #alert-line1 {
                     color: #ffffff; 
                     font-size: 36px; 
@@ -344,7 +344,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-bottom: 8px;
                 }
 
-                /* 둘째 줄 (기본 크기 글씨) */
+                /* 둘째 줄 (기본 크기 글씨: 예 - 후원 메시지) */
                 #alert-line2 {
                     color: #ffffff; 
                     font-size: 24px; 
@@ -386,12 +386,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
                                         
-                    // 줄바꿈 문자(\n 또는 <br>)를 기준으로 메시지를 분리
-                    const lines = message.split(/\\r?\\n|<br\\s*\\/?>/i);
+                    // 정규식 대신 안전하게 줄바꿈 위치를 찾아 두 줄로 분리
+                    let firstText = message;
+                    let secondText = "";
                     
-                    // 첫 번째 줄과 두 번째 줄에 각각 나누어 대입
-                    line1.innerText = lines[0] || '';
-                    line2.innerText = lines[1] || '';
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 1);
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
 
                     container.style.display = 'block';
                     sound.currentTime = 0;
