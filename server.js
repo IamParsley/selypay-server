@@ -436,7 +436,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                 }
                 .rank-item:last-child { border-bottom: none; }
                 .name { font-weight: bold; }
-                .amount { color: #2ecc71; font-weight: bold; }
+                .amount { color: #ffffff; font-weight: bold; }
             </style>
         </head>
         <body>
