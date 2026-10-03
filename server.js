@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (실제 방송 화면용)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (후원 알림창)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -316,16 +316,38 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <style>
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
-                    position: absolute; top: 20px; left: 20px; // 알림창크기변경
-                    display: none; text-align: left; width: fit-content; 
-                }
-                #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; 
-                margin-right: auto; }
-                
-                #alert-message {
-                    color: white; font-size: 30px; font-weight: bold; margin-top: 10px;
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); white-space: nowrap;
-                }
+                    position: absolute; 
+                    top: 20px; 
+                    left: 20px; 
+                    display: none; 
+                    text-align: center; 
+                    width: fit-content; 
+                    }
+                #alert-image { 
+                    width: 150px; 
+                    height: auto; 
+                    margin-bottom: 15px; 
+                    display: block; 
+                    margin-left: auto; 
+                    margin-right: auto; 
+                    }
+                /* 💡 첫째 줄 스타일 (크게 설정) */
+                #alert-line1 {
+                    color: #f1c40f; /* 눈에 띄게 노란색 등으로 변경 가능 (원하면 white로) */
+                    font-size: 38px; 
+                    font-weight: bold; 
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
+                    white-space: nowrap;
+                    margin-bottom: 5px;
+                    }
+                /* 💡 둘째 줄 스타일 (기본 크기) */
+                #alert-line2 {
+                    color: white; 
+                    font-size: 24px; 
+                    font-weight: bold; 
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
+                    white-space: nowrap;
+                    }
             </style>
         </head>
         <body>
