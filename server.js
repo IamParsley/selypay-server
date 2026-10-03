@@ -181,8 +181,8 @@ app.post('/api/login', async (req, res) => {
                     <p style="margin-top:20px;"><b>내 랭킹 OBS 오버레이 주소 (방송용 랭킹판):</b></p>
                     <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
 
-                    <!-- 🏆 오늘의 후원 랭킹 상자 -->
-                    <p style="margin-top:30px;"><b>🏆 오늘의 후원 랭킹 (KST 자정 기준)</b></p>
+                    <!-- 🏆 오늘의 계좌후원 랭킹 상자 -->
+                    <p style="margin-top:30px;"><b> 계좌후원 랭킹 (KST 자정 기준)</b></p>
                     <div class="log-box" id="rankingList">
                         <div class="log-item">랭킹을 불러오는 중...</div>
                     </div>
@@ -445,88 +445,64 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-        // 10. 스트리머별 오늘의 후원 랭킹 OBS 오버레이 화면
-app.get('/ranking-overlay/:apiKey', async (req, res) => {
-    const { apiKey } = req.params;
-    const user = await User.findOne({ apiKey });
-    if (!user) return res.status(404).send('Streamer not found');
+ // 10. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 정렬 적용)
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
 
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>SelyPay Ranking Overlay</title>
-            <style>
-                body { 
-                    background-color: transparent; 
-                    margin: 0; 
-                    font-family: 'Malgun Gothic', sans-serif; 
-                }
-                .rank-box {
-                    background: rgba(0, 0, 0, 0.75);
-                    color: white;
-                    padding: 15px;
-                    border-radius: 10px;
-                    width: 300px;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-                }
-                .rank-title {
-                    font-size: 18px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    text-align: center;
-                    border-bottom: 1px solid rgba(255,255,255,0.2);
-                    padding-bottom: 8px;
-                    color: #ffd700;
-                }
-                .rank-item {
-                    font-size: 15px;
-                    padding: 6px 0;
-                    display: flex;
-                    justify-content: space-between;
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
-                }
-                .rank-item:last-child { border-bottom: none; }
-            </style>
-        </head>
-        <body>
-            <div class="rank-box">
-                <div class="rank-title">🏆 오늘의 후원 랭킹</div>
-                <div id="ranking-content">불러오는 중...</div>
-            </div>
+        const todayKey = getKSTDateKey();
 
-            <script>
-                async function fetchOverlayRanking() {
-                    try {
-                        const response = await fetch('/api/ranking/` + apiKey + `');
-                        const ranking = await response.json();
-                        const container = document.getElementById('ranking-content');
-                        
-                        container.innerHTML = '';
+        // 1. 오늘의 후원 내역을 시간순(오름차순)으로 모두 가져옴
+        const todayDonations = await Donation.find(
+            { streamerId: user._id, dateKey: todayKey },
+            { nickname: 1, amount: 1, timestamp: 1 }
+        ).sort({ timestamp: 1 });
 
-                        if (!ranking || ranking.length === 0) {
-                            container.innerHTML = '<div style="text-align:center; padding:10px; font-size:14px; color:#aaa;">오늘 아직 후원이 없습니다.</div>';
-                            return;
-                        }
+        // 2. 닉네임별로 금액 합산 및 최초 후원 시간 계산 (메모리 내에서 깔끔하게 그룹화)
+        const rankingMap = {};
 
-                        ranking.forEach((item, index) => {
-                            const div = document.createElement('div');
-                            div.className = 'rank-item';
-                            div.innerHTML = '<span><b>' + (index + 1) + '.</b> ' + item._id + '님</span><span><b>' + item.totalAmount.toLocaleString() + '원</b></span>';
-                            container.appendChild(div);
-                        });
-                    } catch (e) {
-                        console.error('랭킹 오버레이 로딩 실패:', e);
-                    }
-                }
+        todayDonations.forEach(d => {
+            // 💡 랭킹에 표시할 때 닉네임 뒤에 붙은 "님" 자가 있다면 깔끔하게 제거
+            let cleanName = d.nickname.trim();
+            if (cleanName.endsWith("님")) {
+                cleanName = cleanName.slice(0, -1).trim();
+            }
 
-                fetchOverlayRanking();
-                setInterval(fetchOverlayRanking, 5000); // 5초마다 자동 갱신
-            </script>
-        </body>
-        </html>
-    `);
+            if (!rankingMap[cleanName]) {
+                rankingMap[cleanName] = {
+                    totalAmount: 0,
+                    count: 0,
+                    firstDonationTime: d.timestamp
+                };
+            }
+            rankingMap[cleanName].totalAmount += d.amount;
+            rankingMap[cleanName].count += 1;
+        });
+
+        // 3. 객체 형태를 배열로 바꾼 뒤 정렬 (1순위: 금액 큰 순, 2순위: 최초 후원 시간 빠른 순)
+        const rankingList = Object.keys(rankingMap).map(name => {
+            return {
+                _id: name,
+                totalAmount: rankingMap[name].totalAmount,
+                count: rankingMap[name].count,
+                firstDonationTime: rankingMap[name].firstDonationTime
+            };
+        });
+
+        rankingList.sort((a, b) => {
+            if (b.totalAmount !== a.totalAmount) {
+                return b.totalAmount - a.totalAmount; // 금액 내림차순
+            }
+            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime); // 시간 오름차순 (먼저 온 사람 우선)
+        });
+
+        // 상위 5명만 반환
+        res.json(rankingList.slice(0, 5));
+    } catch (e) {
+        console.error(e);
+        res.status(500).json([]);
+    }
 });
 
 // 서버 구동
