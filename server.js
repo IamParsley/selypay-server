@@ -450,7 +450,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 방송용 실시간 랭킹 OBS 오버레이 화면 (실제 방송 화면용)
+// 8. 방송용 실시간 랭킹 OBS 오버레이 화면 (백틱 충돌 방지 수정 완료)
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -497,7 +497,8 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                         ranking.forEach((item, index) => {
                             const div = document.createElement('div');
                             div.className = 'rank-item';
-                            div.innerHTML = \`<span class="name">\${index + 1}. \${item._id}</span><span class="amount">\${item.totalAmount.toLocaleString()}원</span>\`;
+                            // 백틱 충돌을 없애기 위해 문자열 더하기(+)로 변경
+                            div.innerHTML = '<span class="name">' + (index + 1) + '. ' + item._id + '</span><span class="amount">' + item.totalAmount.toLocaleString() + '원</span>';
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
