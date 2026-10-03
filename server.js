@@ -316,7 +316,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <style>
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
-                    position: absolute; bottom: 50px; left: 50%;
+                    position: absolute; middle: 50px; left: 50%; // 알림창크기변경
                     transform: translateX(-50%); display: none; text-align: center; width: 800px; 
                 }
                 #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: inline-block; }
