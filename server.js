@@ -334,7 +334,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-right: auto; 
                 }
 
-                /* 💡 첫째 줄 (닉네임~금액 및 후원 감사 문구) - 하얀색, 조금 크게 */
+                /* 첫째 줄 (크고 하얗게) */
                 #alert-line1 {
                     color: #ffffff; 
                     font-size: 36px; 
@@ -344,7 +344,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-bottom: 8px;
                 }
 
-                /* 💡 둘째 줄 (진짜 채팅/후원 메시지 내용) - 원래 크기 */
+                /* 둘째 줄 (기본 크기) */
                 #alert-line2 {
                     color: white; 
                     font-size: 24px; 
@@ -367,9 +367,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
             <script>
                 let lastCheckedTime = "";
+                
                 async function checkNewDonation() {
                     try {
-                        const response = await fetch('/api/logs/` + apiKey + `');
+                        const response = await fetch('/api/logs/' + '${apiKey}');
                         const logs = await response.json();
                         if (logs.length > 0) {
                             const latest = logs[0];
@@ -381,36 +382,32 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-               function showAlert(message) {
-                const container = document.getElementById('alert-container');
-                const line1 = document.getElementById('alert-line1');
-                const line2 = document.getElementById('alert-line2');
-                const sound = document.getElementById('alert-sound');
-                                    
-                // 메시지 안에 줄바꿈(\n)이 있다면 그것을 기준으로 쪼갬
-                if (message.includes("\n")) {
-                    const parts = message.split("\n");
-                    line1.innerText = parts[0];
-                    line2.innerText = parts.slice(1).join("\n");
-                } else {
-                    line1.innerText = message;
-                    line2.innerText = ""; // 줄바꿈이 없으면 둘째 줄은 비움
+                function showAlert(message) {
+                    const container = document.getElementById('alert-container');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    const sound = document.getElementById('alert-sound');
+                                        
+                    // 서버에서 받은 전체 메시지를 첫째 줄과 둘째 줄에 똑같이 띄우되 크기만 다르게 적용
+                    line1.innerText = message; 
+                    line2.innerText = message; 
+
+                    container.style.display = 'block';
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                    setTimeout(() => { 
+                        container.style.display = 'none'; 
+                    }, 5000);
                 }
-            
-                container.style.display = 'block';
-                sound.currentTime = 0;
-                sound.play().catch(e => console.log("사운드 재생 실패:", e));
-            
-                setTimeout(() => { 
-                    container.style.display = 'none'; 
-                }, 5000);
-            }
+
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
         </html>
     `);
 });
+
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
