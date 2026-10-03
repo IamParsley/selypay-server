@@ -381,36 +381,30 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(message) {
-                    const container = document.getElementById('alert-container');
-                    const line1 = document.getElementById('alert-line1');
-                    const line2 = document.getElementById('alert-line2');
-                    const sound = document.getElementById('alert-sound');
-                                        
-                    // 메시지 구조에 따라 첫째 줄(후원 정보)과 둘째 줄(메시지) 분리
-                    // 예시: "홍길동님 10,000원 - 안녕하세요!" 처럼 대시나 공백 등으로 구분되어 있을 경우를 처리
-                    // 만약 메시지가 따로 없다면 line1에 전체 메시지를 넣고 line2는 비웁니다.
-                    
-                    if (message.includes("원")) {
-                        // "원"을 포함한 단위를 기준으로 첫째 줄과 둘째 줄을 나누어 봅니다.
-                        // 예: "홍길동님 10,000원" 까지를 첫째 줄로, 나머지를 둘째 줄로 분리
-                        const wonIndex = message.indexOf("원");
-                        line1.innerText = message.substring(0, wonIndex + 1).trim();
-                        line2.innerText = message.substring(wonIndex + 1).trim();
-                    } else {
-                        line1.innerText = message;
-                        line2.innerText = "";
-                    }
-
-                    container.style.display = 'block';
-                    sound.currentTime = 0;
-                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                    setTimeout(() => { 
-                        container.style.display = 'none'; 
-                    }, 5000);
+               function showAlert(message) {
+                const container = document.getElementById('alert-container');
+                const line1 = document.getElementById('alert-line1');
+                const line2 = document.getElementById('alert-line2');
+                const sound = document.getElementById('alert-sound');
+                                    
+                // 메시지 안에 줄바꿈(\n)이 있다면 그것을 기준으로 쪼갬
+                if (message.includes("\n")) {
+                    const parts = message.split("\n");
+                    line1.innerText = parts[0];
+                    line2.innerText = parts.slice(1).join("\n");
+                } else {
+                    line1.innerText = message;
+                    line2.innerText = ""; // 줄바꿈이 없으면 둘째 줄은 비움
                 }
-
+            
+                container.style.display = 'block';
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+            
+                setTimeout(() => { 
+                    container.style.display = 'none'; 
+                }, 5000);
+            }
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
