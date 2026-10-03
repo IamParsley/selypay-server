@@ -326,7 +326,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 
                 #alert-image { 
-                    width: 300px; 
+                    width: 200px; 
                     height: auto; 
                     margin-bottom: 15px; 
                     display: block; 
