@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (안전하고 확실한 버전)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (첫째 줄/둘째 줄 크기 분리 버전)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -334,21 +334,31 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-right: auto; 
                 }
 
-                /* 전체 알림 텍스트 스타일 (서버의 2줄 메시지 그대로 출력 + 줄바꿈 반영) */
-                #alert-text {
+                /* 첫째 줄 (크고 강조된 글씨) */
+                #alert-line1 {
                     color: #ffffff; 
-                    font-size: 28px; 
+                    font-size: 36px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
-                    white-space: pre-line; 
-                    line-height: 1.4;
+                    white-space: nowrap;
+                    margin-bottom: 8px;
+                }
+
+                /* 둘째 줄 (기본 크기 글씨) */
+                #alert-line2 {
+                    color: #ffffff; 
+                    font-size: 24px; 
+                    font-weight: bold; 
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
+                    white-space: nowrap;
                 }
             </style>
         </head>
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                <div id="alert-text"></div>
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
             </div>
 
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
@@ -372,11 +382,16 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                 function showAlert(message) {
                     const container = document.getElementById('alert-container');
-                    const alertText = document.getElementById('alert-text');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
                                         
-                    // 서버에서 받은 메시지를 그대로 박스에 입력
-                    alertText.innerText = message;
+                    // 줄바꿈 문자(\n 또는 <br>)를 기준으로 메시지를 분리
+                    const lines = message.split(/\\r?\\n|<br\\s*\\/?>/i);
+                    
+                    // 첫 번째 줄과 두 번째 줄에 각각 나누어 대입
+                    line1.innerText = lines[0] || '';
+                    line2.innerText = lines[1] || '';
 
                     container.style.display = 'block';
                     sound.currentTime = 0;
