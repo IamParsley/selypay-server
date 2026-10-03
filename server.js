@@ -337,7 +337,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 /* 첫째 줄 (크고 강조된 글씨: 예 - 후원 금액이나 닉네임) */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 36px; 
+                    font-size: 30px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
                     white-space: nowrap;
