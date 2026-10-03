@@ -182,7 +182,7 @@ app.post('/api/login', async (req, res) => {
                     <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
 
                     <!-- 🏆 오늘의 계좌후원 랭킹 상자 -->
-                    <p style="margin-top:30px;"><b> 계좌후원 랭킹 (KST 자정 기준)</b></p>
+                    <p style="margin-top:30px;"><b> 🏆 계좌후원 랭킹 (KST 자정 기준)</b></p>
                     <div class="log-box" id="rankingList">
                         <div class="log-item">랭킹을 불러오는 중...</div>
                     </div>
