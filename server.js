@@ -319,7 +319,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     position: absolute; top: 20px; left: 20px; // 알림창크기변경
                     display: none; text-align: left; width: fit-content; 
                 }
-                #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: inline-block; }
+                #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; 
+                margin-right: auto; }
+                
                 #alert-message {
                     color: white; font-size: 30px; font-weight: bold; margin-top: 10px;
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); white-space: nowrap;
