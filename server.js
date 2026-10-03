@@ -331,8 +331,11 @@ app.get('/overlay/:apiKey', async (req, res) => {
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                <div id="alert-message"></div>
+                <div id="alert-message-box">
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
             </div>
+        </div>
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
             <script>
                 let lastCheckedTime = "";
