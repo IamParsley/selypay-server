@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (후원 알림창)
+// 7. 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -315,6 +315,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <title>SelyPay Overlay</title>
             <style>
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
+                
                 #alert-container {
                     position: absolute; 
                     top: 20px; 
@@ -322,7 +323,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     display: none; 
                     text-align: center; 
                     width: fit-content; 
-                    }
+                }
+                
                 #alert-image { 
                     width: 150px; 
                     height: auto; 
@@ -330,35 +332,39 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     display: block; 
                     margin-left: auto; 
                     margin-right: auto; 
-                    }
-                /* 💡 첫째 줄 스타일 (크게 설정) */
+                }
+
+                /* 💡 첫째 줄 (닉네임~금액 및 후원 감사 문구) - 하얀색, 조금 크게 */
                 #alert-line1 {
-                    color: #f1c40f; /* 눈에 띄게 노란색 등으로 변경 가능 (원하면 white로) */
-                    font-size: 38px; 
+                    color: #ffffff; 
+                    font-size: 36px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
                     white-space: nowrap;
-                    margin-bottom: 5px;
-                    }
-                /* 💡 둘째 줄 스타일 (기본 크기) */
+                    margin-bottom: 8px;
+                }
+
+                /* 💡 둘째 줄 (진짜 채팅/후원 메시지 내용) - 원래 크기 */
                 #alert-line2 {
                     color: white; 
                     font-size: 24px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
                     white-space: nowrap;
-                    }
+                }
             </style>
         </head>
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
                 <div id="alert-message-box">
-                <div id="alert-line1"></div>
-                <div id="alert-line2"></div>
+                    <div id="alert-line1"></div>
+                    <div id="alert-line2"></div>
+                </div>
             </div>
-        </div>
+
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
+
             <script>
                 let lastCheckedTime = "";
                 async function checkNewDonation() {
@@ -380,34 +386,37 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
-                        
-                    // 예: "홍길동님 10,000원 후원하셨습니다" 라는 메시지일 때
-                    // "님"을 기준으로 쪼개서 첫째 줄에는 닉네임, 둘째 줄에는 금액/내용을 넣습니다.
-                    if (message.includes("님")) {
-                    const parts = message.split("님");
-                    line1.innerText = parts[0] + "님"; // 첫째 줄: 홍길동님 (크게)
-                    line2.innerText = parts.slice(1).join("님").trim(); // 둘째 줄: 10,000원 후원하셨습니다
-                } else {
-                    line1.innerText = message;
-                    line2.innerText = "";
-                }
+                                        
+                    // 메시지 구조에 따라 첫째 줄(후원 정보)과 둘째 줄(메시지) 분리
+                    // 예시: "홍길동님 10,000원 - 안녕하세요!" 처럼 대시나 공백 등으로 구분되어 있을 경우를 처리
+                    // 만약 메시지가 따로 없다면 line1에 전체 메시지를 넣고 line2는 비웁니다.
+                    
+                    if (message.includes("원")) {
+                        // "원"을 포함한 단위를 기준으로 첫째 줄과 둘째 줄을 나누어 봅니다.
+                        // 예: "홍길동님 10,000원" 까지를 첫째 줄로, 나머지를 둘째 줄로 분리
+                        const wonIndex = message.indexOf("원");
+                        line1.innerText = message.substring(0, wonIndex + 1).trim();
+                        line2.innerText = message.substring(wonIndex + 1).trim();
+                    } else {
+                        line1.innerText = message;
+                        line2.innerText = "";
+                    }
 
-                container.style.display = 'block';
+                    container.style.display = 'block';
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
-                sound.currentTime = 0;
-                sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                setTimeout(() => { 
-                    container.style.display = 'none'; 
+                    setTimeout(() => { 
+                        container.style.display = 'none'; 
                     }, 5000);
                 }
+
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
         </html>
     `);
 });
-
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
