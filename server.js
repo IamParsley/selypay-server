@@ -143,7 +143,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 로그인 처리 및 대시보드 리다이렉트
+// 로그인 처리 및 대시보드 리다이렉트 (이동 버튼 추가)
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -166,6 +166,9 @@ app.post('/api/login', async (req, res) => {
                     .log-box { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
                     .log-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
                     .log-item:last-child { border-bottom: none; }
+                    .btn-group { display: flex; gap: 10px; margin-top: 8px; }
+                    .btn { flex: 1; padding: 8px 12px; background: #3498db; color: white; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 13px; }
+                    .btn:hover { background: #2980b9; }
                 </style>
             </head>
             <body>
@@ -175,11 +178,17 @@ app.post('/api/login', async (req, res) => {
                     <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
                     <div class="box">` + user.apiKey + `</div>
                     
-                    <p style="margin-top:20px;"><b>내 OBS 오버레이 주소:</b></p>
+                    <p style="margin-top:20px;"><b>내 알림창 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+                    <div class="btn-group">
+                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙️️ 알림창 세부 설정/관리 사이트 가기</a>
+                    </div>
 
-                    <p style="margin-top:20px;"><b>내 랭킹 OBS 오버레이 주소 (방송용 랭킹판):</b></p>
+                    <p style="margin-top:20px;"><b>내 방송용 랭킹판 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
+                    <div class="btn-group">
+                        <a href="/manage/ranking/` + user.apiKey + `" class="btn" target="_blank" style="background:#e67e22;">⚙️ 랭킹판 세부 설정/관리 사이트 가기</a>
+                    </div>
 
                     <!-- 🏆 오늘의 계좌후원 랭킹 상자 -->
                     <p style="margin-top:30px;"><b> 🏆 계좌후원 랭킹 (KST 자정 기준)</b></p>
@@ -197,61 +206,46 @@ app.post('/api/login', async (req, res) => {
                 </div>
 
                 <script>
-                    // 1. 최근 후원 내역 불러오기
                     async function fetchDonationLogs() {
                         try {
                             const response = await fetch('/api/logs/` + user.apiKey + `');
                             const logs = await response.json();
                             const logContainer = document.getElementById('donationLogList');
-                            
                             logContainer.innerHTML = '';
-
                             if (!logs || logs.length === 0) {
                                 logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
                                 return;
                             }
-
-                            const recentLogs = logs.slice(0, 20);
-                            recentLogs.forEach(log => {
+                            logs.slice(0, 20).forEach(log => {
                                 const div = document.createElement('div');
                                 div.className = 'log-item';
                                 div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
                                 logContainer.appendChild(div);
                             });
-                        } catch (e) {
-                            console.error('후원 내역 로딩 실패:', e);
-                        }
+                        } catch (e) { console.error(e); }
                     }
 
-                    // 2. 오늘의 후원 랭킹 불러오기
                     async function fetchRanking() {
                         try {
                             const response = await fetch('/api/ranking/` + user.apiKey + `');
                             const ranking = await response.json();
                             const rankContainer = document.getElementById('rankingList');
-                            
                             rankContainer.innerHTML = '';
-
                             if (!ranking || ranking.length === 0) {
                                 rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
                                 return;
                             }
-
                             ranking.forEach((item, index) => {
                                 const div = document.createElement('div');
                                 div.className = 'log-item';
                                 div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalAmount.toLocaleString() + '원 (' + item.count + '회)';
                                 rankContainer.appendChild(div);
                             });
-                        } catch (e) {
-                            console.error('랭킹 로딩 실패:', e);
-                        }
+                        } catch (e) { console.error(e); }
                     }
 
-                    // 페이지 로드 시 즉시 실행 및 주기적 갱신
                     fetchDonationLogs();
                     fetchRanking();
-                    
                     setInterval(fetchDonationLogs, 3000);
                     setInterval(fetchRanking, 5000);
                 </script>
@@ -281,9 +275,7 @@ app.post('/api/notification', async (req, res) => {
         const amountMatch = message.match(/([0-9,]+)\s*원/);
         if (amountMatch) {
             const parsed = parseInt(amountMatch[1].replace(/,/g, ''), 10);
-            if (!isNaN(parsed)) {
-                amount = parsed;
-            }
+            if (!isNaN(parsed)) amount = parsed;
         }
 
         let nickname = "익명";
@@ -295,13 +287,12 @@ app.post('/api/notification', async (req, res) => {
             streamerId: user._id,
             nickname,
             amount, 
-            message: message, 
+            message, 
             datetime: getKSTDateTime(),
             dateKey: getKSTDateKey()
         });
 
         await donationData.save();
-
         console.log(`[${user.username}] 후원 수신 성공:`, donationData);
         res.status(200).json({ success: true, data: donationData });
     } catch (e) {
@@ -310,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면
+// 7. 스트리머별 OBS 알림 오버레이 화면 (실제 방송 화면용)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -323,33 +314,15 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Overlay</title>
             <style>
-                body { 
-                    background-color: transparent; 
-                    margin: 0; 
-                    font-family: 'Malgun Gothic', sans-serif; 
-                }
+                body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
-                    position: absolute; 
-                    bottom: 50px; 
-                    left: 50%;
-                    transform: translateX(-50%);
-                    display: none; 
-                    text-align: center;
-                    width: 800px; 
+                    position: absolute; bottom: 50px; left: 50%;
+                    transform: translateX(-50%); display: none; text-align: center; width: 800px; 
                 }
-                #alert-image {
-                    width: 150px; 
-                    height: auto;
-                    margin-bottom: 15px;
-                    display: inline-block;
-                }
+                #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: inline-block; }
                 #alert-message {
-                    color: white; 
-                    font-size: 30px;
-                    font-weight: bold;
-                    margin-top: 10px;
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-                    white-space: nowrap;
+                    color: white; font-size: 30px; font-weight: bold; margin-top: 10px;
+                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); white-space: nowrap;
                 }
             </style>
         </head>
@@ -358,9 +331,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
                 <div id="alert-message"></div>
             </div>
-
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
-
             <script>
                 let lastCheckedTime = "";
                 async function checkNewDonation() {
@@ -384,15 +355,11 @@ app.get('/overlay/:apiKey', async (req, res) => {
                                         
                     messageDiv.innerText = message;
                     container.style.display = 'block';
-
                     sound.currentTime = 0;
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
-                    setTimeout(() => { 
-                        container.style.display = 'none'; 
-                    }, 5000);
+                    setTimeout(() => { container.style.display = 'none'; }, 5000);
                 }
-
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
@@ -400,7 +367,46 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 방송용 실시간 랭킹 OBS 오버레이 화면 추가
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
+app.get('/manage/alert/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>알림창 관리 - ` + user.username + `</title>
+            <style>
+                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🔔 알림창(후원 리액션) 설정 및 관리</h2>
+                <p>OBS 브라우저 소스에 아래 주소를 입력하여 사용하세요.</p>
+                
+                <p><b>OBS 오버레이 주소:</b></p>
+                <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+                
+                <h3>⚙️ 세부 설정 (준비 중)</h3>
+                <p style="color: #666; font-size: 14px;">여기에 알림 사운드 변경, 애니메이션 효과, 폰트 크기 변경 등의 세부 설정을 추가할 예정입니다.</p>
+
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 8. 방송용 실시간 랭킹 OBS 오버레이 화면 (실제 방송 화면용)
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -413,26 +419,15 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Ranking Overlay</title>
             <style>
-                body { 
-                    background-color: transparent; 
-                    margin: 0; 
-                    font-family: 'Malgun Gothic', sans-serif; 
-                }
+                body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 .ranking-board {
-                    background: rgba(0, 0, 0, 0.75);
-                    color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    width: 320px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                    background: rgba(0, 0, 0, 0.75); color: white; padding: 20px;
+                    border-radius: 10px; width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
                 }
                 h3 { margin: 0 0 15px 0; font-size: 18px; text-align: center; color: #f1c40f; }
                 .rank-item {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 8px 0;
-                    border-bottom: 1px solid rgba(255,255,255,0.2);
-                    font-size: 15px;
+                    display: flex; justify-content: space-between; padding: 8px 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.2); font-size: 15px;
                 }
                 .rank-item:last-child { border-bottom: none; }
                 .name { font-weight: bold; }
@@ -444,35 +439,25 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                 <h3>🏆 오늘의 후원 랭킹</h3>
                 <div id="ranking-content">불러오는 중...</div>
             </div>
-
             <script>
                 async function fetchOverlayRanking() {
                     try {
                         const response = await fetch('/api/ranking/` + apiKey + `');
                         const ranking = await response.json();
                         const container = document.getElementById('ranking-content');
-                        
                         container.innerHTML = '';
-
                         if (!ranking || ranking.length === 0) {
                             container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">오늘 후원 내역이 없습니다.</div>';
                             return;
                         }
-
                         ranking.forEach((item, index) => {
                             const div = document.createElement('div');
                             div.className = 'rank-item';
-                            div.innerHTML = \`
-                                <span class="name">\${index + 1}. \${item._id}</span>
-                                <span class="amount">\${item.totalAmount.toLocaleString()}원</span>
-                            \`;
+                            div.innerHTML = \`<span class="name">\${index + 1}. \${item._id}</span><span class="amount">\${item.totalAmount.toLocaleString()}원</span>\`;
                             container.appendChild(div);
                         });
-                    } catch (e) {
-                        console.error('랭킹 오버레이 로딩 실패:', e);
-                    }
+                    } catch (e) { console.error(e); }
                 }
-
                 fetchOverlayRanking();
                 setInterval(fetchOverlayRanking, 5000);
             </script>
@@ -481,7 +466,46 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 스트리머별 후원 로그 가져오기 API
+// 8-1. 랭킹판 전용 세부 관리 및 설정 페이지 신규 분리
+app.get('/manage/ranking/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>랭킹판 관리 - ` + user.username + `</title>
+            <style>
+                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🏆 방송용 랭킹판 설정 및 관리</h2>
+                <p>OBS 브라우저 소스에 아래 주소를 입력하여 사용하세요.</p>
+                
+                <p><b>랭킹 OBS 오버레이 주소:</b></p>
+                <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+                
+                <h3>⚙️ 세부 설정 (준비 중)</h3>
+                <p style="color: #666; font-size: 14px;">여기에 랭킹 표시 명수 조절(Top 3 또는 Top 5), 배경 투명도, 글자 색상 테마 변경 등의 세부 설정을 추가할 예정입니다.</p>
+
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 9. 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -494,7 +518,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 9. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 선착순 동점 정렬 적용)
+// 10. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 선착순 동점 정렬 적용)
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -502,15 +526,12 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
 
         const todayKey = getKSTDateKey();
 
-        // 1. 오늘의 후원 내역을 시간순(오름차순)으로 모두 가져옴
         const todayDonations = await Donation.find(
             { streamerId: user._id, dateKey: todayKey },
             { nickname: 1, amount: 1, timestamp: 1 }
         ).sort({ timestamp: 1 });
 
-        // 2. 닉네임별로 금액 합산 및 최초 후원 시간 계산
         const rankingMap = {};
-
         todayDonations.forEach(d => {
             let cleanName = d.nickname.trim();
             if (cleanName.endsWith("님")) {
@@ -528,7 +549,6 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
             rankingMap[cleanName].count += 1;
         });
 
-        // 3. 배열로 변환 후 정렬 (1순위: 금액 큰 순, 2순위: 최초 후원 시간 빠른 순)
         const rankingList = Object.keys(rankingMap).map(name => {
             return {
                 _id: name,
@@ -540,12 +560,11 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
 
         rankingList.sort((a, b) => {
             if (b.totalAmount !== a.totalAmount) {
-                return b.totalAmount - a.totalAmount; // 금액 내림차순
+                return b.totalAmount - a.totalAmount;
             }
-            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime); // 시간 오름차순 (먼저 온 사람 우선)
+            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime);
         });
 
-        // 상위 5명만 반환
         res.json(rankingList.slice(0, 5));
     } catch (e) {
         console.error(e);
