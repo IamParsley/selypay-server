@@ -377,15 +377,29 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                 function showAlert(message) {
                     const container = document.getElementById('alert-container');
-                    const messageDiv = document.getElementById('alert-message');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
-                                        
-                    messageDiv.innerText = message;
-                    container.style.display = 'block';
-                    sound.currentTime = 0;
-                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+                        
+                    // 예: "홍길동님 10,000원 후원하셨습니다" 라는 메시지일 때
+                    // "님"을 기준으로 쪼개서 첫째 줄에는 닉네임, 둘째 줄에는 금액/내용을 넣습니다.
+                    if (message.includes("님")) {
+                    const parts = message.split("님");
+                    line1.innerText = parts[0] + "님"; // 첫째 줄: 홍길동님 (크게)
+                    line2.innerText = parts.slice(1).join("님").trim(); // 둘째 줄: 10,000원 후원하셨습니다
+                } else {
+                    line1.innerText = message;
+                    line2.innerText = "";
+                }
 
-                    setTimeout(() => { container.style.display = 'none'; }, 5000);
+                container.style.display = 'block';
+
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                setTimeout(() => { 
+                    container.style.display = 'none'; 
+                    }, 5000);
                 }
                 setInterval(checkNewDonation, 1000);
             </script>
