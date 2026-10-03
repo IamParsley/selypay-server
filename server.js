@@ -317,7 +317,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
                     position: absolute; top: 20px; left: 20px; // 알림창크기변경
-                    display: none; text-align: left; width: 800px; 
+                    display: none; text-align: left; width: fit-content; 
                 }
                 #alert-image { width: 150px; height: auto; margin-bottom: 15px; display: inline-block; }
                 #alert-message {
@@ -422,7 +422,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 .ranking-board {
                     background: rgba(0, 0, 0, 0.75); color: white; padding: 20px;
-                    border-radius: 10px; width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                    border-radius: 10px; width: fit-content; min-width: 250px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
                 }
                 h3 { margin: 0 0 15px 0; font-size: 18px; text-align: center; color: #f1c40f; }
                 .rank-item {
