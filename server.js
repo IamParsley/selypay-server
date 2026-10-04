@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (예시 이미지 비율 반영 및 투명 배경)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (예시 비율 유지 + 영역 100% 꽉 채우기)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -324,62 +324,90 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     overflow: hidden;
                 }
                 
+                /* OBS 영역 전체를 100% 꽉 채우는 컨테이너 */
                 #alert-container {
-                    width: 100%;
-                    height: 100%;
+                    width: 100vw;
+                    height: 100vh;
                     display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: center; /* 중앙으로 조화롭게 모음 */
+                    justify-content: space-between;
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 10px;
+                    padding: 2vh 2vw;
                     background: transparent !important;
                 }
                 
-                /* 상단 캐릭터/GIF 이미지 (예시 비율에 맞춰 높이 감소) */
+                /* 상단 이미지 영역: 화면 상단부(약 45%)를 꽉 차게 차지 */
+                .image-wrapper {
+                    flex: 4.5;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+
                 #alert-image { 
-                    height: 25vh; /* 화면 높이의 약 25% 정도로 적절히 조절 */
-                    width: auto;
-                    max-width: 80%;
+                    max-width: 100%;
+                    max-height: 100%;
                     object-fit: contain;
                     display: block; 
-                    margin-bottom: 15px; /* 이미지와 글씨 사이 적절한 간격 */
                 }
 
-                /* 첫째 줄: 파슬리님이 1,000캐시를 기부해 주셨어요! (강조 글씨) */
+                /* 첫째 줄 텍스트 영역: 중간 영역 차지 */
+                .line1-wrapper {
+                    flex: 3;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 5.5vh; 
+                    font-size: 7vh; /* 화면 크기에 맞춰 가득 차도록 폰트 확대 */
                     font-weight: 800; 
                     text-shadow: 
-                        -2px -2px 0 #000, 2px -2px 0 #000, 
-                        -2px  2px 0 #000, 2px  2px 0 #000,
-                        3px 3px 6px rgba(0, 0, 0, 0.9);
-                    word-break: keep-all; /* 단어 단위로 자연스럽게 줄바꿈 */
-                    line-height: 1.25;
-                    margin-bottom: 15px; /* 1줄과 2줄 사이 간격 */
+                        -3px -3px 0 #000, 3px -3px 0 #000, 
+                        -3px  3px 0 #000, 3px  3px 0 #000,
+                        4px 4px 8px rgba(0, 0, 0, 0.9);
+                    word-break: keep-all;
+                    line-height: 1.2;
                 }
 
-                /* 둘째 줄: 후원 테스트 입니다. (메시지 글씨) */
+                /* 둘째 줄 텍스트 영역: 하단 영역 차지 */
+                .line2-wrapper {
+                    flex: 2.5;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 5vh; 
+                    font-size: 6vh; 
                     font-weight: 800; 
                     text-shadow: 
-                        -2px -2px 0 #000, 2px -2px 0 #000, 
-                        -2px  2px 0 #000, 2px  2px 0 #000,
-                        3px 3px 6px rgba(0, 0, 0, 0.9);
+                        -3px -3px 0 #000, 3px -3px 0 #000, 
+                        -3px  3px 0 #000, 3px  3px 0 #000,
+                        4px 4px 8px rgba(0, 0, 0, 0.9);
                     word-break: break-word;
-                    line-height: 1.25;
+                    line-height: 1.2;
                 }
             </style>
         </head>
         <body>
             <div id="alert-container">
-                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                <div id="alert-line1"></div>
-                <div id="alert-line2"></div>
+                <div class="image-wrapper">
+                    <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
+                </div>
+                <div class="line1-wrapper">
+                    <div id="alert-line1"></div>
+                </div>
+                <div class="line2-wrapper">
+                    <div id="alert-line2"></div>
+                </div>
             </div>
 
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
@@ -434,7 +462,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
         </html>
     `);
 });
-
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
