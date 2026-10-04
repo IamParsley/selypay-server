@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (화면 전체 꽉 차는 알림창 버전)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (완전 투명 배경 + 화면 가득 채우기)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -319,56 +319,59 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: 100%;
                     margin: 0;
                     padding: 0;
-                    background-color: transparent;
+                    background-color: transparent !important; /* 완전히 투명 */
                     font-family: 'Malgun Gothic', sans-serif;
                     overflow: hidden;
                 }
                 
-                /* 알림창 전체 영역 (OBS 브라우저 소스 크기 100% 가득 채움) */
+                /* 빨간 영역 전체를 꽉 채우는 투명 컨테이너 */
                 #alert-container {
                     width: 100%;
                     height: 100%;
                     display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: center;
+                    justify-content: space-between; /* 위아래 끝까지 유연하게 확장 */
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 20px;
-                    
-                    /* 배경 및 테두리 (가득 찬 박스 느낌 연출) */
-                    background-color: rgba(0, 0, 0, 0.75); /* 반투명 검은 배경 */
-                    border: 4px solid #ffffff; /* 흰색 테두리 */
-                    border-radius: 20px; /* 라운드 처리 */
+                    padding: 5px;
+                    background: transparent !important; /* 배경색 제거 */
                 }
                 
-                /* 이미지가 영역에 맞게 큼직하게 채워지도록 설정 */
+                /* 이미지 크기를 영역 높이에 맞춰 최대한 확장 */
                 #alert-image { 
-                    max-width: 60%;
-                    max-height: 50%;
-                    height: auto; 
+                    width: 90%;
+                    height: 65vh; /* 화면 높이의 65% 차지 */
                     object-fit: contain;
-                    margin-bottom: 20px; 
                     display: block; 
+                    margin: 0 auto;
                 }
 
-                /* 첫째 줄 (크고 강조된 글씨) */
+                /* 첫째 줄 글씨 (화면 비율에 맞춰 매우 크게) */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 3vw; /* 브라우저 창 크기에 맞춰 유동적으로 확대 */
+                    font-size: 8.5vh; 
                     font-weight: bold; 
-                    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); 
+                    /* 투명 배경에서도 잘 보이도록 두꺼운 검은 테두리 적용 */
+                    text-shadow: 
+                        -2px -2px 0 #000, 2px -2px 0 #000, 
+                        -2px  2px 0 #000, 2px  2px 0 #000,
+                        0px 0px 10px rgba(0, 0, 0, 0.8);
                     white-space: nowrap;
-                    margin-bottom: 12px;
+                    line-height: 1.1;
                 }
 
-                /* 둘째 줄 (메시지 글씨) */
+                /* 둘째 줄 글씨 */
                 #alert-line2 {
-                    color: #ffeb3b; /* 가독성을 위한 노란색 포인트 */
-                    font-size: 2.2vw; /* 유동적 폰트 크기 */
+                    color: #ffeb3b; 
+                    font-size: 6.5vh; 
                     font-weight: bold; 
-                    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); 
+                    text-shadow: 
+                        -2px -2px 0 #000, 2px -2px 0 #000, 
+                        -2px  2px 0 #000, 2px  2px 0 #000,
+                        0px 0px 10px rgba(0, 0, 0, 0.8);
                     word-break: break-word;
+                    line-height: 1.1;
                 }
             </style>
         </head>
