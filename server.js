@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (화면 밖 이탈 방지 + 비율 최적화)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (간격 1/3 축소 + 이미지 1.5배 확대)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -321,7 +321,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     padding: 0;
                     background-color: transparent !important;
                     font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
-                    overflow: hidden; /* 화면 밖 스크롤 방지 */
+                    overflow: hidden;
                 }
                 
                 #alert-container {
@@ -329,90 +329,59 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: 100vh;
                     display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: space-between;
+                    justify-content: center; /* 멀리 떨어뜨리지 않고 중앙으로 모음 */
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 2vh 2vw;
+                    padding: 10px;
                     background: transparent !important;
                 }
                 
-                /* 상단 이미지 영역 */
-                .image-wrapper {
-                    flex: 2.5;
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                }
-
+                /* 상단 이미지: 크기 1.5배 확대 (기존 2.5/25vh -> 40vh 수준) */
                 #alert-image { 
-                    max-width: 100%;
-                    max-height: 100%;
+                    height: 40vh;
+                    width: auto;
+                    max-width: 90%;
                     object-fit: contain;
                     display: block; 
+                    margin-bottom: 2vh; /* 간격을 기존의 1/3 수준으로 대폭 축소 */
                 }
 
-                /* 첫째 줄 텍스트 영역 */
-                .line1-wrapper {
-                    flex: 3.5;
-                    width: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                }
-
+                /* 첫째 줄 텍스트 */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 7vh; /* 밖으로 나가지 않도록 7vh로 안전 조정 */
+                    font-size: 7.5vh; 
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
-                    max-width: 100%;
-                    word-break: break-word; /* 긴 단어/문장도 박스 안에서 줄바꿈 */
-                    line-height: 1.15;
+                    max-width: 95%;
+                    word-break: break-word;
+                    line-height: 1.1;
+                    margin-bottom: 1.5vh; /* 1줄과 2줄 사이 간격도 1/3 수준으로 축소 */
                 }
 
-                /* 둘째 줄 텍스트 영역 */
-                .line2-wrapper {
-                    flex: 4;
-                    width: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                }
-
+                /* 둘째 줄 텍스트 */
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 6vh; /* 밖으로 나가지 않도록 6vh로 안전 조정 */
+                    font-size: 6.5vh; 
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
-                    max-width: 100%;
+                    max-width: 95%;
                     word-break: break-word;
-                    line-height: 1.15;
+                    line-height: 1.1;
                 }
             </style>
         </head>
         <body>
             <div id="alert-container">
-                <div class="image-wrapper">
-                    <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                </div>
-                <div class="line1-wrapper">
-                    <div id="alert-line1"></div>
-                </div>
-                <div class="line2-wrapper">
-                    <div id="alert-line2"></div>
-                </div>
+                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
             </div>
 
             <audio id="alert-sound" src="/coinsound.mp3"></audio>
