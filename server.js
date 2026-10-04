@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (완전 투명 배경 + 화면 가득 채우기)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (예시 이미지 비율 반영 및 투명 배경)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -319,59 +319,59 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: 100%;
                     margin: 0;
                     padding: 0;
-                    background-color: transparent !important; /* 완전히 투명 */
-                    font-family: 'Malgun Gothic', sans-serif;
+                    background-color: transparent !important;
+                    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
                     overflow: hidden;
                 }
                 
-                /* 빨간 영역 전체를 꽉 채우는 투명 컨테이너 */
                 #alert-container {
                     width: 100%;
                     height: 100%;
                     display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: space-between; /* 위아래 끝까지 유연하게 확장 */
+                    justify-content: center; /* 중앙으로 조화롭게 모음 */
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 5px;
-                    background: transparent !important; /* 배경색 제거 */
+                    padding: 10px;
+                    background: transparent !important;
                 }
                 
-                /* 이미지 크기를 영역 높이에 맞춰 최대한 확장 */
+                /* 상단 캐릭터/GIF 이미지 (예시 비율에 맞춰 높이 감소) */
                 #alert-image { 
-                    width: 90%;
-                    height: 65vh; /* 화면 높이의 65% 차지 */
+                    height: 25vh; /* 화면 높이의 약 25% 정도로 적절히 조절 */
+                    width: auto;
+                    max-width: 80%;
                     object-fit: contain;
                     display: block; 
-                    margin: 0 auto;
+                    margin-bottom: 15px; /* 이미지와 글씨 사이 적절한 간격 */
                 }
 
-                /* 첫째 줄 글씨 (화면 비율에 맞춰 매우 크게) */
+                /* 첫째 줄: 파슬리님이 1,000캐시를 기부해 주셨어요! (강조 글씨) */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 8.5vh; 
-                    font-weight: bold; 
-                    /* 투명 배경에서도 잘 보이도록 두꺼운 검은 테두리 적용 */
+                    font-size: 5.5vh; 
+                    font-weight: 800; 
                     text-shadow: 
                         -2px -2px 0 #000, 2px -2px 0 #000, 
                         -2px  2px 0 #000, 2px  2px 0 #000,
-                        0px 0px 10px rgba(0, 0, 0, 0.8);
-                    white-space: nowrap;
-                    line-height: 1.1;
+                        3px 3px 6px rgba(0, 0, 0, 0.9);
+                    word-break: keep-all; /* 단어 단위로 자연스럽게 줄바꿈 */
+                    line-height: 1.25;
+                    margin-bottom: 15px; /* 1줄과 2줄 사이 간격 */
                 }
 
-                /* 둘째 줄 글씨 */
+                /* 둘째 줄: 후원 테스트 입니다. (메시지 글씨) */
                 #alert-line2 {
-                    color: #ffeb3b; 
-                    font-size: 6.5vh; 
-                    font-weight: bold; 
+                    color: #ffffff; 
+                    font-size: 5vh; 
+                    font-weight: 800; 
                     text-shadow: 
                         -2px -2px 0 #000, 2px -2px 0 #000, 
                         -2px  2px 0 #000, 2px  2px 0 #000,
-                        0px 0px 10px rgba(0, 0, 0, 0.8);
+                        3px 3px 6px rgba(0, 0, 0, 0.9);
                     word-break: break-word;
-                    line-height: 1.1;
+                    line-height: 1.25;
                 }
             </style>
         </head>
