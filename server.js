@@ -314,15 +314,27 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Overlay</title>
             <style>
-                body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
+                /* html, body 전체 화면을 투명하고 꽉 차게 설정 */
+                html, body {
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    background-color: transparent;
+                    font-family: 'Malgun Gothic', sans-serif;
+                    overflow: hidden;
+                }
                 
+                /* 알림 컨테이너가 OBS 브라우저 소스 크기(100%)에 꽉 차도록 수정 */
                 #alert-container {
-                    position: absolute; 
-                    top: 20px; 
-                    left: 20px; 
-                    display: none; 
+                    width: 100%;
+                    height: 100%;
+                    display: none; /* JS에서 flex로 변경하여 나타남 */
+                    flex-direction: column;
+                    justify-content: center; /* 세로 중앙 정렬 */
+                    align-items: center;     /* 가로 중앙 정렬 */
                     text-align: center; 
-                    width: fit-content; 
+                    box-sizing: border-box;
                 }
                 
                 #alert-image { 
@@ -330,8 +342,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: auto; 
                     margin-bottom: 15px; 
                     display: block; 
-                    margin-left: auto; 
-                    margin-right: auto; 
                 }
 
                 /* 첫째 줄 (크고 강조된 글씨: 예 - 후원 금액이나 닉네임) */
@@ -399,7 +409,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     line1.innerText = firstText;
                     line2.innerText = secondText;
 
-                    container.style.display = 'block';
+                    // display: block 대신 flex로 변경하여 중앙 정렬 유지
+                    container.style.display = 'flex';
                     sound.currentTime = 0;
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
@@ -414,7 +425,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
         </html>
     `);
 });
-
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
