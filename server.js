@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (글씨 크기 확대 + 한 줄 글자 수 제한)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (글자 잘림 방지 최적화 버전)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -333,47 +333,48 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 10px;
+                    padding: 2vh 3vw;
                     background: transparent !important;
                 }
                 
                 /* 상단 이미지 */
                 #alert-image { 
-                    height: 38vh;
+                    max-height: 35vh; /* 이미지가 너무 많이 차지해서 글자를 밀어내지 않도록 한계 설정 */
                     width: auto;
-                    max-width: 85%;
+                    max-width: 80%;
                     object-fit: contain;
                     display: block; 
-                    margin-bottom: 1.5vh; /* 이미지와 글씨 간격 */
+                    margin-bottom: 1.5vh;
                 }
 
-                /* 첫째 줄: 폰트 크기 확대 및 한 줄 최대 폭 제한 */
+                /* 첫째 줄: 글자 잘림 방지 적용 */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 9.5vh; /* 글씨 크기 대폭 확대 */
+                    font-size: 7.5vh; /* 잘리지 않는 최적의 최대 크기로 조정 */
                     font-weight: 800; 
                     text-shadow: 
-                        -4px -4px 0 #000, 4px -4px 0 #000, 
-                        -4px  4px 0 #000, 4px  4px 0 #000,
-                        5px 5px 10px rgba(0, 0, 0, 0.9);
-                    max-width: 75vw; /* 폭을 75%로 줄여 한 줄 글자 수 축소 */
-                    word-break: keep-all; /* 단어 단위 줄바꿈으로 자연스럽게 떨어짐 */
-                    line-height: 1.15;
-                    margin-bottom: 1vh; /* 줄 사이 간격 아주 촘촘하게 */
+                        -3px -3px 0 #000, 3px -3px 0 #000, 
+                        -3px  3px 0 #000, 3px  3px 0 #000,
+                        4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; /* 폭 제한을 넓혀 글자가 짤리지 않게 확보 */
+                    word-break: keep-all; /* 단어 단위 자연스러운 줄바꿈 */
+                    overflow-wrap: break-word; /* 너무 긴 단어 발생 시 자동 줄바꿈 */
+                    line-height: 1.2;
+                    margin-bottom: 1vh;
                 }
 
-                /* 둘째 줄: 폰트 크기 확대 및 한 줄 최대 폭 제한 */
+                /* 둘째 줄: 글자 잘림 방지 적용 */
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 8vh; /* 글씨 크기 대폭 확대 */
+                    font-size: 6.5vh; 
                     font-weight: 800; 
                     text-shadow: 
-                        -4px -4px 0 #000, 4px -4px 0 #000, 
-                        -4px  4px 0 #000, 4px  4px 0 #000,
-                        5px 5px 10px rgba(0, 0, 0, 0.9);
-                    max-width: 80vw; /* 폭을 80%로 줄여 한 줄 글자 수 축소 */
+                        -3px -3px 0 #000, 3px -3px 0 #000, 
+                        -3px  3px 0 #000, 3px  3px 0 #000,
+                        4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw;
                     word-break: break-word;
-                    line-height: 1.15;
+                    line-height: 1.2;
                 }
             </style>
         </head>
