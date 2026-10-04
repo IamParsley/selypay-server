@@ -316,15 +316,19 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <style>
                 body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
                 
-                #alert-container {
-                    position: absolute; 
-                    top: 20px; 
-                    left: 20px; 
-                    display: none; 
-                    text-align: center; 
-                    width: fit-content; 
-                }
+               #alert-container {
+                position: absolute; 
+                top: 20px; 
+                left: 20px; 
+                display: none; 
+                text-align: center; 
                 
+                /* 🌟 [수정] 박스 가로 크기 고정 및 자동 줄바꿈 허용 설정 */
+                width: 400px; 
+                word-break: break-all; 
+                white-space: normal; 
+             }
+
                 #alert-image { 
                     width: 200px; 
                     height: auto; 
@@ -333,24 +337,30 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     margin-left: auto; 
                     margin-right: auto; 
                 }
-
-                /* 첫째 줄 (크고 강조된 글씨: 예 - 후원 금액이나 닉네임) */
+                
+                /* 첫째 줄 */
                 #alert-line1 {
                     color: #ffffff; 
                     font-size: 28px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
-                    white-space: nowrap;
+                    
+                    /* 🌟 [수정] nowrap 제거하고 줄바꿈이 박스 안에서 일어나도록 변경 */
+                    white-space: normal; 
+                    word-break: break-all;
                     margin-bottom: 8px;
                 }
-
-                /* 둘째 줄 (기본 크기 글씨: 예 - 후원 메시지) */
+                
+                /* 둘째 줄 */
                 #alert-line2 {
                     color: #ffffff; 
                     font-size: 24px; 
                     font-weight: bold; 
                     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
-                    white-space: nowrap;
+                    
+                    /* 🌟 [수정] nowrap 제거 */
+                    white-space: normal; 
+                    word-break: break-all;
                 }
             </style>
         </head>
@@ -380,13 +390,22 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(message) {
+                function showAlert(latest) {
                     const container = document.getElementById('alert-container');
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
+                    const alertImg = document.getElementById('alert-image'); // 🌟 이미지 태그 선택자 추가
                     const sound = document.getElementById('alert-sound');
-                                        
-                    // 정규식 대신 안전하게 줄바꿈 위치를 찾아 두 줄로 분리
+                            
+                    // 🌟 [추가] 서버에서 받아온 위치, 박스 크기, 이미지/폰트 크기를 실시간 적용
+                    if (latest.overlayX !== undefined) container.style.left = latest.overlayX + 'px';
+                    if (latest.overlayY !== undefined) container.style.top = latest.overlayY + 'px';
+                    if (latest.boxWidth !== undefined) container.style.width = latest.boxWidth + 'px';
+                    if (latest.imageWidth !== undefined) alertImg.style.width = latest.imageWidth + 'px';
+                    if (latest.fontSize1 !== undefined) line1.style.fontSize = latest.fontSize1 + 'px';
+                    if (latest.fontSize2 !== undefined) line2.style.fontSize = latest.fontSize2 + 'px';
+                
+                    let message = latest.message;
                     let firstText = message;
                     let secondText = "";
                     
@@ -395,25 +414,24 @@ app.get('/overlay/:apiKey', async (req, res) => {
                         firstText = message.substring(0, newlineIdx);
                         secondText = message.substring(newlineIdx + 1);
                     }
-
+                
                     line1.innerText = firstText;
                     line2.innerText = secondText;
-
+                
                     container.style.display = 'block';
                     sound.currentTime = 0;
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
+                
                     setTimeout(() => { 
                         container.style.display = 'none'; 
                     }, 5000);
                 }
-
-                setInterval(checkNewDonation, 1000);
-            </script>
-        </body>
-        </html>
-    `);
-});
+                                setInterval(checkNewDonation, 1000);
+                            </script>
+                        </body>
+                        </html>
+                    `);
+                });
 
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
@@ -554,14 +572,29 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 9. 스트리머별 후원 로그 가져오기 API
+// 9. 스트리머별 후원 로그 및 설정 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
         const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
-        res.json(logs);
+        
+        // 🌟 [수정] 가장 최신 로그에 사용자의 커스텀 설정값들을 함께 담아서 반환
+        const responseData = logs.map((log, index) => {
+            const logObj = log.toObject();
+            if (index === 0) {
+                logObj.overlayX = user.overlayX;
+                logObj.overlayY = user.overlayY;
+                logObj.boxWidth = user.boxWidth;
+                logObj.imageWidth = user.imageWidth;
+                logObj.fontSize1 = user.fontSize1;
+                logObj.fontSize2 = user.fontSize2;
+            }
+            return logObj;
+        });
+
+        res.json(responseData);
     } catch (e) {
         res.status(500).json([]);
     }
