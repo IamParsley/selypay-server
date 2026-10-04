@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (간격 1/3 축소 + 이미지 1.5배 확대)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (글씨 크기 확대 + 한 줄 글자 수 제한)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -329,7 +329,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: 100vh;
                     display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: center; /* 멀리 떨어뜨리지 않고 중앙으로 모음 */
+                    justify-content: center;
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
@@ -337,43 +337,43 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     background: transparent !important;
                 }
                 
-                /* 상단 이미지: 크기 1.5배 확대 (기존 2.5/25vh -> 40vh 수준) */
+                /* 상단 이미지 */
                 #alert-image { 
-                    height: 40vh;
+                    height: 38vh;
                     width: auto;
-                    max-width: 90%;
+                    max-width: 85%;
                     object-fit: contain;
                     display: block; 
-                    margin-bottom: 2vh; /* 간격을 기존의 1/3 수준으로 대폭 축소 */
+                    margin-bottom: 1.5vh; /* 이미지와 글씨 간격 */
                 }
 
-                /* 첫째 줄 텍스트 */
+                /* 첫째 줄: 폰트 크기 확대 및 한 줄 최대 폭 제한 */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 7.5vh; 
+                    font-size: 9.5vh; /* 글씨 크기 대폭 확대 */
                     font-weight: 800; 
                     text-shadow: 
-                        -3px -3px 0 #000, 3px -3px 0 #000, 
-                        -3px  3px 0 #000, 3px  3px 0 #000,
-                        4px 4px 8px rgba(0, 0, 0, 0.9);
-                    max-width: 95%;
-                    word-break: break-word;
-                    line-height: 1.1;
-                    margin-bottom: 1.5vh; /* 1줄과 2줄 사이 간격도 1/3 수준으로 축소 */
+                        -4px -4px 0 #000, 4px -4px 0 #000, 
+                        -4px  4px 0 #000, 4px  4px 0 #000,
+                        5px 5px 10px rgba(0, 0, 0, 0.9);
+                    max-width: 75vw; /* 폭을 75%로 줄여 한 줄 글자 수 축소 */
+                    word-break: keep-all; /* 단어 단위 줄바꿈으로 자연스럽게 떨어짐 */
+                    line-height: 1.15;
+                    margin-bottom: 1vh; /* 줄 사이 간격 아주 촘촘하게 */
                 }
 
-                /* 둘째 줄 텍스트 */
+                /* 둘째 줄: 폰트 크기 확대 및 한 줄 최대 폭 제한 */
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 6.5vh; 
+                    font-size: 8vh; /* 글씨 크기 대폭 확대 */
                     font-weight: 800; 
                     text-shadow: 
-                        -3px -3px 0 #000, 3px -3px 0 #000, 
-                        -3px  3px 0 #000, 3px  3px 0 #000,
-                        4px 4px 8px rgba(0, 0, 0, 0.9);
-                    max-width: 95%;
+                        -4px -4px 0 #000, 4px -4px 0 #000, 
+                        -4px  4px 0 #000, 4px  4px 0 #000,
+                        5px 5px 10px rgba(0, 0, 0, 0.9);
+                    max-width: 80vw; /* 폭을 80%로 줄여 한 줄 글자 수 축소 */
                     word-break: break-word;
-                    line-height: 1.1;
+                    line-height: 1.15;
                 }
             </style>
         </head>
