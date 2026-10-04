@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (가장 안전하고 확실한 분리 버전)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (화면 전체 꽉 차는 알림창 버전)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -314,7 +314,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Overlay</title>
             <style>
-                /* html, body 전체 화면을 투명하고 꽉 차게 설정 */
                 html, body {
                     width: 100%;
                     height: 100%;
@@ -325,42 +324,51 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     overflow: hidden;
                 }
                 
-                /* 알림 컨테이너가 OBS 브라우저 소스 크기(100%)에 꽉 차도록 수정 */
+                /* 알림창 전체 영역 (OBS 브라우저 소스 크기 100% 가득 채움) */
                 #alert-container {
                     width: 100%;
                     height: 100%;
-                    display: none; /* JS에서 flex로 변경하여 나타남 */
+                    display: none; /* JS에서 flex로 전환 */
                     flex-direction: column;
-                    justify-content: center; /* 세로 중앙 정렬 */
-                    align-items: center;     /* 가로 중앙 정렬 */
-                    text-align: center; 
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
                     box-sizing: border-box;
+                    padding: 20px;
+                    
+                    /* 배경 및 테두리 (가득 찬 박스 느낌 연출) */
+                    background-color: rgba(0, 0, 0, 0.75); /* 반투명 검은 배경 */
+                    border: 4px solid #ffffff; /* 흰색 테두리 */
+                    border-radius: 20px; /* 라운드 처리 */
                 }
                 
+                /* 이미지가 영역에 맞게 큼직하게 채워지도록 설정 */
                 #alert-image { 
-                    width: 200px; 
+                    max-width: 60%;
+                    max-height: 50%;
                     height: auto; 
-                    margin-bottom: 15px; 
+                    object-fit: contain;
+                    margin-bottom: 20px; 
                     display: block; 
                 }
 
-                /* 첫째 줄 (크고 강조된 글씨: 예 - 후원 금액이나 닉네임) */
+                /* 첫째 줄 (크고 강조된 글씨) */
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 28px; 
+                    font-size: 3vw; /* 브라우저 창 크기에 맞춰 유동적으로 확대 */
                     font-weight: bold; 
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
+                    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); 
                     white-space: nowrap;
-                    margin-bottom: 8px;
+                    margin-bottom: 12px;
                 }
 
-                /* 둘째 줄 (기본 크기 글씨: 예 - 후원 메시지) */
+                /* 둘째 줄 (메시지 글씨) */
                 #alert-line2 {
-                    color: #ffffff; 
-                    font-size: 24px; 
+                    color: #ffeb3b; /* 가독성을 위한 노란색 포인트 */
+                    font-size: 2.2vw; /* 유동적 폰트 크기 */
                     font-weight: bold; 
-                    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
-                    white-space: nowrap;
+                    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); 
+                    word-break: break-word;
                 }
             </style>
         </head>
@@ -396,7 +404,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
                                         
-                    // 정규식 대신 안전하게 줄바꿈 위치를 찾아 두 줄로 분리
                     let firstText = message;
                     let secondText = "";
                     
@@ -409,7 +416,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     line1.innerText = firstText;
                     line2.innerText = secondText;
 
-                    // display: block 대신 flex로 변경하여 중앙 정렬 유지
                     container.style.display = 'flex';
                     sound.currentTime = 0;
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
@@ -425,6 +431,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
         </html>
     `);
 });
+
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
