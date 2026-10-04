@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (예시 비율 유지 + 영역 100% 꽉 채우기)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (이미지 2/3 축소 + 텍스트 대폭 확대)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -324,7 +324,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     overflow: hidden;
                 }
                 
-                /* OBS 영역 전체를 100% 꽉 채우는 컨테이너 */
                 #alert-container {
                     width: 100vw;
                     height: 100vh;
@@ -334,13 +333,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 2vh 2vw;
+                    padding: 1vh 2vw;
                     background: transparent !important;
                 }
                 
-                /* 상단 이미지 영역: 화면 상단부(약 45%)를 꽉 차게 차지 */
+                /* 상단 이미지 영역: 기존 대비 2/3 크기로 줄임 (flex: 3) */
                 .image-wrapper {
-                    flex: 4.5;
+                    flex: 3;
                     width: 100%;
                     display: flex;
                     justify-content: center;
@@ -354,9 +353,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     display: block; 
                 }
 
-                /* 첫째 줄 텍스트 영역: 중간 영역 차지 */
+                /* 첫째 줄 텍스트 영역: 비중 늘림 (flex: 3.5) */
                 .line1-wrapper {
-                    flex: 3;
+                    flex: 3.5;
                     width: 100%;
                     display: flex;
                     justify-content: center;
@@ -365,19 +364,19 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 7vh; /* 화면 크기에 맞춰 가득 차도록 폰트 확대 */
+                    font-size: 9vh; /* 글씨 크기 대폭 확대 (7vh -> 9vh) */
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
                     word-break: keep-all;
-                    line-height: 1.2;
+                    line-height: 1.15;
                 }
 
-                /* 둘째 줄 텍스트 영역: 하단 영역 차지 */
+                /* 둘째 줄 텍스트 영역: 비중 늘림 (flex: 3.5) */
                 .line2-wrapper {
-                    flex: 2.5;
+                    flex: 3.5;
                     width: 100%;
                     display: flex;
                     justify-content: center;
@@ -386,14 +385,14 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 6vh; 
+                    font-size: 7.5vh; /* 글씨 크기 대폭 확대 (6vh -> 7.5vh) */
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
                     word-break: break-word;
-                    line-height: 1.2;
+                    line-height: 1.15;
                 }
             </style>
         </head>
@@ -462,6 +461,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
         </html>
     `);
 });
+
 // 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
