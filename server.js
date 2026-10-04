@@ -301,7 +301,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (이미지 2/3 축소 + 텍스트 대폭 확대)
+// 7. 스트리머별 OBS 알림 오버레이 화면 (화면 밖 이탈 방지 + 비율 최적화)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -321,7 +321,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     padding: 0;
                     background-color: transparent !important;
                     font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
-                    overflow: hidden;
+                    overflow: hidden; /* 화면 밖 스크롤 방지 */
                 }
                 
                 #alert-container {
@@ -333,17 +333,19 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center;
                     text-align: center;
                     box-sizing: border-box;
-                    padding: 1vh 2vw;
+                    padding: 2vh 2vw;
                     background: transparent !important;
                 }
                 
-                /* 상단 이미지 영역: 기존 대비 2/3 크기로 줄임 (flex: 3) */
+                /* 상단 이미지 영역 */
                 .image-wrapper {
-                    flex: 3;
+                    flex: 2.5;
                     width: 100%;
+                    height: 100%;
                     display: flex;
                     justify-content: center;
                     align-items: center;
+                    overflow: hidden;
                 }
 
                 #alert-image { 
@@ -353,44 +355,48 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     display: block; 
                 }
 
-                /* 첫째 줄 텍스트 영역: 비중 늘림 (flex: 3.5) */
+                /* 첫째 줄 텍스트 영역 */
                 .line1-wrapper {
                     flex: 3.5;
                     width: 100%;
                     display: flex;
                     justify-content: center;
                     align-items: center;
+                    overflow: hidden;
                 }
 
                 #alert-line1 {
                     color: #ffffff; 
-                    font-size: 9vh; /* 글씨 크기 대폭 확대 (7vh -> 9vh) */
+                    font-size: 7vh; /* 밖으로 나가지 않도록 7vh로 안전 조정 */
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
-                    word-break: keep-all;
+                    max-width: 100%;
+                    word-break: break-word; /* 긴 단어/문장도 박스 안에서 줄바꿈 */
                     line-height: 1.15;
                 }
 
-                /* 둘째 줄 텍스트 영역: 비중 늘림 (flex: 3.5) */
+                /* 둘째 줄 텍스트 영역 */
                 .line2-wrapper {
-                    flex: 3.5;
+                    flex: 4;
                     width: 100%;
                     display: flex;
                     justify-content: center;
                     align-items: center;
+                    overflow: hidden;
                 }
 
                 #alert-line2 {
                     color: #ffffff; 
-                    font-size: 7.5vh; /* 글씨 크기 대폭 확대 (6vh -> 7.5vh) */
+                    font-size: 6vh; /* 밖으로 나가지 않도록 6vh로 안전 조정 */
                     font-weight: 800; 
                     text-shadow: 
                         -3px -3px 0 #000, 3px -3px 0 #000, 
                         -3px  3px 0 #000, 3px  3px 0 #000,
                         4px 4px 8px rgba(0, 0, 0, 0.9);
+                    max-width: 100%;
                     word-break: break-word;
                     line-height: 1.15;
                 }
