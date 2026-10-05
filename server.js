@@ -75,7 +75,11 @@ function isAuthenticated(req, res, next) {
 }
 
 
-// --- 1. 회원가입 / 로그인 / 로그아웃 ---
+// --- 1. 메인, 회원가입 / 로그인 / 로그아웃 ---
+app.get('/', (req, res) => {
+    res.redirect('/login'); // 메인 주소 접속 시 로그인 페이지로 이동
+});
+
 app.get('/register', (req, res) => {
     res.send(`
         <h2>회원가입</h2>
@@ -346,7 +350,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     }
                 }
             } catch(e) {}
-            showAlert(d.donor + "님 " + d.amount + "원 후원!\\\\n" + d.message, useImage ? img : "", sound);
+            showAlert(d.donor + "님 " + d.amount + "원 후원!\\n" + d.message, useImage ? img : "", sound);
         }
 
         function showAlert(msg, imgUrl, soundUrl) {
