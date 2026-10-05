@@ -218,7 +218,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 hideTimeout = setTimeout(() => { c.style.display = 'none'; }, ms);
             };
             
-            // 메타데이터 로딩이 빠른 환경이나 fallback 대비
             setTimeout(() => {
                 if(c.style.display === 'flex' && !hideTimeout) {
                     s.play().catch(e=>{});
@@ -268,4 +267,54 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey: req.params.apiKey });
-    if (!user) return res
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{background:transparent;margin:0;font-family:sans-serif;}.board{background:rgba(0,0,0,0.75);color:#fff;padding:20px;border-radius:10px;min-width:250px;}h3{margin:0 0 15px 0;color:#f1c40f;text-align:center;}.item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.2);font-size:15px;}</style></head><body><div class="board"><h3>🏆 실시간 랭킹</h3><div id="content">불러오는 중...</div></div><script>
+        async function loadRank() {
+            try{
+                const res = await fetch('/api/ranking/${req.params.apiKey}');
+                const data = await res.json();
+                const c = document.getElementById('content'); c.innerHTML = '';
+                if(!data.length){ c.innerHTML = '<div style="text-align:center;color:#aaa;">내역 없음</div>'; return; }
+                data.forEach((r, i) => {
+                    const d = document.createElement('div'); d.className = 'item';
+                    d.innerHTML = '<span><b>' + (i + 1) + '. ' + r._id + '</b></span><span>' + r.totalAmount.toLocaleString() + '원</span>';
+                    c.appendChild(d);
+                });
+            }catch(e){}
+        }
+        loadRank(); setInterval(loadRank, 5000);
+        </script></body></html>`);
+});
+
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const todayKey = getKSTDateKey();
+        const donations = await Donation.find({ streamerId: user._id, dateKey: todayKey }, { nickname: 1, amount: 1, timestamp: 1 }).sort({ timestamp: 1 });
+        
+        const map = {};
+        donations.forEach(d => {
+            let name = d.nickname.trim();
+            if (name.endsWith("님")) name = name.slice(0, -1).trim();
+            if (!map[name]) map[name] = { totalAmount: 0, count: 0, firstTime: d.timestamp };
+            map[name].totalAmount += d.amount;
+            map[name].count += 1;
+        });
+
+        const list = Object.keys(map).map(name => ({ _id: name, totalAmount: map[name].totalAmount, count: map[name].count, firstTime: map[name].firstTime }));
+        list.sort((a, b) => b.totalAmount !== a.totalAmount ? b.totalAmount - a.totalAmount : new Date(a.firstTime) - new Date(b.firstTime));
+        res.json(list.slice(0, 5));
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
