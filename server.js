@@ -25,7 +25,6 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
     createdAt: { type: Date, default: Date.now }
-});
 
 // 🔔 알림창 세부 설정 필드 추가
     alertSettings: {
