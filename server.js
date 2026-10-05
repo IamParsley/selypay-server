@@ -43,7 +43,7 @@ const userSchema = new mongoose.Schema({
     apiKey: { type: String, required: true, unique: true },
     createdAt: { type: Date, default: Date.now },
     defaultAlert: {
-        useImage: { type: Boolean, default: true }
+        useImage: { type: Boolean, default: true } // 기본 알림 시 이미지 사용 여부
     },
     reactions: [{
         name: { type: String, default: "후원 리액션" },
@@ -244,17 +244,14 @@ app.post('/api/notification', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// 오버레이 라우트 수정 (템플릿 변수 및 메시지 파싱 안정화)
 app.get('/overlay/:apiKey', async (req, res) => {
-    const apiKeyVal = req.params.apiKey;
-    const user = await User.findOne({ apiKey: apiKeyVal });
+    const user = await User.findOne({ apiKey: req.params.apiKey });
     if (!user) return res.status(404).send('Not found');
-    
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{height:35vh;max-width:80vw;object-fit:contain;margin-bottom:1.5vh;display:block;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
         let lastTime="", hideTimeout=null;
         async function check() {
             try {
-                const res = await fetch('/api/logs/${apiKeyVal}');
+                const res = await fetch('/api/logs/${req.params.apiKey}');
                 const logs = await res.json();
                 if(logs.length && logs[0].datetime !== lastTime) {
                     lastTime = logs[0].datetime;
@@ -266,7 +263,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
             let img = "/alerticon.gif", sound = "/coinsound.mp3";
             let useImage = true;
             try {
-                const res = await fetch('/api/reactions/${apiKeyVal}');
+                const res = await fetch('/api/reactions/${req.params.apiKey}');
                 const data = await res.json();
                 if(data.success) {
                     if(data.defaultAlert && data.defaultAlert.useImage === false) {
@@ -287,19 +284,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
             const c = document.getElementById('alert-container'), img = document.getElementById('alert-image'), l1 = document.getElementById('alert-line1'), l2 = document.getElementById('alert-line2'), s = document.getElementById('alert-sound');
             if(hideTimeout) clearTimeout(hideTimeout);
             s.pause(); s.currentTime = 0;
-            
             let t1 = msg, t2 = "";
-            if (msg.includes('\\n')) {
-                const parts = msg.split('\\n');
-                t1 = parts[0];
-                t2 = parts.slice(1).join(' ');
-            } else if (msg.includes('\n')) {
-                const parts = msg.split('\n');
-                t1 = parts[0];
-                t2 = parts.slice(1).join(' ');
-            }
-            l1.innerText = t1; 
-            l2.innerText = t2; 
+            if(msg.indexOf('\\n') !== -1){ t1 = msg.substring(0, msg.indexOf('\\n')); t2 = msg.substring(msg.indexOf('\\n') + 2); }
+            l1.innerText = t1; l2.innerText = t2; 
             
             if(imgUrl && imgUrl.trim() !== "") {
                 img.src = imgUrl;
@@ -358,6 +345,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             const res = await fetch('/api/reactions/${req.params.apiKey}');
             const data = await res.json();
             
+            // 설정 상태 반영
             if(data.defaultAlert) {
                 document.getElementById('useImage').checked = data.defaultAlert.useImage;
             }
