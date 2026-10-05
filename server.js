@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +13,25 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-const upload = multer({ storage: multer.memoryStorage() });
+// uploads 폴더가 없으면 자동 생성 및 디스크 스토리지 설정
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
+
+// 업로드된 파일들을 정적 파일로 서빙
+app.use('/uploads', express.static(uploadDir));
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 .then(() => console.log('✅ MongoDB Connected'))
@@ -26,10 +45,8 @@ const userSchema = new mongoose.Schema({
     reactions: [{
         name: { type: String, default: "후원 리액션" },
         amount: { type: Number, required: true },
-        imageBuffer: Buffer,
-        imageType: String,
-        soundBuffer: Buffer,
-        soundType: String
+        imageUrl: { type: String, default: "/alerticon.gif" },
+        soundUrl: { type: String, default: "" }
     }]
 });
 
@@ -55,26 +72,6 @@ function getKSTDateKey() {
     return new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
 }
 
-app.get('/api/media/:apiKey/:reactionId/:type', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).send('Not found');
-        const reaction = user.reactions.id(req.params.reactionId);
-        if (!reaction) return res.status(404).send('Not found');
-
-        if (req.params.type === 'image' && reaction.imageBuffer) {
-            res.set('Content-Type', reaction.imageType || 'image/png');
-            return res.send(reaction.imageBuffer);
-        } else if (req.params.type === 'sound' && reaction.soundBuffer) {
-            res.set('Content-Type', reaction.soundType || 'audio/mpeg');
-            return res.send(reaction.soundBuffer);
-        }
-        res.status(404).send('Not found');
-    } catch (e) {
-        res.status(500).send('Error');
-    }
-});
-
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -84,8 +81,8 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
             _id: r._id,
             name: r.name || '후원 리액션',
             amount: r.amount,
-            imageUrl: r.imageBuffer ? `/api/media/${user.apiKey}/${r._id}/image` : '/alerticon.gif',
-            soundUrl: r.soundBuffer ? `/api/media/${user.apiKey}/${r._id}/sound` : ''
+            imageUrl: r.imageUrl || '/alerticon.gif',
+            soundUrl: r.soundUrl || ''
         }));
         res.json({ success: true, reactions: formattedReactions });
     } catch (e) { res.status(500).json({ success: false }); }
@@ -98,16 +95,15 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
         if (!amount) return res.status(400).json({ success: false, error: 'Amount required' });
 
         const reactionId = new mongoose.Types.ObjectId();
-        let imageBuffer = null, imageType = '', soundBuffer = null, soundType = '';
+        let imageUrl = '/alerticon.gif';
+        let soundUrl = '';
 
         if (files && files['imageFile']) {
-            imageBuffer = files['imageFile'][0].buffer;
-            imageType = files['imageFile'][0].mimetype;
+            imageUrl = `/uploads/${files['imageFile'][0].filename}`;
         }
 
         if (files && files['soundFile']) {
-            soundBuffer = files['soundFile'][0].buffer;
-            soundType = files['soundFile'][0].mimetype;
+            soundUrl = `/uploads/${files['soundFile'][0].filename}`;
         }
 
         const user = await User.findOneAndUpdate(
@@ -116,10 +112,8 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
                 _id: reactionId, 
                 name: name || '후원 리액션',
                 amount: Number(amount), 
-                imageBuffer, 
-                imageType, 
-                soundBuffer, 
-                soundType
+                imageUrl, 
+                soundUrl
             } } },
             { new: true }
         );
@@ -129,12 +123,28 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
 
 app.delete('/api/reactions/:apiKey/:reactionId', async (req, res) => {
     try {
-        const user = await User.findOneAndUpdate(
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false });
+
+        const reaction = user.reactions.id(req.params.reactionId);
+        if (reaction) {
+            // 서버에 저장된 실제 파일도 함께 삭제하여 용량 확보
+            if (reaction.imageUrl && reaction.imageUrl.startsWith('/uploads/')) {
+                const imgPath = path.join(__dirname, reaction.imageUrl);
+                if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            }
+            if (reaction.soundUrl && reaction.soundUrl.startsWith('/uploads/')) {
+                const sndPath = path.join(__dirname, reaction.soundUrl);
+                if (fs.existsSync(sndPath)) fs.unlinkSync(sndPath);
+            }
+        }
+
+        const updatedUser = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $pull: { reactions: { _id: req.params.reactionId } } },
             { new: true }
         );
-        res.json({ success: true, reactions: user.reactions });
+        res.json({ success: true, reactions: updatedUser.reactions });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
