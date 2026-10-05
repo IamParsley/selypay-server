@@ -29,7 +29,8 @@ const userSchema = new mongoose.Schema({
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' },
-        bgColor: { type: String, default: 'transparent' }
+        bgColor: { type: String, default: 'transparent' },
+        useImage: { type: Boolean, default: true } // 알림 이미지 사용 여부 추가
     }
 });
 
@@ -78,14 +79,15 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
 // 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
-        const { soundType, duration, fontSize } = req.body;
+        const { soundType, duration, fontSize, useImage } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { 
                 $set: { 
                     'alertSettings.soundType': soundType,
                     'alertSettings.duration': Number(duration),
-                    'alertSettings.fontSize': fontSize
+                    'alertSettings.fontSize': fontSize,
+                    'alertSettings.useImage': useImage === true || useImage === 'true'
                 } 
             },
             { new: true }
@@ -341,6 +343,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
 
+    const settings = user.alertSettings || {};
+    const useImage = settings.useImage !== false; // 기본값 true
+
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -362,10 +367,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 #alert-image { 
                     max-height: 35vh; width: auto; max-width: 80%;
-                    object-fit: contain; display: block; margin-bottom: 1.5vh;
+                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: 7.5vh; font-weight: 800; 
+                    color: #ffffff; font-size: ${settings.fontSize || '7.5vh'}; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
@@ -383,7 +388,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 <div id="alert-line2"></div>
             </div>
 
-            <audio id="alert-sound" src="/coinsound.mp3"></audio>
+            <audio id="alert-sound" src="/${settings.soundType || 'coinsound.mp3'}"></audio>
 
             <script>
                 let lastCheckedTime = "";
@@ -426,7 +431,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                     setTimeout(() => { 
                         container.style.display = 'none'; 
-                    }, 5000);
+                    }, ${ (settings.duration || 5) * 1000 });
                 }
 
                 setInterval(checkNewDonation, 1000);
@@ -468,7 +473,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
                 
-                <h3>⚙️ 후원 리액션 세부 설정</h3>
+                <h3>⚙️ 기본 알림창 세부 설정</h3>
                 <form id="alertSettingsForm">
                     <div class="form-group">
                         <label>알림 효과음 파일</label>
@@ -484,8 +489,20 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         <label>메시지 폰트 크기 (예: 7.5vh, 40px)</label>
                         <input type="text" name="fontSize" id="fontSize" value="7.5vh">
                     </div>
+                    <div class="form-group">
+                        <label>기본 알림 이미지 사용 여부</label>
+                        <select name="useImage" id="useImage">
+                            <option value="true">사용함 (알림 이미지 표시)</option>
+                            <option value="false">사용 안 함 (이미지 숨기기)</option>
+                        </select>
+                    </div>
                     <button type="submit" class="btn">설정 저장하기</button>
                 </form>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <h3>🛠️ 기타 리액션 설정</h3>
+                <p style="color: #666; font-size: 14px;">개발 중인 기능입니다.</p>
 
                 <br>
                 <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
@@ -500,6 +517,9 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             if (data.settings.soundType) document.getElementById('soundType').value = data.settings.soundType;
                             if (data.settings.duration) document.getElementById('duration').value = data.settings.duration;
                             if (data.settings.fontSize) document.getElementById('fontSize').value = data.settings.fontSize;
+                            if (data.settings.useImage !== undefined) {
+                                document.getElementById('useImage').value = data.settings.useImage ? 'true' : 'false';
+                            }
                         }
                     } catch (e) { console.error(e); }
                 }
@@ -509,12 +529,13 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     const soundType = document.getElementById('soundType').value;
                     const duration = document.getElementById('duration').value;
                     const fontSize = document.getElementById('fontSize').value;
+                    const useImage = document.getElementById('useImage').value === 'true';
 
                     try {
                         const res = await fetch('/api/settings/alert/' + '${apiKey}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ soundType, duration, fontSize })
+                            body: JSON.stringify({ soundType, duration, fontSize, useImage })
                         });
                         const result = await res.json();
                         if (result.success) {
