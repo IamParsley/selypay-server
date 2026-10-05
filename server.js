@@ -79,7 +79,12 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
         let imageUrl = files && files['imageFile'] ? '/uploads/' + files['imageFile'][0].filename : (imageUrlText ? imageUrlText.trim() : '');
         if (!imageUrl) return res.status(400).json({ success: false, error: 'Image required' });
 
-        let soundUrl = files && files['soundFile'] ? '/uploads/' + files['soundFile'][0].filename : (soundUrlText ? soundUrlText.trim() : '/coinsound.mp3');
+        let soundUrl = '/coinsound.mp3';
+        if (files && files['soundFile']) {
+            soundUrl = '/uploads/' + files['soundFile'][0].filename;
+        } else if (soundUrlText && soundUrlText.trim() !== '') {
+            soundUrl = soundUrlText.trim();
+        }
 
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
@@ -227,7 +232,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey: req.params.apiKey });
     if (!user) return res.status(404).send('Not found');
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:700px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.reaction-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:5px;margin-bottom:8px;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일 (선택)</label><input type="file" id="soundFile" accept="audio/*"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><h3>📋 목록</h3><div id="list">불러오는 중...</div><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:700px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.reaction-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:5px;margin-bottom:8px;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일</label><input type="file" id="soundFile" accept="audio/*"></div><div class="form-group"><label>또는 사운드 링크(URL) 입력</label><input type="text" id="soundUrlText" placeholder="https://example.com/sound.mp3"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><h3>📋 목록</h3><div id="list">불러오는 중...</div><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
         async function load() {
             const res = await fetch('/api/reactions/${req.params.apiKey}');
             const data = await res.json();
@@ -235,7 +240,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             if(!data.reactions || !data.reactions.length){ l.innerHTML = '<p>등록된 리액션이 없습니다.</p>'; return; }
             data.reactions.forEach(r => {
                 const div = document.createElement('div'); div.className = 'reaction-item';
-                div.innerHTML = '<div><b>' + r.amount.toLocaleString() + '원 이상</b></div><button class="btn" style="background:#e74c3c;" onclick="del(\\''+r._id+'\\')">삭제</button>';
+                div.innerHTML = '<div><b>' + r.amount.toLocaleString() + '원 이상</b><br><small>사운드: ' + r.soundUrl + '</small></div><button class="btn" style="background:#e74c3c;" onclick="del(\\''+r._id+'\\')">삭제</button>';
                 l.appendChild(div);
             });
         }
@@ -245,9 +250,11 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             fd.append('amount', document.getElementById('amount').value);
             const img = document.getElementById('imageFile').files[0]; if(img) fd.append('imageFile', img);
             const snd = document.getElementById('soundFile').files[0]; if(snd) fd.append('soundFile', snd);
+            const sndUrl = document.getElementById('soundUrlText').value; if(sndUrl) fd.append('soundUrlText', sndUrl);
+            
             const res = await fetch('/api/reactions/${req.params.apiKey}', { method: 'POST', body: fd });
             const r = await res.json();
-            if(r.success){ alert('추가 완료!'); document.getElementById('amount').value=''; load(); } else { alert('실패'); }
+            if(r.success){ alert('추가 완료!'); document.getElementById('amount').value=''; document.getElementById('soundUrlText').value=''; load(); } else { alert('실패'); }
         });
         async function del(id) {
             if(!confirm('삭제하시겠습니까?')) return;
