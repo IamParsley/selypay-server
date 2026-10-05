@@ -27,6 +27,15 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+// 🔔 알림창 세부 설정 필드 추가
+    alertSettings: {
+        soundType: { type: String, default: 'coinsound.mp3' }, // 사운드 파일명
+        duration: { type: Number, default: 5 }, // 노출 지속 시간 (초)
+        fontSize: { type: String, default: '7.5vh' }, // 폰트 크기
+        bgColor: { type: String, default: 'transparent' } // 배경색 또는 투명도 관련
+    }
+});
+
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
@@ -58,6 +67,39 @@ function getKSTDateKey() {
     const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     return kstDate.toISOString().split('T')[0];
 }
+
+// 알림 설정 불러오기 API
+app.get('/api/settings/alert/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        res.json({ success: true, settings: user.alertSettings || {} });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+// 알림 설정 저장하기 API
+app.post('/api/settings/alert/:apiKey', async (req, res) => {
+    try {
+        const { soundType, duration, fontSize } = req.body;
+        const user = await User.findOneAndUpdate(
+            { apiKey: req.params.apiKey },
+            { 
+                $set: { 
+                    'alertSettings.soundType': soundType,
+                    'alertSettings.duration': Number(duration),
+                    'alertSettings.fontSize': fontSize
+                } 
+            },
+            { new: true }
+        );
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        res.json({ success: true, message: '설정이 저장되었습니다.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
 
 // 3. 홈 루트
 app.get('/', (req, res) => {
@@ -454,29 +496,89 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
                 .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+                .form-group { margin-bottom: 20px; }
+                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+                .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+                .btn:hover { background: #2980b9; }
+                .btn-secondary { background: #7f8c8d; }
             </style>
         </head>
         <body>
             <div class="container">
                 <h2>🔔 알림창(후원 리액션) 설정 및 관리</h2>
-                <p>OBS 브라우저 소스에 아래 주소를 입력하여 사용하세요.</p>
-                
-                <p><b>OBS 오버레이 주소:</b></p>
+                <p>OBS 브라우저 소스 주소:</p>
                 <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
                 
-                <h3>⚙️ 세부 설정 (준비 중)</h3>
-                <p style="color: #666; font-size: 14px;">여기에 알림 사운드 변경, 애니메이션 효과, 폰트 크기 변경 등의 세부 설정을 추가할 예정입니다.</p>
+                <h3>⚙️ 후원 리액션 세부 설정</h3>
+                <form id="alertSettingsForm">
+                    <div class="form-group">
+                        <label>알림 효과음 파일</label>
+                        <select name="soundType" id="soundType">
+                            <option value="coinsound.mp3">기본 코인 효과음 (coinsound.mp3)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>알림 지속 시간 (초)</label>
+                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>메시지 폰트 크기 (예: 7.5vh, 40px)</label>
+                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                    </div>
+                    <button type="submit" class="btn">설정 저장하기</button>
+                </form>
 
-                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+                <br>
+                <a href="/api/login" class="btn btn-secondary">대시보드로 돌아가기</a>
             </div>
+
+            <script>
+                // 기존 설정 불러오기
+                async function loadSettings() {
+                    try {
+                        const res = await fetch('/api/settings/alert/' + '${apiKey}');
+                        const data = await res.json();
+                        if (data.success && data.settings) {
+                            if (data.settings.soundType) document.getElementById('soundType').value = data.settings.soundType;
+                            if (data.settings.duration) document.getElementById('duration').value = data.settings.duration;
+                            if (data.settings.fontSize) document.getElementById('fontSize').value = data.settings.fontSize;
+                        }
+                    } catch (e) { console.error(e); }
+                }
+
+                // 설정 저장 처리
+                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const soundType = document.getElementById('soundType').value;
+                    const duration = document.getElementById('duration').value;
+                    const fontSize = document.getElementById('fontSize').value;
+
+                    try {
+                        const res = await fetch('/api/settings/alert/' + '${apiKey}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ soundType, duration, fontSize })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            alert('설정이 성공적으로 저장되었습니다!');
+                        } else {
+                            alert('저장 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        alert('서버 통신 오류가 발생했습니다.');
+                    }
+                });
+
+                loadSettings();
+            </script>
         </body>
         </html>
     `);
 });
-
 // 8. 방송용 실시간 랭킹 OBS 오버레이 화면 (백틱 충돌 방지 수정 완료)
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
