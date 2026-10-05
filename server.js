@@ -244,7 +244,6 @@ app.post('/api/notification', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// 알림 표시 시간 7초(7000ms)로 수정된 오버레이 라우트
 app.get('/overlay/:apiKey', async (req, res) => {
     const apiKeyVal = req.params.apiKey;
     const user = await User.findOne({ apiKey: apiKeyVal });
@@ -339,7 +338,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 s.play().catch(e => {});
             }
 
-            // 알림 유지 시간을 7초(7000ms)로 변경
             hideTimeout = setTimeout(() => { 
                 c.style.display = 'none'; 
             }, 7000);
@@ -448,7 +446,8 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
         </script></body></html>`);
 });
 
-app.get('/api/logs/:apiKey', async, async (req, res) => {
+// 수정 완료된 API 라우트
+app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
