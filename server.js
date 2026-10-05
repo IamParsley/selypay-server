@@ -42,6 +42,9 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
     createdAt: { type: Date, default: Date.now },
+    defaultAlert: {
+        useImage: { type: Boolean, default: true } // 기본 알림 시 이미지 사용 여부
+    },
     reactions: [{
         name: { type: String, default: "후원 리액션" },
         amount: { type: Number, required: true },
@@ -72,6 +75,7 @@ function getKSTDateKey() {
     return new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
 }
 
+// 리액션 및 기본 설정 조회 API
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -84,7 +88,24 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
             imageUrl: r.imageUrl || '/alerticon.gif',
             soundUrl: r.soundUrl || ''
         }));
-        res.json({ success: true, reactions: formattedReactions });
+        res.json({ 
+            success: true, 
+            reactions: formattedReactions,
+            defaultAlert: user.defaultAlert || { useImage: true }
+        });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 기본 알림 설정 저장 API
+app.post('/api/settings/:apiKey', async (req, res) => {
+    try {
+        const { useImage } = req.body;
+        await User.findOneAndUpdate(
+            { apiKey: req.params.apiKey },
+            { $set: { "defaultAlert.useImage": Boolean(useImage) } },
+            { new: true }
+        );
+        res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
@@ -128,7 +149,6 @@ app.delete('/api/reactions/:apiKey/:reactionId', async (req, res) => {
 
         const reaction = user.reactions.id(req.params.reactionId);
         if (reaction) {
-            // 서버에 저장된 실제 파일도 함께 삭제하여 용량 확보
             if (reaction.imageUrl && reaction.imageUrl.startsWith('/uploads/')) {
                 const imgPath = path.join(__dirname, reaction.imageUrl);
                 if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
@@ -227,7 +247,7 @@ app.post('/api/notification', async (req, res) => {
 app.get('/overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey: req.params.apiKey });
     if (!user) return res.status(404).send('Not found');
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{height:35vh;max-width:80vw;object-fit:contain;margin-bottom:1.5vh;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{height:35vh;max-width:80vw;object-fit:contain;margin-bottom:1.5vh;display:block;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
         let lastTime="", hideTimeout=null;
         async function check() {
             try {
@@ -239,29 +259,52 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
             }catch(e){}
         }
-            async function trigger(d) {
-            let img = "/alerticon.gif", sound = "/coinsound.mp3"; // 기본 돈소리 지정
+        async function trigger(d) {
+            let img = "/alerticon.gif", sound = "/coinsound.mp3";
+            let useImage = true;
             try {
                 const res = await fetch('/api/reactions/${req.params.apiKey}');
                 const data = await res.json();
-                if(data.success && data.reactions) {
-                    const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
-                    if(m){ 
-                        img = m.imageUrl; 
-                        // 리액션에 사운드가 있으면 그 사운드를, 없으면 기본 돈소리를 사용
-                        sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
+                if(data.success) {
+                    if(data.defaultAlert && data.defaultAlert.useImage === false) {
+                        useImage = false;
+                    }
+                    if(data.reactions) {
+                        const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
+                        if(m){ 
+                            img = m.imageUrl; 
+                            sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
+                        }
                     }
                 }
             }catch(e){}
-            showAlert(d.message, img, sound);
+            showAlert(d.message, useImage ? img : "", sound);
         }
         function showAlert(msg, imgUrl, soundUrl) {
             const c = document.getElementById('alert-container'), img = document.getElementById('alert-image'), l1 = document.getElementById('alert-line1'), l2 = document.getElementById('alert-line2'), s = document.getElementById('alert-sound');
             if(hideTimeout) clearTimeout(hideTimeout);
             s.pause(); s.currentTime = 0;
             let t1 = msg, t2 = "";
-            if(msg.indexOf('\\n') !== -1){ t1 = msg.substring(0, msg.indexOf('\\n')); t2 = msg.substring(msg.indexOf('\\n') + 2); }
-            l1.innerText = t1; l2.innerText = t2; img.src = imgUrl; c.style.display = 'flex';
+            // 실제 줄바꿈(\n)이나 문자열 형태의 '\\n' 모두 깔끔하게 처리
+            if (msg.includes('\n')) {
+                const parts = msg.split('\n');
+                t1 = parts[0];
+                t2 = parts.slice(1).join(' ');
+            } else if (msg.includes('\\n')) {
+                const parts = msg.split('\\n');
+                t1 = parts[0];
+                t2 = parts.slice(1).join(' ');
+            }
+            l1.innerText = t1; l2.innerText = t2;
+            if(imgUrl && imgUrl.trim() !== "") {
+                img.src = imgUrl;
+                img.style.display = 'block';
+            } else {
+                img.src = "";
+                img.style.display = 'none';
+            }
+
+            c.style.display = 'flex';
             if(soundUrl && soundUrl.trim() !== "") {
                 s.src = soundUrl; s.load();
                 const handlePlay = () => {
@@ -293,11 +336,28 @@ app.get('/overlay/:apiKey', async (req, res) => {
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey: req.params.apiKey });
     if (!user) return res.status(404).send('Not found');
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:900px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.controls-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}.grid-container{display:grid;grid-template-columns:repeat(4, 1fr);gap:15px;}.reaction-card{background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;}.reaction-card img{width:100px;height:100px;object-fit:contain;background:#eee;border-radius:4px;margin-bottom:8px;}.reaction-card h4{margin:5px 0;font-size:15px;color:#333;word-break:break-all;}.reaction-card p{margin:0 0 10px 0;font-size:13px;color:#666;}.reaction-card button{width:100%;padding:6px;background:#e74c3c;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;margin-top:auto;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>리액션명</label><input type="text" id="name" placeholder="예: 심쿵 리액션" required></div><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" placeholder="예: 5000" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일 (선택)</label><input type="file" id="soundFile" accept="audio/*"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><div class="controls-bar"><h3>📋 목록</h3><div><select id="sortOrder" class="btn" style="background:#fff;color:#333;border:1px solid #ddd;padding:6px;" onchange="load()"><option value="desc">금액 높은순</option><option value="asc">금액 낮은순</option></select></div></div><div id="list" class="grid-container">불러오는 중...</div><br><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:900px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input[type="text"], .form-group input[type="number"], .form-group input[type="file"]{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.controls-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}.grid-container{display:grid;grid-template-columns:repeat(4, 1fr);gap:15px;}.reaction-card{background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;}.reaction-card img{width:100px;height:100px;object-fit:contain;background:#eee;border-radius:4px;margin-bottom:8px;}.reaction-card h4{margin:5px 0;font-size:15px;color:#333;word-break:break-all;}.reaction-card p{margin:0 0 10px 0;font-size:13px;color:#666;}.reaction-card button{width:100%;padding:6px;background:#e74c3c;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;margin-top:auto;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;">
+
+    <h3>⚙ 기본 알림 설정</h3>
+    <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="useImage" ${user.defaultAlert && user.defaultAlert.useImage === false ? '' : 'checked'} style="width:auto;"> 
+            기본 알림 이미지(/alerticon.gif) 사용하기 (체크 해제 시 이미지 숨김)
+        </label>
+    </div>
+    <button type="button" onclick="saveSettings()" class="btn" style="background:#2ecc71;">설정 저장</button>
+
+    <hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>리액션명</label><input type="text" id="name" placeholder="예: 심쿵 리액션" required></div><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" placeholder="예: 5000" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일 (선택)</label><input type="file" id="soundFile" accept="audio/*"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><div class="controls-bar"><h3>📋 목록</h3><div><select id="sortOrder" class="btn" style="background:#fff;color:#333;border:1px solid #ddd;padding:6px;" onchange="load()"><option value="desc">금액 높은순</option><option value="asc">금액 낮은순</option></select></div></div><div id="list" class="grid-container">불러오는 중...</div><br><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
         let globalReactions = [];
         async function load() {
             const res = await fetch('/api/reactions/${req.params.apiKey}');
             const data = await res.json();
+            
+            // 설정 상태 반영
+            if(data.defaultAlert) {
+                document.getElementById('useImage').checked = data.defaultAlert.useImage;
+            }
+
             const l = document.getElementById('list'); l.innerHTML = '';
             if(!data.reactions || !data.reactions.length){ l.innerHTML = '<p style="grid-column: span 4; text-align:center; color:#777;">등록된 리액션이 없습니다.</p>'; return; }
             
@@ -311,6 +371,22 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 l.appendChild(card);
             });
         }
+
+        async function saveSettings() {
+            const useImage = document.getElementById('useImage').checked;
+            const res = await fetch('/api/settings/${req.params.apiKey}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ useImage })
+            });
+            const r = await res.json();
+            if(r.success) {
+                alert('기본 설정이 저장되었습니다!');
+            } else {
+                alert('설정 저장 실패');
+            }
+        }
+
         document.getElementById('form').addEventListener('submit', async e => {
             e.preventDefault();
             const fd = new FormData();
