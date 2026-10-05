@@ -232,4 +232,97 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 setTimeout(() => { if(c.style.display === 'flex') handlePlay(); }, 500);
             } else {
                 s.src = "";
-                hideTimeout = setTimeout(() => { c.style.display = 'none'; }, 1
+                hideTimeout = setTimeout(() => { c.style.display = 'none'; }, 10000);
+            }
+        }
+        setInterval(check, 1000);
+        </script></body></html>`);
+});
+
+app.get('/manage/alert/:apiKey', async (req, res) => {
+    const user = await User.findOne({ apiKey: req.params.apiKey });
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:700px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.reaction-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:5px;margin-bottom:8px;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일 (선택)</label><input type="file" id="soundFile" accept="audio/*"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><h3>📋 목록</h3><div id="list">불러오는 중...</div><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
+        async function load() {
+            const res = await fetch('/api/reactions/${req.params.apiKey}');
+            const data = await res.json();
+            const l = document.getElementById('list'); l.innerHTML = '';
+            if(!data.reactions || !data.reactions.length){ l.innerHTML = '<p>등록된 리액션이 없습니다.</p>'; return; }
+            data.reactions.forEach(r => {
+                const div = document.createElement('div'); div.className = 'reaction-item';
+                div.innerHTML = '<div><b>' + r.amount.toLocaleString() + '원 이상</b></div><button class="btn" style="background:#e74c3c;" onclick="del(\\''+r._id+'\\')">삭제</button>';
+                l.appendChild(div);
+            });
+        }
+        document.getElementById('form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('amount', document.getElementById('amount').value);
+            const img = document.getElementById('imageFile').files[0]; if(img) fd.append('imageFile', img);
+            const snd = document.getElementById('soundFile').files[0]; if(snd) fd.append('soundFile', snd);
+            const res = await fetch('/api/reactions/${req.params.apiKey}', { method: 'POST', body: fd });
+            const r = await res.json();
+            if(r.success){ alert('추가 완료!'); document.getElementById('amount').value=''; document.getElementById('imageFile').value=''; document.getElementById('soundFile').value=''; load(); } else { alert('실패'); }
+        });
+        async function del(id) {
+            if(!confirm('삭제하시겠습니까?')) return;
+            await fetch('/api/reactions/${req.params.apiKey}/' + id, { method: 'DELETE' });
+            load();
+        }
+        load();
+        </script></body></html>`);
+});
+
+app.get('/ranking-overlay/:apiKey', async (req, res) => {
+    const user = await User.findOne({ apiKey: req.params.apiKey });
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{background:transparent;margin:0;font-family:sans-serif;}.board{background:rgba(0,0,0,0.75);color:#fff;padding:20px;border-radius:10px;min-width:250px;}h3{margin:0 0 15px 0;color:#f1c40f;text-align:center;}.item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.2);font-size:15px;}</style></head><body><div class="board"><h3>🏆 실시간 랭킹</h3><div id="content">불러오는 중...</div></div><script>
+        async function loadRank() {
+            try{
+                const res = await fetch('/api/ranking/${req.params.apiKey}');
+                const data = await res.json();
+                const c = document.getElementById('content'); c.innerHTML = '';
+                if(!data.length){ c.innerHTML = '<div style="text-align:center;color:#aaa;">내역 없음</div>'; return; }
+                data.forEach((r, i) => {
+                    const d = document.createElement('div'); d.className = 'item';
+                    d.innerHTML = '<span><b>' + (i + 1) + '. ' + r._id + '</b></span><span>' + r.totalAmount.toLocaleString() + '원</span>';
+                    c.appendChild(d);
+                });
+            }catch(e){}
+        }
+        loadRank(); setInterval(loadRank, 5000);
+        </script></body></html>`);
+});
+
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const todayKey = getKSTDateKey();
+        const donations = await Donation.find({ streamerId: user._id, dateKey: todayKey }, { nickname: 1, amount: 1, timestamp: 1 }).sort({ timestamp: 1 });
+        
+        const map = {};
+        donations.forEach(d => {
+            let name = d.nickname.trim();
+            if (name.endsWith("님")) name = name.slice(0, -1).trim();
+            if (!map[name]) map[name] = { totalAmount: 0, count: 0, firstTime: d.timestamp };
+            map[name].totalAmount += d.amount;
+            map[name].count += 1;
+        });
+
+        const list = Object.keys(map).map(name => ({ _id: name, totalAmount: map[name].totalAmount, count: map[name].count, firstTime: map[name].firstTime }));
+        list.sort((a, b) => b.totalAmount !== a.totalAmount ? b.totalAmount - a.totalAmount : new Date(a.firstTime) - new Date(b.firstTime));
+        res.json(list.slice(0, 5));
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
