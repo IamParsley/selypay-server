@@ -130,4 +130,120 @@ app.post('/api/login', async (req, res) => {
         const user = await User.findOne({ username, password });
         if (!user) return res.send(`<script>alert('정보가 일치하지 않습니다.');history.back();</script>`);
 
-        res.send(`<!DOCTYPE html><html><head><meta charset="UTF
+        res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${user.username} 대시보드</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.log-box{background:#fafafa;border:1px solid #ddd;padding:15px;border-radius:5px;max-height:200px;overflow-y:auto;margin-top:10px;}.log-item{padding:6px 0;border-bottom:1px solid #eee;font-size:13px;}.btn{display:inline-block;padding:8px 12px;background:#3498db;color:white;text-decoration:none;border-radius:5px;font-weight:bold;font-size:13px;margin-top:8px;}</style></head><body><div class="container"><h2>환영합니다, ${user.username}님! 🎉</h2><p><b>고유 API Key:</b></p><div class="box">${user.apiKey}</div><p style="margin-top:15px;"><b>OBS 알림 오버레이 주소:</b></p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><a href="/manage/alert/${user.apiKey}" class="btn" target="_blank">⚙ 후원 리액션 관리</a><p style="margin-top:15px;"><b>OBS 랭킹판 오버레이 주소:</b></p><div class="box">https://${req.get('host')}/ranking-overlay/${user.apiKey}</div><p style="margin-top:25px;"><b>🏆 오늘의 후원 랭킹</b></p><div class="log-box" id="rankingList">불러오는 중...</div><p style="margin-top:20px;"><b>📋 최근 후원 내역</b></p><div class="log-box" id="donationLogList">불러오는 중...</div><p style="margin-top:20px;text-align:right;"><a href="/login">로그아웃</a></p></div><script>
+        async function fetchData() {
+            try {
+                const logRes = await fetch('/api/logs/${user.apiKey}');
+                const logs = await logRes.json();
+                const logDiv = document.getElementById('donationLogList');
+                logDiv.innerHTML = logs.length ? '' : '<div class="log-item">내역이 없습니다.</div>';
+                logs.slice(0, 15).forEach(l => {
+                    const d = document.createElement('div'); d.className = 'log-item';
+                    d.innerHTML = '<b>[' + l.datetime + ']</b> ' + l.nickname + ' (' + l.amount.toLocaleString() + '원): ' + l.message;
+                    logDiv.appendChild(d);
+                });
+                const rankRes = await fetch('/api/ranking/${user.apiKey}');
+                const ranking = await rankRes.json();
+                const rankDiv = document.getElementById('rankingList');
+                rankDiv.innerHTML = ranking.length ? '' : '<div class="log-item">오늘 후원 내역이 없습니다.</div>';
+                ranking.forEach((r, i) => {
+                    const d = document.createElement('div'); d.className = 'log-item';
+                    d.innerHTML = '<b>' + (i + 1) + '위</b> ' + r._id + ' - ' + r.totalAmount.toLocaleString() + '원 (' + r.count + '회)';
+                    rankDiv.appendChild(d);
+                });
+            } catch(e){}
+        }
+        fetchData(); setInterval(fetchData, 4000);
+        </script></body></html>`);
+    } catch (e) { res.status(500).send('Error'); }
+});
+
+app.post('/api/notification', async (req, res) => {
+    const { apiKey, message } = req.body;
+    if (!apiKey || !message) return res.status(400).json({ success: false });
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(401).json({ success: false });
+
+        let amount = 0;
+        const match = message.match(/([0-9,]+)\s*원/);
+        if (match) amount = parseInt(match[1].replace(/,/g, ''), 10) || 0;
+
+        let nickname = message.includes("님") ? message.split("님")[0].trim() : "익명";
+
+        const donation = new Donation({ streamerId: user._id, nickname, amount, message, datetime: getKSTDateTime(), dateKey: getKSTDateKey() });
+        await donation.save();
+        res.status(200).json({ success: true, data: donation });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.get('/overlay/:apiKey', async (req, res) => {
+    const user = await User.findOne({ apiKey: req.params.apiKey });
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{max-height:35vh;margin-bottom:1.5vh;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
+        let lastTime="", hideTimeout=null;
+        async function check() {
+            try {
+                const res = await fetch('/api/logs/${req.params.apiKey}');
+                const logs = await res.json();
+                if(logs.length && logs[0].datetime !== lastTime) {
+                    lastTime = logs[0].datetime;
+                    trigger(logs[0]);
+                }
+            }catch(e){}
+        }
+        async function trigger(d) {
+            let img = "/alerticon.gif", sound = "";
+            try {
+                const res = await fetch('/api/reactions/${req.params.apiKey}');
+                const data = await res.json();
+                if(data.success && data.reactions) {
+                    const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
+                    if(m){ 
+                        img = m.imageUrl; 
+                        sound = m.soundUrl || ""; 
+                    }
+                }
+            }catch(e){}
+            showAlert(d.message, img, sound);
+        }
+        function showAlert(msg, imgUrl, soundUrl) {
+            const c = document.getElementById('alert-container'), img = document.getElementById('alert-image'), l1 = document.getElementById('alert-line1'), l2 = document.getElementById('alert-line2'), s = document.getElementById('alert-sound');
+            if(hideTimeout) clearTimeout(hideTimeout);
+            s.pause();
+            s.currentTime = 0;
+            
+            let t1 = msg, t2 = "";
+            if(msg.indexOf('\\n') !== -1){ t1 = msg.substring(0, msg.indexOf('\\n')); t2 = msg.substring(msg.indexOf('\\n') + 2); }
+            l1.innerText = t1; l2.innerText = t2; 
+            img.src = imgUrl; 
+            c.style.display = 'flex';
+
+            if(soundUrl && soundUrl.trim() !== "") {
+                s.src = soundUrl;
+                s.load();
+                
+                const handlePlay = () => {
+                    s.play().then(() => {
+                        let checkDuration = setInterval(() => {
+                            if(!isNaN(s.duration) && s.duration > 0) {
+                                clearInterval(checkDuration);
+                                if(hideTimeout) clearTimeout(hideTimeout);
+                                hideTimeout = setTimeout(() => { c.style.display = 'none'; }, s.duration * 1000);
+                            }
+                        }, 100);
+                    }).catch(e => {
+                        if(hideTimeout) clearTimeout(hideTimeout);
+                        hideTimeout = setTimeout(() => { c.style.display = 'none'; }, 10000);
+                    });
+                };
+
+                s.oncanplaythrough = handlePlay;
+                s.onloadedmetadata = handlePlay;
+                
+                setTimeout(() => {
+                    if(c.style.display === 'flex' && (!hideTimeout || hideTimeout._called)) {
+                        handlePlay();
+                    }
+                }, 500);
+            } else {
