@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,14 +12,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
-});
-const upload = multer({ storage: storage });
+// 파일을 디스크에 저장하지 않고 메모리(Buffer)로 읽어들여 MongoDB에 저장합니다.
+const upload = multer({ storage: multer.memoryStorage() });
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 .then(() => console.log('✅ MongoDB Connected'))
@@ -33,8 +26,10 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     reactions: [{
         amount: { type: Number, required: true },
-        imageUrl: { type: String, required: true },
-        soundUrl: { type: String, default: '' }
+        imageBuffer: Buffer,
+        imageType: String,
+        soundBuffer: Buffer,
+        soundType: String
     }]
 });
 
@@ -60,13 +55,40 @@ function getKSTDateKey() {
     return new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
 }
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// 각 API Key 및 리액션별 파일을 DB에서 꺼내서 스트리밍해주는 엔드포인트
+app.get('/api/media/:apiKey/:reactionId/:type', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).send('Not found');
+        const reaction = user.reactions.id(req.params.reactionId);
+        if (!reaction) return res.status(404).send('Not found');
+
+        if (req.params.type === 'image' && reaction.imageBuffer) {
+            res.set('Content-Type', reaction.imageType || 'image/png');
+            return res.send(reaction.imageBuffer);
+        } else if (req.params.type === 'sound' && reaction.soundBuffer) {
+            res.set('Content-Type', reaction.soundType || 'audio/mpeg');
+            return res.send(reaction.soundBuffer);
+        }
+        res.status(404).send('Not found');
+    } catch (e) {
+        res.status(500).send('Error');
+    }
+});
 
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Not found' });
-        res.json({ success: true, reactions: user.reactions || [] });
+        
+        // 클라이언트가 사용할 수 있도록 DB에 저장된 바이너리를 미디어 주소로 매핑
+        const formattedReactions = (user.reactions || []).map(r => ({
+            _id: r._id,
+            amount: r.amount,
+            imageUrl: r.imageBuffer ? `/api/media/${user.apiKey}/${r._id}/image` : '/alerticon.gif',
+            soundUrl: r.soundBuffer ? `/api/media/${user.apiKey}/${r._id}/sound` : ''
+        }));
+        res.json({ success: true, reactions: formattedReactions });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
@@ -76,14 +98,24 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
         const files = req.files;
         if (!amount) return res.status(400).json({ success: false, error: 'Amount required' });
 
-        let imageUrl = files && files['imageFile'] ? '/uploads/' + files['imageFile'][0].filename : (imageUrlText ? imageUrlText.trim() : '');
-        if (!imageUrl) return res.status(400).json({ success: false, error: 'Image required' });
+        const reactionId = new mongoose.Types.ObjectId();
+        let imageBuffer = null, imageType = '', soundBuffer = null, soundType = '';
 
-        let soundUrl = files && files['soundFile'] ? '/uploads/' + files['soundFile'][0].filename : '';
+        if (files && files['imageFile']) {
+            imageBuffer = files['imageFile'][0].buffer;
+            imageType = files['imageFile'][0].mimetype;
+        }
+
+        if (files && files['soundFile']) {
+            soundBuffer = files['soundFile'][0].buffer;
+            soundType = files['soundFile'][0].mimetype;
+        }
+
+        if (!imageBuffer && !imageUrlText) return res.status(400).json({ success: false, error: 'Image required' });
 
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
-            { $push: { reactions: { amount: Number(amount), imageUrl, soundUrl } } },
+            { $push: { reactions: { _id: reactionId, amount: Number(amount), imageBuffer, imageType, soundBuffer, soundType } } },
             { new: true }
         );
         res.json({ success: true, reactions: user.reactions });
