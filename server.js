@@ -332,67 +332,73 @@ app.get('/overlay/:apiKey', async (req, res) => {
         }
 
         async function trigger(d) {
-                    let img = "/alerticon.gif", sound = "/coinsound.mp3";
-                    let useImage = true;
-                    try {
-                        const res = await fetch('/api/reactions/${apiKeyVal}');
-                        const data = await res.json();
-                        if(data.success) {
-                            if(data.defaultAlert && data.defaultAlert.useImage === false) {
-                                useImage = false;
-                            }
-                            if(data.reactions && data.reactions.length > 0) {
-                                const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
-                                if(m){ 
-                                    img = m.imageUrl || "/alerticon.gif"; 
-                                    sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
-                                }
-                            }
+            let img = "/alerticon.gif", sound = "/coinsound.mp3";
+            let useImage = true;
+            try {
+                const res = await fetch('/api/reactions/${apiKeyVal}');
+                const data = await res.json();
+                if(data.success) {
+                    if(data.defaultAlert && data.defaultAlert.useImage === false) {
+                        useImage = false;
+                    }
+                    if(data.reactions && data.reactions.length > 0) {
+                        const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
+                        if(m){ 
+                            img = m.imageUrl || "/alerticon.gif"; 
+                            sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
                         }
-                    } catch(e) {}
-                    
-                    // 첫 줄: 후원자 및 금액 정보
-                    const line1Text = d.donor + "님 " + d.amount + "원 후원!";
-                    // 둘째 줄: 메시지 (서버에서 넘어온 메시지 원본 그대로 전달)
-                    const line2Text = d.message || "";
-                    
-                    showAlert(line1Text, line2Text, useImage ? img : "", sound);
-                }
-        
-                function showAlert(l1Text, l2Text, imgUrl, soundUrl) {
-                    const c = document.getElementById('alert-container');
-                    const img = document.getElementById('alert-image');
-                    const l1 = document.getElementById('alert-line1');
-                    const l2 = document.getElementById('alert-line2');
-                    const s = document.getElementById('alert-sound');
-        
-                    if(hideTimeout) clearTimeout(hideTimeout);
-                    s.pause(); s.currentTime = 0;
-                    
-                    // 각각 독립된 변수로 받아 텍스트를 대입하므로 글자가 잘리지 않습니다.
-                    l1.innerText = l1Text; 
-                    l2.innerText = l2Text; 
-                    
-                    if(imgUrl && imgUrl.trim() !== "") {
-                        img.src = imgUrl;
-                        img.style.display = 'block';
-                    } else {
-                        img.src = "";
-                        img.style.display = 'none';
                     }
-        
-                    c.style.display = 'flex';
-                    
-                    if(soundUrl && soundUrl.trim() !== "") {
-                        s.src = soundUrl; 
-                        s.load();
-                        s.play().catch(e => {});
-                    }
-        
-                    hideTimeout = setTimeout(() => { 
-                        c.style.display = 'none'; 
-                    }, 7000);
                 }
+            } catch(e) {}
+            
+            const line1Text = d.donor + "님 " + d.amount + "원 후원!";
+            const line2Text = d.message || "";
+            showAlert(line1Text, line2Text, useImage ? img : "", sound);
+        }
+
+        function showAlert(l1Text, l2Text, imgUrl, soundUrl) {
+            const c = document.getElementById('alert-container');
+            const img = document.getElementById('alert-image');
+            const l1 = document.getElementById('alert-line1');
+            const l2 = document.getElementById('alert-line2');
+            const s = document.getElementById('alert-sound');
+
+            if(hideTimeout) clearTimeout(hideTimeout);
+            s.pause(); s.currentTime = 0;
+            
+            l1.innerText = l1Text; 
+            l2.innerText = l2Text; 
+            
+            if(imgUrl && imgUrl.trim() !== "") {
+                img.src = imgUrl;
+                img.style.display = 'block';
+            } else {
+                img.src = "";
+                img.style.display = 'none';
+            }
+
+            c.style.display = 'flex';
+            
+            if(soundUrl && soundUrl.trim() !== "") {
+                s.src = soundUrl; 
+                s.load();
+                s.play().catch(e => {});
+            }
+
+            hideTimeout = setTimeout(() => { 
+                c.style.display = 'none'; 
+            }, 7000);
+        }
+
+        document.body.addEventListener('click', () => {
+            const s = document.getElementById('alert-sound');
+            s.play().catch(()=>{});
+        });
+
+        setInterval(check, 1000);
+        </script></body></html>`);
+});
+
 // --- 서버 실행 ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
