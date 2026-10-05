@@ -227,4 +227,256 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
-    if (!apiKey || !message) return res.status(400).json
+    if (!apiKey || !message) return res.status(400).json({ success: false });
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(401).json({ success: false });
+
+        let amount = 0;
+        const match = message.match(/([0-9,]+)\s*원/);
+        if (match) amount = parseInt(match[1].replace(/,/g, ''), 10) || 0;
+
+        let nickname = message.includes("님") ? message.split("님")[0].trim() : "익명";
+
+        const donation = new Donation({ streamerId: user._id, nickname, amount, message, datetime: getKSTDateTime(), dateKey: getKSTDateKey() });
+        await donation.save();
+        res.status(200).json({ success: true, data: donation });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 알림 표시 시간 7초(7000ms)로 수정된 오버레이 라우트
+app.get('/overlay/:apiKey', async (req, res) => {
+    const apiKeyVal = req.params.apiKey;
+    const user = await User.findOne({ apiKey: apiKeyVal });
+    if (!user) return res.status(404).send('Not found');
+    
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{height:35vh;max-width:80vw;object-fit:contain;margin-bottom:1.5vh;display:block;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
+        let lastTime = null;
+        let hideTimeout = null;
+        let isInitialized = false;
+
+        async function check() {
+            try {
+                const res = await fetch('/api/logs/${apiKeyVal}');
+                const logs = await res.json();
+                if(logs && logs.length > 0) {
+                    const latest = logs[0];
+                    if(!isInitialized) {
+                        lastTime = latest._id;
+                        isInitialized = true;
+                        return;
+                    }
+                    if(latest._id !== lastTime) {
+                        lastTime = latest._id;
+                        trigger(latest);
+                    }
+                }
+            }catch(e){}
+        }
+
+        async function trigger(d) {
+            let img = "/alerticon.gif", sound = "/coinsound.mp3";
+            let useImage = true;
+            try {
+                const res = await fetch('/api/reactions/${apiKeyVal}');
+                const data = await res.json();
+                if(data.success) {
+                    if(data.defaultAlert && data.defaultAlert.useImage === false) {
+                        useImage = false;
+                    }
+                    if(data.reactions && data.reactions.length > 0) {
+                        const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
+                        if(m){ 
+                            img = m.imageUrl || "/alerticon.gif"; 
+                            sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
+                        }
+                    }
+                }
+            }catch(e){}
+            showAlert(d.message, useImage ? img : "", sound);
+        }
+
+        function showAlert(msg, imgUrl, soundUrl) {
+            const c = document.getElementById('alert-container');
+            const img = document.getElementById('alert-image');
+            const l1 = document.getElementById('alert-line1');
+            const l2 = document.getElementById('alert-line2');
+            const s = document.getElementById('alert-sound');
+
+            if(hideTimeout) clearTimeout(hideTimeout);
+            s.pause(); s.currentTime = 0;
+            
+            let t1 = msg, t2 = "";
+            if (msg.includes('\\\\n')) {
+                const parts = msg.split('\\\\n');
+                t1 = parts[0];
+                t2 = parts.slice(1).join(' ');
+            } else if (msg.includes('\\n')) {
+                const parts = msg.split('\\n');
+                t1 = parts[0];
+                t2 = parts.slice(1).join(' ');
+            } else if (msg.includes('\n')) {
+                const parts = msg.split('\n');
+                t1 = parts[0];
+                t2 = parts.slice(1).join(' ');
+            }
+            l1.innerText = t1; 
+            l2.innerText = t2; 
+            
+            if(imgUrl && imgUrl.trim() !== "") {
+                img.src = imgUrl;
+                img.style.display = 'block';
+            } else {
+                img.src = "";
+                img.style.display = 'none';
+            }
+
+            c.style.display = 'flex';
+            
+            if(soundUrl && soundUrl.trim() !== "") {
+                s.src = soundUrl; 
+                s.load();
+                s.play().catch(e => {});
+            }
+
+            // 알림 유지 시간을 7초(7000ms)로 변경
+            hideTimeout = setTimeout(() => { 
+                c.style.display = 'none'; 
+            }, 7000);
+        }
+
+        document.body.addEventListener('click', () => {
+            const s = document.getElementById('alert-sound');
+            s.play().catch(()=>{});
+        });
+
+        setInterval(check, 1000);
+        </script></body></html>`);
+});
+
+app.get('/manage/alert/:apiKey', async (req, res) => {
+    const user = await User.findOne({ apiKey: req.params.apiKey });
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리액션 관리</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:900px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.form-group{margin-bottom:15px;}.form-group label{display:block;font-weight:bold;margin-bottom:5px;}.form-group input[type="text"], .form-group input[type="number"], .form-group input[type="file"]{width:100%;padding:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;}.btn{padding:8px 12px;background:#3498db;color:white;text-decoration:none;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}.controls-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}.grid-container{display:grid;grid-template-columns:repeat(4, 1fr);gap:15px;}.reaction-card{background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;}.reaction-card img{width:100px;height:100px;object-fit:contain;background:#eee;border-radius:4px;margin-bottom:8px;}.reaction-card h4{margin:5px 0;font-size:15px;color:#333;word-break:break-all;}.reaction-card p{margin:0 0 10px 0;font-size:13px;color:#666;}.reaction-card button{width:100%;padding:6px;background:#e74c3c;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;margin-top:auto;}</style></head><body><div class="container"><h2>🎁 후원 리액션 관리</h2><p>OBS 주소:</p><div class="box">https://${req.get('host')}/overlay/${user.apiKey}</div><hr style="margin:20px 0;">
+
+    <h3>⚙ 기본 알림 설정</h3>
+    <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="useImage" ${user.defaultAlert && user.defaultAlert.useImage === false ? '' : 'checked'} style="width:auto;"> 
+            기본 알림 이미지(/alerticon.gif) 사용하기 (체크 해제 시 이미지 숨김)
+        </label>
+    </div>
+    <button type="button" onclick="saveSettings()" class="btn" style="background:#2ecc71;">설정 저장</button>
+
+    <hr style="margin:20px 0;"><h3>➕ 리액션 추가</h3><form id="form"><div class="form-group"><label>리액션명</label><input type="text" id="name" placeholder="예: 심쿵 리액션" required></div><div class="form-group"><label>금액 (원)</label><input type="number" id="amount" placeholder="예: 5000" required></div><div class="form-group"><label>이미지 파일</label><input type="file" id="imageFile" accept="image/*"></div><div class="form-group"><label>사운드 파일 (선택)</label><input type="file" id="soundFile" accept="audio/*"></div><button type="submit" class="btn">추가하기</button></form><hr style="margin:20px 0;"><div class="controls-bar"><h3>📋 목록</h3><div><select id="sortOrder" class="btn" style="background:#fff;color:#333;border:1px solid #ddd;padding:6px;" onchange="load()"><option value="desc">금액 높은순</option><option value="asc">금액 낮은순</option></select></div></div><div id="list" class="grid-container">불러오는 중...</div><br><br><a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">돌아가기</a></div><script>
+        let globalReactions = [];
+        async function load() {
+            const res = await fetch('/api/reactions/${req.params.apiKey}');
+            const data = await res.json();
+            
+            if(data.defaultAlert) {
+                document.getElementById('useImage').checked = data.defaultAlert.useImage;
+            }
+
+            const l = document.getElementById('list'); l.innerHTML = '';
+            if(!data.reactions || !data.reactions.length){ l.innerHTML = '<p style="grid-column: span 4; text-align:center; color:#777;">등록된 리액션이 없습니다.</p>'; return; }
+            
+            globalReactions = data.reactions;
+            const sortVal = document.getElementById('sortOrder').value;
+            globalReactions.sort((a, b) => sortVal === 'desc' ? b.amount - a.amount : a.amount - b.amount);
+
+            globalReactions.forEach(r => {
+                const card = document.createElement('div'); card.className = 'reaction-card';
+                card.innerHTML = '<img src="' + r.imageUrl + '"><h4>' + r.name + '</h4><p><b>' + r.amount.toLocaleString() + '원</b></p><button onclick="del(\\''+r._id+'\\')">삭제</button>';
+                l.appendChild(card);
+            });
+        }
+
+        async function saveSettings() {
+            const useImage = document.getElementById('useImage').checked;
+            const res = await fetch('/api/settings/${req.params.apiKey}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ useImage })
+            });
+            const r = await res.json();
+            if(r.success) {
+                alert('기본 설정이 저장되었습니다!');
+            } else {
+                alert('설정 저장 실패');
+            }
+        }
+
+        document.getElementById('form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('name', document.getElementById('name').value);
+            fd.append('amount', document.getElementById('amount').value);
+            const img = document.getElementById('imageFile').files[0]; if(img) fd.append('imageFile', img);
+            const snd = document.getElementById('soundFile').files[0]; if(snd) fd.append('soundFile', snd);
+            const res = await fetch('/api/reactions/${req.params.apiKey}', { method: 'POST', body: fd });
+            const r = await res.json();
+            if(r.success){ alert('추가 완료!'); document.getElementById('name').value=''; document.getElementById('amount').value=''; document.getElementById('imageFile').value=''; document.getElementById('soundFile').value=''; load(); } else { alert('실패'); }
+        });
+        async function del(id) {
+            if(!confirm('삭제하시겠습니까?')) return;
+            await fetch('/api/reactions/${req.params.apiKey}/' + id, { method: 'DELETE' });
+            load();
+        }
+        load();
+        </script></body></html>`);
+});
+
+app.get('/ranking-overlay/:apiKey', async (req, res) => {
+    const user = await User.findOne({ apiKey: req.params.apiKey });
+    if (!user) return res.status(404).send('Not found');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{background:transparent;margin:0;font-family:sans-serif;}.board{background:rgba(0,0,0,0.75);color:#fff;padding:20px;border-radius:10px;min-width:250px;}h3{margin:0 0 15px 0;color:#f1c40f;text-align:center;}.item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.2);font-size:15px;}</style></head><body><div class="board"><h3>🏆 실시간 랭킹</h3><div id="content">불러오는 중...</div></div><script>
+        async function loadRank() {
+            try{
+                const res = await fetch('/api/ranking/${req.params.apiKey}');
+                const data = await res.json();
+                const c = document.getElementById('content'); c.innerHTML = '';
+                if(!data.length){ c.innerHTML = '<div style="text-align:center;color:#aaa;">내역 없음</div>'; return; }
+                data.forEach((r, i) => {
+                    const d = document.createElement('div'); d.className = 'item';
+                    d.innerHTML = '<span><b>' + (i + 1) + '. ' + r._id + '</b></span><span>' + r.totalAmount.toLocaleString() + '원</span>';
+                    c.appendChild(d);
+                });
+            }catch(e){}
+        }
+        loadRank(); setInterval(loadRank, 5000);
+        </script></body></html>`);
+});
+
+app.get('/api/logs/:apiKey', async, async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const todayKey = getKSTDateKey();
+        const donations = await Donation.find({ streamerId: user._id, dateKey: todayKey }, { nickname: 1, amount: 1, timestamp: 1 }).sort({ timestamp: 1 });
+        
+        const map = {};
+        donations.forEach(d => {
+            let name = d.nickname.trim();
+            if (name.endsWith("님")) name = name.slice(0, -1).trim();
+            if (!map[name]) map[name] = { totalAmount: 0, count: 0, firstTime: d.timestamp };
+            map[name].totalAmount += d.amount;
+            map[name].count += 1;
+        });
+
+        const list = Object.keys(map).map(name => ({ _id: name, totalAmount: map[name].totalAmount, count: map[name].count, firstTime: map[name].firstTime }));
+        list.sort((a, b) => b.totalAmount !== a.totalAmount ? b.totalAmount - a.totalAmount : new Date(a.firstTime) - new Date(b.firstTime));
+        res.json(list.slice(0, 5));
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
