@@ -248,7 +248,7 @@ app.post('/api/donate/:apiKey', async (req, res) => {
             apiKey,
             donor,
             amount: Number(amount),
-            message: message || ''
+            message: message ? String(message).trim() : ''
         });
 
         res.json({ success: true, donation });
@@ -289,7 +289,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
         const ranking = await Donation.aggregate([
             { $match: { apiKey: req.params.apiKey } },
             { $group: { _id: '$donor', totalAmount: { $sum: '$amount' } } },
-            { $sort: { totalAmount: -1 } },            {$limit: 10 }
+            { $sort: { totalAmount: -1 } },             {$limit: 10 }
         ]);
         res.json(ranking);
     } catch (e) {
@@ -310,8 +310,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
         async function check() {
             try {
-                const res = await fetch('/api/logs/${apiKeyVal}');
-                const logs = await res.json();
+                const response = await fetch('/api/logs/' + '${apiKeyVal}');
+                const logs = await response.json();
                 if(logs) {
                     const currentCount = logs.length;
                     
@@ -335,8 +335,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
             let img = "/alerticon.gif", sound = "/coinsound.mp3";
             let useImage = true;
             try {
-                const res = await fetch('/api/reactions/${apiKeyVal}');
-                const data = await res.json();
+                const response = await fetch('/api/reactions/' + '${apiKeyVal}');
+                const data = await response.json();
                 if(data.success) {
                     if(data.defaultAlert && data.defaultAlert.useImage === false) {
                         useImage = false;
@@ -351,8 +351,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
             } catch(e) {}
             
-            const line1Text = d.donor + "님 " + d.amount + "원 후원!";
-            const line2Text = d.message || "";
+            const line1Text = String(d.donor || '') + "님 " + String(d.amount || 0) + "원 후원!";
+            const line2Text = String(d.message || '');
             showAlert(line1Text, line2Text, useImage ? img : "", sound);
         }
 
@@ -396,7 +396,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
         });
 
         setInterval(check, 1000);
-        </script></body></html>`);
+    </script></body></html>`);
 });
 
 // --- 서버 실행 ---
