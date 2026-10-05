@@ -19,17 +19,22 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 2. Mongoose 스키마 정의 (스트리머 계정, 후원 내역, 알림 설정 포함)
+// 2. Mongoose 스키마 정의 (스트리머 계정, 후원 내역, 금액별 커스텀 리액션 포함)
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
     createdAt: { type: Date, default: Date.now },
+    // 🎁 특정 금액별 커스텀 후원 리액션 규칙 목록
+    reactions: [{
+        amount: { type: Number, required: true }, // 조건 금액 (예: 10000원)
+        imageUrl: { type: String, required: true }, // 출력할 이미지 주소/파일명
+        soundUrl: { type: String, default: 'coinsound.mp3' } // 재생할 사운드 파일명
+    }],
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
-        fontSize: { type: String, default: '7.5vh' },
-        bgColor: { type: String, default: 'transparent' }
+        fontSize: { type: String, default: '7.5vh' }
     }
 });
 
@@ -64,34 +69,48 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// 🔔 알림 설정 불러오기 API
-app.get('/api/settings/alert/:apiKey', async (req, res) => {
+// 🎁 리액션 설정 조회 API
+app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
-        res.json({ success: true, settings: user.alertSettings || {} });
+        res.json({ success: true, reactions: user.reactions || [] });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
 
-// 🔔 알림 설정 저장하기 API
-app.post('/api/settings/alert/:apiKey', async (req, res) => {
+// 🎁 리액션 규칙 추가 API
+app.post('/api/reactions/:apiKey', async (req, res) => {
     try {
-        const { soundType, duration, fontSize } = req.body;
+        const { amount, imageUrl, soundUrl } = req.body;
+        if (!amount || !imageUrl) {
+            return res.status(400).json({ success: false, error: '금액과 이미지는 필수입니다.' });
+        }
+
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
-            { 
-                $set: { 
-                    'alertSettings.soundType': soundType,
-                    'alertSettings.duration': Number(duration),
-                    'alertSettings.fontSize': fontSize
-                } 
-            },
+            { $push: { reactions: { amount: Number(amount), imageUrl, soundUrl: soundUrl || 'coinsound.mp3' } } },
             { new: true }
         );
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
-        res.json({ success: true, message: '설정이 저장되었습니다.' });
+        res.json({ success: true, reactions: user.reactions });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+// 🎁 리액션 규칙 삭제 API
+app.delete('/api/reactions/:apiKey/:reactionId', async (req, res) => {
+    try {
+        const { apiKey, reactionId } = req.params;
+        const user = await User.findOneAndUpdate(
+            { apiKey },
+            { $pull: { reactions: { _id: reactionId } } },
+            { new: true }
+        );
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        res.json({ success: true, reactions: user.reactions });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Server Error' });
     }
@@ -217,7 +236,7 @@ app.post('/api/login', async (req, res) => {
                     <p style="margin-top:20px;"><b>내 알림창 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
                     <div class="btn-group">
-                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙ 알림창 세부 설정/관리 사이트 가기</a>
+                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙ 후원 리액션 관리 사이트 가기</a>
                     </div>
 
                     <p style="margin-top:20px;"><b>내 방송용 랭킹판 오버레이 주소:</b></p>
@@ -242,7 +261,7 @@ app.post('/api/login', async (req, res) => {
                 <script>
                     async function fetchDonationLogs() {
                         try {
-                            const response = await fetch('/api/logs/` + user.apiKey + `');
+                            const response = await fetch('/api/logs/' + '${apiKey}');
                             const logs = await response.json();
                             const logContainer = document.getElementById('donationLogList');
                             logContainer.innerHTML = '';
@@ -261,7 +280,7 @@ app.post('/api/login', async (req, res) => {
 
                     async function fetchRanking() {
                         try {
-                            const response = await fetch('/api/ranking/` + user.apiKey + `');
+                            const response = await fetch('/api/ranking/' + '${apiKey}');
                             const ranking = await response.json();
                             const rankContainer = document.getElementById('rankingList');
                             rankContainer.innerHTML = '';
@@ -335,7 +354,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면
+// 7. 스트리머별 OBS 알림 오버레이 화면 (금액별 커스텀 이미지/사운드 적용)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -396,18 +415,47 @@ app.get('/overlay/:apiKey', async (req, res) => {
                             const latest = logs[0];
                             if (latest.datetime !== lastCheckedTime) {
                                 lastCheckedTime = latest.datetime;
-                                showAlert(latest.message);
+                                triggerAlert(latest);
                             }
                         }
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(message) {
+                async function triggerAlert(donation) {
+                    // 기본값 설정
+                    let imageUrl = "/alerticon.gif";
+                    let soundUrl = "/coinsound.mp3";
+
+                    // 스트리머가 등록한 리액션 규칙 불러와서 금액 매칭 확인
+                    try {
+                        const res = await fetch('/api/reactions/' + '${apiKey}');
+                        const data = await res.json();
+                        if (data.success && data.reactions && data.reactions.length > 0) {
+                            // 금액이 높은 순으로 정렬 후, 현재 후원 금액 이상의 조건 중 가장 먼저 만족하는 것 선택
+                            const sortedReactions = data.reactions.sort((a, b) => b.amount - a.amount);
+                            const matched = sortedReactions.find(r => donation.amount >= r.amount);
+                            if (matched) {
+                                imageUrl = matched.imageUrl;
+                                soundUrl = matched.soundUrl.startsWith('/') ? matched.soundUrl : '/' + matched.soundUrl;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("리액션 규칙 로드 실패:", e);
+                    }
+
+                    showAlert(donation.message, imageUrl, soundUrl);
+                }
+
+                function showAlert(message, imageUrl, soundUrl) {
                     const container = document.getElementById('alert-container');
+                    const img = document.getElementById('alert-image');
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
                             
+                    img.src = imageUrl;
+                    sound.src = soundUrl;
+
                     let firstText = message;
                     let secondText = "";
                     
@@ -436,7 +484,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (설정 저장 기능 탑재)
+// 7-1. 후원 리액션 관리 페이지 (금액별 이미지 및 노래 추가/삭제 사이트)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -447,87 +495,114 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>알림창 관리 - ` + user.username + `</title>
+            <title>후원 리액션 관리 - ` + user.username + `</title>
             <style>
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .form-group { margin-bottom: 20px; }
+                .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-                .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-                .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-                .btn:hover { background: #2980b9; }
-                .btn-secondary { background: #7f8c8d; }
+                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+                .btn-danger { background: #e74c3c; }
+                .btn:hover { opacity: 0.9; }
+                .reaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 8px; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h2>🔔 알림창(후원 리액션) 설정 및 관리</h2>
+                <h2>🎁 후원 리액션 관리 (금액별 이미지/노래 설정)</h2>
                 <p>OBS 브라우저 소스 주소:</p>
                 <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
                 
-                <h3>⚙️ 후원 리액션 세부 설정</h3>
-                <form id="alertSettingsForm">
+                <h3>➕ 새로운 금액별 리액션 추가</h3>
+                <form id="reactionForm">
                     <div class="form-group">
-                        <label>알림 효과음 파일</label>
-                        <select name="soundType" id="soundType">
-                            <option value="coinsound.mp3">기본 코인 효과음 (coinsound.mp3)</option>
-                        </select>
+                        <label>조건 금액 (원)</label>
+                        <input type="number" id="amount" placeholder="예: 10000" required>
                     </div>
                     <div class="form-group">
-                        <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                        <label>출력할 이미지 주소 (URL 또는 파일명)</label>
+                        <input type="text" id="imageUrl" placeholder="예: /images/special_alert.gif 또는 외부 링크" required>
                     </div>
                     <div class="form-group">
-                        <label>메시지 폰트 크기 (예: 7.5vh, 40px)</label>
-                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                        <label>재생할 효과음 파일명</label>
+                        <input type="text" id="soundUrl" value="coinsound.mp3" required>
                     </div>
-                    <button type="submit" class="btn">설정 저장하기</button>
+                    <button type="submit" class="btn">리액션 규칙 추가하기</button>
                 </form>
 
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <h3>📋 등록된 리액션 목록</h3>
+                <div id="reactionList">불러오는 중...</div>
+
                 <br>
-                <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
             </div>
 
             <script>
-                async function loadSettings() {
+                async function loadReactions() {
                     try {
-                        const res = await fetch('/api/settings/alert/' + '${apiKey}');
+                        const res = await fetch('/api/reactions/' + '${apiKey}');
                         const data = await res.json();
-                        if (data.success && data.settings) {
-                            if (data.settings.soundType) document.getElementById('soundType').value = data.settings.soundType;
-                            if (data.settings.duration) document.getElementById('duration').value = data.settings.duration;
-                            if (data.settings.fontSize) document.getElementById('fontSize').value = data.settings.fontSize;
+                        const listDiv = document.getElementById('reactionList');
+                        listDiv.innerHTML = '';
+                        
+                        if (!data.reactions || data.reactions.length === 0) {
+                            listDiv.innerHTML = '<p style="color:#666;">등록된 커스텀 리액션이 없습니다. (기본 알림 작동)</p>';
+                            return;
                         }
+
+                        data.reactions.forEach(r => {
+                            const div = document.createElement('div');
+                            div.className = 'reaction-item';
+                            div.innerHTML = \`
+                                <div>
+                                    <b>\${r.amount.toLocaleString()}원 이상</b><br>
+                                    <small style="color:#555;">이미지: \${r.imageUrl} | 사운드: \${r.soundUrl}</small>
+                                </div>
+                                <button class="btn btn-danger" onclick="deleteReaction('\${r._id}')">삭제</button>
+                            \`;
+                            listDiv.appendChild(div);
+                        });
                     } catch (e) { console.error(e); }
                 }
 
-                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
+                document.getElementById('reactionForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const soundType = document.getElementById('soundType').value;
-                    const duration = document.getElementById('duration').value;
-                    const fontSize = document.getElementById('fontSize').value;
+                    const amount = document.getElementById('amount').value;
+                    const imageUrl = document.getElementById('imageUrl').value;
+                    const soundUrl = document.getElementById('soundUrl').value;
 
-                    try {
-                        const res = await fetch('/api/settings/alert/' + '${apiKey}', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ soundType, duration, fontSize })
-                        });
-                        const result = await res.json();
-                        if (result.success) {
-                            alert('설정이 성공적으로 저장되었습니다!');
-                        } else {
-                            alert('저장 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        alert('서버 통신 오류가 발생했습니다.');
+                    const res = await fetch('/api/reactions/' + '${apiKey}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount, imageUrl, soundUrl })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert('리액션이 추가되었습니다!');
+                        document.getElementById('amount').value = '';
+                        document.getElementById('imageUrl').value = '';
+                        loadReactions();
+                    } else {
+                        alert('추가 실패: ' + result.error);
                     }
                 });
 
-                loadSettings();
+                async function deleteReaction(id) {
+                    if (!confirm('정말 이 리액션 규칙을 삭제하시겠습니까?')) return;
+                    const res = await fetch('/api/reactions/' + '${apiKey}/' + id, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (result.success) {
+                        loadReactions();
+                    }
+                }
+
+                loadReactions();
             </script>
         </body>
         </html>
