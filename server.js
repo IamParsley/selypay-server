@@ -12,7 +12,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// 파일을 디스크에 저장하지 않고 메모리(Buffer)로 읽어들여 MongoDB에 저장합니다.
 const upload = multer({ storage: multer.memoryStorage() });
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -55,7 +54,6 @@ function getKSTDateKey() {
     return new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
 }
 
-// 각 API Key 및 리액션별 파일을 DB에서 꺼내서 스트리밍해주는 엔드포인트
 app.get('/api/media/:apiKey/:reactionId/:type', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -81,7 +79,6 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Not found' });
         
-        // 클라이언트가 사용할 수 있도록 DB에 저장된 바이너리를 미디어 주소로 매핑
         const formattedReactions = (user.reactions || []).map(r => ({
             _id: r._id,
             amount: r.amount,
@@ -115,7 +112,14 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
 
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
-            { $push: { reactions: { _id: reactionId, amount: Number(amount), imageBuffer, imageType, soundBuffer, soundType } } },
+            { $push: { reactions: { 
+                _id: reactionId, 
+                amount: Number(amount), 
+                imageBuffer, 
+                imageType, 
+                soundBuffer, 
+                soundType
+            } } },
             { new: true }
         );
         res.json({ success: true, reactions: user.reactions });
@@ -212,7 +216,7 @@ app.post('/api/notification', async (req, res) => {
 app.get('/overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey: req.params.apiKey });
     if (!user) return res.status(404).send('Not found');
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{max-height:35vh;margin-bottom:1.5vh;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{width:100%;height:100%;margin:0;background:transparent!important;font-family:sans-serif;overflow:hidden;}#alert-container{width:100vw;height:100vh;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;}#alert-image{width:300px;height:300px;object-fit:cover;margin-bottom:1.5vh;}#alert-line1,#alert-line2{color:#fff;font-size:7vh;font-weight:800;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;width:90vw;word-break:break-word;}</style></head><body><div id="alert-container"><img id="alert-image" src="/alerticon.gif"><div id="alert-line1"></div><div id="alert-line2"></div></div><audio id="alert-sound" crossorigin="anonymous"></audio><script>
         let lastTime="", hideTimeout=null;
         async function check() {
             try {
