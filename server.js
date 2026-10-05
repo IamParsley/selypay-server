@@ -239,14 +239,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
             }catch(e){}
         }
-        async function trigger(d) {
-            let img = "/alerticon.gif", sound = "";
+            async function trigger(d) {
+            let img = "/alerticon.gif", sound = "/coinsound.mp3"; // 기본 돈소리 지정
             try {
                 const res = await fetch('/api/reactions/${req.params.apiKey}');
                 const data = await res.json();
                 if(data.success && data.reactions) {
                     const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
-                    if(m){ img = m.imageUrl; sound = m.soundUrl || ""; }
+                    if(m){ 
+                        img = m.imageUrl; 
+                        // 리액션에 사운드가 있으면 그 사운드를, 없으면 기본 돈소리를 사용
+                        sound = m.soundUrl && m.soundUrl.trim() !== "" ? m.soundUrl : "/coinsound.mp3"; 
+                    }
                 }
             }catch(e){}
             showAlert(d.message, img, sound);
