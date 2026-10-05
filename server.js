@@ -308,4 +308,361 @@ app.post('/api/login', async (req, res) => {
                 <script>
                     async function fetchDonationLogs() {
                         try {
-                            const response = await fetch('/api/logs/' +
+                            const response = await fetch('/api/logs/' + '${user.apiKey}');
+                            const logs = await response.json();
+                            const logContainer = document.getElementById('donationLogList');
+                            logContainer.innerHTML = '';
+                            if (!logs || logs.length === 0) {
+                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+                            logs.slice(0, 20).forEach(log => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
+                                logContainer.appendChild(div);
+                            });
+                        } catch (e) { console.error(e); }
+                    }
+
+                    async function fetchRanking() {
+                        try {
+                            const response = await fetch('/api/ranking/' + '${user.apiKey}');
+                            const ranking = await response.json();
+                            const rankContainer = document.getElementById('rankingList');
+                            rankContainer.innerHTML = '';
+                            if (!ranking || ranking.length === 0) {
+                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+                            ranking.forEach((item, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalAmount.toLocaleString() + '원 (' + item.count + '회)';
+                                rankContainer.appendChild(div);
+                            });
+                        } catch (e) { console.error(e); }
+                    }
+
+                    fetchDonationLogs();
+                    fetchRanking();
+                    setInterval(fetchDonationLogs, 3000);
+                    setInterval(fetchRanking, 5000);
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Server Error');
+    }
+});
+
+// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
+app.post('/api/notification', async (req, res) => {
+    const { apiKey, message } = req.body;
+    
+    if (!apiKey || !message) {
+        return res.status(400).json({ success: false, error: 'API Key or Message is missing' });
+    }
+
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Invalid API Key' });
+        }
+
+        let amount = 0;
+        const amountMatch = message.match(/([0-9,]+)\s*원/);
+        if (amountMatch) {
+            const parsed = parseInt(amountMatch[1].replace(/,/g, ''), 10);
+            if (!isNaN(parsed)) amount = parsed;
+        }
+
+        let nickname = "익명";
+        if (message.includes("님")) {
+            nickname = message.split("님")[0].trim();
+        }
+
+        const donationData = new Donation({
+            streamerId: user._id,
+            nickname,
+            amount, 
+            message, 
+            datetime: getKSTDateTime(),
+            dateKey: getKSTDateKey()
+        });
+
+        await donationData.save();
+        console.log(`[${user.username}] 후원 수신 성공:`, donationData);
+        res.status(200).json({ success: true, data: donationData });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+// 7. 스트리머별 OBS 알림 오버레이 화면 (노래 길이만큼 알림창 유지 기능 적용)
+app.get('/overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Overlay</title>
+            <style>
+                html, body {
+                    width: 100%; height: 100%; margin: 0; padding: 0;
+                    background-color: transparent !important;
+                    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+                    overflow: hidden;
+                }
+                #alert-container {
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: center; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    background: transparent !important;
+                }
+                #alert-image { 
+                    max-height: 35vh; width: auto; max-width: 80%;
+                    object-fit: contain; display: block; margin-bottom: 1.5vh;
+                }
+                #alert-line1 {
+                    color: #ffffff; font-size: 7.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
+                }
+                #alert-line2 {
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: break-word; line-height: 1.2;
+                }
+            </style>
+        </head>
+        <body>
+            <div id="alert-container">
+                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
+            </div>
+
+            <audio id="alert-sound" crossorigin="anonymous"></audio>
+
+            <script>
+                let lastCheckedTime = "";
+                let hideTimeout = null;
+                
+                async function checkNewDonation() {
+                    try {
+                        const response = await fetch('/api/logs/' + '${apiKey}');
+                        const logs = await response.json();
+                        if (logs.length > 0) {
+                            const latest = logs[0];
+                            if (latest.datetime !== lastCheckedTime) {
+                                lastCheckedTime = latest.datetime;
+                                triggerAlert(latest);
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                }
+
+                async function triggerAlert(donation) {
+                    let imageUrl = "/alerticon.gif";
+                    let soundUrl = "/coinsound.mp3";
+
+                    try {
+                        const res = await fetch('/api/reactions/' + '${apiKey}');
+                        const data = await res.json();
+                        if (data.success && data.reactions && data.reactions.length > 0) {
+                            const sortedReactions = data.reactions.sort((a, b) => b.amount - a.amount);
+                            const matched = sortedReactions.find(r => donation.amount >= r.amount);
+                            if (matched) {
+                                imageUrl = matched.imageUrl;
+                                soundUrl = matched.soundUrl;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("리액션 규칙 로드 실패:", e);
+                    }
+
+                    showAlert(donation.message, imageUrl, soundUrl);
+                }
+
+                function showAlert(message, imageUrl, soundUrl) {
+                    const container = document.getElementById('alert-container');
+                    const img = document.getElementById('alert-image');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    const sound = document.getElementById('alert-sound');
+                            
+                    // 기존 타이머나 재생 중인 사운드 초기화
+                    if (hideTimeout) clearTimeout(hideTimeout);
+                    sound.pause();
+
+                    img.src = imageUrl;
+                    sound.src = soundUrl;
+                    sound.load(); // 외부 URL 사운드 로딩 재적용
+
+                    let firstText = message;
+                    let secondText = "";
+                    
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 2);
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
+
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+
+                    let played = false;
+                    const playPromise = sound.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            played = true;
+                        }).catch(e => {
+                            console.log("사운드 자동 재생 차단 또는 링크 로드 실패:", e);
+                        });
+                    }
+
+                    // 사운드 길이에 맞춰 알림창 유지 (사운드가 정상 로드되면 duration 활용, 아니면 기본 5초)
+                    const checkDurationAndHide = () => {
+                        let durationMs = 5000; // 기본 5초
+                        if (!isNaN(sound.duration) && sound.duration > 0) {
+                            durationMs = sound.duration * 1000;
+                        }
+                        
+                        hideTimeout = setTimeout(() => {
+                            container.style.display = 'none';
+                        }, durationMs);
+                    };
+
+                    // 메타데이터가 로드되면 정확한 길이 계산
+                    sound.onloadedmetadata = () => {
+                        checkDurationAndHide();
+                    };
+
+                    // 만약 이미 메타데이터가 로드되어 있는 경우를 대비한 예외 처리
+                    setTimeout(() => {
+                        if (container.style.display === 'flex' && (!hideTimeout || isNaN(sound.duration))) {
+                            checkDurationAndHide();
+                        }
+                    }, 500);
+                }
+
+                setInterval(checkNewDonation, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// 7-1. 후원 리액션 관리 페이지
+app.get('/manage/alert/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>후원 리액션 관리 - ` + user.username + `</title>
+            <style>
+                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                .form-group { margin-bottom: 15px; }
+                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .tab-buttons { display: flex; gap: 10px; margin-bottom: 8px; }
+                .tab-btn { padding: 5px 10px; background: #ddd; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+                .tab-btn.active { background: #3498db; color: white; }
+                .tab-content { display: none; }
+                .tab-content.active { display: block; }
+                .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+                .btn-danger { background: #e74c3c; }
+                .btn:hover { opacity: 0.9; }
+                .reaction-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 8px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🎁 후원 리액션 관리 (금액별 이미지/노래 설정)</h2>
+                <p>OBS 브라우저 소스 주소:</p>
+                <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+                
+                <h3>➕ 새로운 금액별 리액션 추가</h3>
+                <form id="reactionForm">
+                    <div class="form-group">
+                        <label>조건 금액 (원)</label>
+                        <input type="number" id="amount" placeholder="예: 10000" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>출력할 이미지</label>
+                        <div class="tab-buttons">
+                            <button type="button" class="tab-btn active" onclick="switchTab('image', 'file')">내 컴퓨터 파일 선택</button>
+                            <button type="button" class="tab-btn" onclick="switchTab('image', 'link')">인터넷 주소(URL) 입력</button>
+                        </div>
+                        <div id="image-file-tab" class="tab-content active">
+                            <input type="file" id="imageFile" accept="image/*">
+                        </div>
+                        <div id="image-link-tab" class="tab-content">
+                            <input type="text" id="imageUrlText" placeholder="https://example.com/image.gif">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>재생할 사운드/노래 (선택사항)</label>
+                        <div class="tab-buttons">
+                            <button type="button" class="tab-btn active" onclick="switchTab('sound', 'file')">내 컴퓨터 파일 선택</button>
+                            <button type="button" class="tab-btn" onclick="switchTab('sound', 'link')">인터넷 주소(URL) 입력</button>
+                        </div>
+                        <div id="sound-file-tab" class="tab-content active">
+                            <input type="file" id="soundFile" accept="audio/*">
+                        </div>
+                        <div id="sound-link-tab" class="tab-content">
+                            <input type="text" id="soundUrlText" placeholder="https://example.com/sound.mp3">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn">리액션 규칙 추가하기</button>
+                </form>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <h3>📋 등록된 리액션 목록</h3>
+                <div id="reactionList">불러오는 중...</div>
+
+                <br>
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+            </div>
+
+            <script>
+                function switchTab(type, mode) {
+                    const fileTab = document.getElementById(type + '-file-tab');
+                    const linkTab = document.getElementById(type + '-link-tab');
+                    const buttons = fileTab.parentElement.querySelectorAll('.tab-btn');
+                    
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    
+                    if (mode === 'file') {
+                        fileTab.classList.add('active');
+                        linkTab.classList.remove('active');
+                        buttons[0].classList.add('active');
+                        document.getElementById(type + 'UrlText').value = ''; 
+                    } else {
+                        linkTab.classList.add('active');
+                        fileTab.classList.remove('active');
+                        buttons[1].classList.add('active');
+                        document.getElementById(type + 'File
