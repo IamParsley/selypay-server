@@ -199,10 +199,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 const data = await res.json();
                 if(data.success && data.reactions) {
                     const m = data.reactions.sort((a,b)=>b.amount-a.amount).find(r=>d.amount>=r.amount);
-                    if(m){ 
-                        img = m.imageUrl; 
-                        sound = m.soundUrl || ""; 
-                    }
+                    if(m){ img = m.imageUrl; sound = m.soundUrl || ""; }
                 }
             }catch(e){}
             showAlert(d.message, img, sound);
@@ -210,19 +207,12 @@ app.get('/overlay/:apiKey', async (req, res) => {
         function showAlert(msg, imgUrl, soundUrl) {
             const c = document.getElementById('alert-container'), img = document.getElementById('alert-image'), l1 = document.getElementById('alert-line1'), l2 = document.getElementById('alert-line2'), s = document.getElementById('alert-sound');
             if(hideTimeout) clearTimeout(hideTimeout);
-            s.pause();
-            s.currentTime = 0;
-            
+            s.pause(); s.currentTime = 0;
             let t1 = msg, t2 = "";
             if(msg.indexOf('\\n') !== -1){ t1 = msg.substring(0, msg.indexOf('\\n')); t2 = msg.substring(msg.indexOf('\\n') + 2); }
-            l1.innerText = t1; l2.innerText = t2; 
-            img.src = imgUrl; 
-            c.style.display = 'flex';
-
+            l1.innerText = t1; l2.innerText = t2; img.src = imgUrl; c.style.display = 'flex';
             if(soundUrl && soundUrl.trim() !== "") {
-                s.src = soundUrl;
-                s.load();
-                
+                s.src = soundUrl; s.load();
                 const handlePlay = () => {
                     s.play().then(() => {
                         let checkDuration = setInterval(() => {
@@ -237,13 +227,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                         hideTimeout = setTimeout(() => { c.style.display = 'none'; }, 10000);
                     });
                 };
-
                 s.oncanplaythrough = handlePlay;
                 s.onloadedmetadata = handlePlay;
-                
-                setTimeout(() => {
-                    if(c.style.display === 'flex' && (!hideTimeout || hideTimeout._called)) {
-                        handlePlay();
-                    }
-                }, 500);
+                setTimeout(() => { if(c.style.display === 'flex') handlePlay(); }, 500);
             } else {
+                s.src = "";
+                hideTimeout = setTimeout(() => { c.style.display = 'none'; }, 1
