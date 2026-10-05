@@ -19,19 +19,17 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 2. Mongoose 스키마 정의 (스트리머 계정 및 후원 내역)
+// 2. Mongoose 스키마 정의 (스트리머 계정, 후원 내역, 알림 설정 포함)
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
-    createdAt: { type: Date, default: Date.now }
-
-// 🔔 알림창 세부 설정 필드 추가
+    createdAt: { type: Date, default: Date.now },
     alertSettings: {
-        soundType: { type: String, default: 'coinsound.mp3' }, // 사운드 파일명
-        duration: { type: Number, default: 5 }, // 노출 지속 시간 (초)
-        fontSize: { type: String, default: '7.5vh' }, // 폰트 크기
-        bgColor: { type: String, default: 'transparent' } // 배경색 또는 투명도 관련
+        soundType: { type: String, default: 'coinsound.mp3' },
+        duration: { type: Number, default: 5 },
+        fontSize: { type: String, default: '7.5vh' },
+        bgColor: { type: String, default: 'transparent' }
     }
 });
 
@@ -39,9 +37,9 @@ const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
     amount: { type: Number, default: 0 },
-    message: { type: String, default: "" }, // 앱이 보내주는 전체 텍스트 그대로 저장
+    message: { type: String, default: "" },
     datetime: { type: String, required: true },
-    dateKey: { type: String, required: true }, // 오늘 날짜를 저장할 칸
+    dateKey: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -60,14 +58,13 @@ function getKSTDateTime() {
     });
 }
 
-// KST 기준 "YYYY-MM-DD" 반환 함수 (밤 12시가 지나면 날짜가 바뀜)
 function getKSTDateKey() {
     const now = new Date();
     const kstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     return kstDate.toISOString().split('T')[0];
 }
 
-// 알림 설정 불러오기 API
+// 🔔 알림 설정 불러오기 API
 app.get('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -78,7 +75,7 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 알림 설정 저장하기 API
+// 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const { soundType, duration, fontSize } = req.body;
@@ -137,7 +134,6 @@ app.get('/register', (req, res) => {
     `);
 });
 
-// 회원가입 처리 API
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -184,7 +180,6 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 로그인 처리 및 대시보드 리다이렉트 (이동 버튼 추가)
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -222,7 +217,7 @@ app.post('/api/login', async (req, res) => {
                     <p style="margin-top:20px;"><b>내 알림창 오버레이 주소:</b></p>
                     <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
                     <div class="btn-group">
-                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙️️ 알림창 세부 설정/관리 사이트 가기</a>
+                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙ 알림창 세부 설정/관리 사이트 가기</a>
                     </div>
 
                     <p style="margin-top:20px;"><b>내 방송용 랭킹판 오버레이 주소:</b></p>
@@ -231,13 +226,11 @@ app.post('/api/login', async (req, res) => {
                         <a href="/manage/ranking/` + user.apiKey + `" class="btn" target="_blank" style="background:#e67e22;">⚙️ 랭킹판 세부 설정/관리 사이트 가기</a>
                     </div>
 
-                    <!-- 🏆 오늘의 계좌후원 랭킹 상자 -->
                     <p style="margin-top:30px;"><b> 🏆 계좌후원 랭킹 (KST 자정 기준)</b></p>
                     <div class="log-box" id="rankingList">
                         <div class="log-item">랭킹을 불러오는 중...</div>
                     </div>
                     
-                    <!-- 📋 최근 후원 내역 상자 -->
                     <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
                     <div class="log-box" id="donationLogList">
                         <div class="log-item">후원 내역을 불러오는 중...</div>
@@ -342,7 +335,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (글자 잘림 방지 최적화 버전)
+// 7. 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -356,66 +349,30 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <title>SelyPay Overlay</title>
             <style>
                 html, body {
-                    width: 100%;
-                    height: 100%;
-                    margin: 0;
-                    padding: 0;
+                    width: 100%; height: 100%; margin: 0; padding: 0;
                     background-color: transparent !important;
                     font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
                     overflow: hidden;
                 }
-                
                 #alert-container {
-                    width: 100vw;
-                    height: 100vh;
-                    display: none; /* JS에서 flex로 전환 */
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    text-align: center;
-                    box-sizing: border-box;
-                    padding: 2vh 3vw;
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: center; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
                     background: transparent !important;
                 }
-                
-                /* 상단 이미지 */
                 #alert-image { 
-                    max-height: 35vh; /* 이미지가 너무 많이 차지해서 글자를 밀어내지 않도록 한계 설정 */
-                    width: auto;
-                    max-width: 80%;
-                    object-fit: contain;
-                    display: block; 
-                    margin-bottom: 1.5vh;
+                    max-height: 35vh; width: auto; max-width: 80%;
+                    object-fit: contain; display: block; margin-bottom: 1.5vh;
                 }
-
-                /* 첫째 줄: 글자 잘림 방지 적용 */
                 #alert-line1 {
-                    color: #ffffff; 
-                    font-size: 7.5vh; /* 잘리지 않는 최적의 최대 크기로 조정 */
-                    font-weight: 800; 
-                    text-shadow: 
-                        -3px -3px 0 #000, 3px -3px 0 #000, 
-                        -3px  3px 0 #000, 3px  3px 0 #000,
-                        4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; /* 폭 제한을 넓혀 글자가 짤리지 않게 확보 */
-                    word-break: keep-all; /* 단어 단위 자연스러운 줄바꿈 */
-                    overflow-wrap: break-word; /* 너무 긴 단어 발생 시 자동 줄바꿈 */
-                    line-height: 1.2;
-                    margin-bottom: 1vh;
+                    color: #ffffff; font-size: 7.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
-
-                /* 둘째 줄: 글자 잘림 방지 적용 */
                 #alert-line2 {
-                    color: #ffffff; 
-                    font-size: 6.5vh; 
-                    font-weight: 800; 
-                    text-shadow: 
-                        -3px -3px 0 #000, 3px -3px 0 #000, 
-                        -3px  3px 0 #000, 3px  3px 0 #000,
-                        4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw;
-                    word-break: break-word;
-                    line-height: 1.2;
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: break-word; line-height: 1.2;
                 }
             </style>
         </head>
@@ -450,14 +407,14 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     const sound = document.getElementById('alert-sound');
-                                        
+                            
                     let firstText = message;
                     let secondText = "";
                     
-                    const newlineIdx = message.indexOf('\\n');
+                    const newlineIdx = message.indexOf('\\\\n');
                     if (newlineIdx !== -1) {
                         firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 1);
+                        secondText = message.substring(newlineIdx + 2);
                     }
 
                     line1.innerText = firstText;
@@ -479,7 +436,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 신규 분리
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (설정 저장 기능 탑재)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -531,11 +488,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 </form>
 
                 <br>
-                <a href="/api/login" class="btn btn-secondary">대시보드로 돌아가기</a>
+                <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
             </div>
 
             <script>
-                // 기존 설정 불러오기
                 async function loadSettings() {
                     try {
                         const res = await fetch('/api/settings/alert/' + '${apiKey}');
@@ -548,7 +504,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                // 설정 저장 처리
                 document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const soundType = document.getElementById('soundType').value;
@@ -578,7 +533,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
         </html>
     `);
 });
-// 8. 방송용 실시간 랭킹 OBS 오버레이 화면 (백틱 충돌 방지 수정 완료)
+
+// 8. 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -614,7 +570,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
             <script>
                 async function fetchOverlayRanking() {
                     try {
-                        const response = await fetch('/api/ranking/` + apiKey + `');
+                        const response = await fetch('/api/ranking/' + '${apiKey}');
                         const ranking = await response.json();
                         const container = document.getElementById('ranking-content');
                         container.innerHTML = '';
@@ -625,7 +581,6 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                         ranking.forEach((item, index) => {
                             const div = document.createElement('div');
                             div.className = 'rank-item';
-                            // 백틱 충돌을 없애기 위해 문자열 더하기(+)로 변경
                             div.innerHTML = '<span class="name">' + (index + 1) + '. ' + item._id + '</span><span class="amount">' + item.totalAmount.toLocaleString() + '원</span>';
                             container.appendChild(div);
                         });
@@ -639,7 +594,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8-1. 랭킹판 전용 세부 관리 및 설정 페이지 신규 분리
+// 8-1. 랭킹판 전용 세부 관리 및 설정 페이지
 app.get('/manage/ranking/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -691,7 +646,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 10. 스트리머별 오늘의 후원 랭킹 API (KST 자정 기준, 닉네임 뒤 "님" 자동 제거 및 선착순 동점 정렬 적용)
+// 10. 스트리머별 오늘의 후원 랭킹 API
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
