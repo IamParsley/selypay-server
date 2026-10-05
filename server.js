@@ -93,7 +93,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
 
 app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount: 1 }, { name: 'soundFile', maxCount: 1 }]), async (req, res) => {
     try {
-        const { name, amount, imageUrlText } = req.body;
+        const { name, amount } = req.body;
         const files = req.files;
         if (!amount) return res.status(400).json({ success: false, error: 'Amount required' });
 
@@ -109,8 +109,6 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'imageFile', maxCount:
             soundBuffer = files['soundFile'][0].buffer;
             soundType = files['soundFile'][0].mimetype;
         }
-
-        if (!imageBuffer && !imageUrlText) return res.status(400).json({ success: false, error: 'Image required' });
 
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
