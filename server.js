@@ -289,7 +289,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
         const ranking = await Donation.aggregate([
             { $match: { apiKey: req.params.apiKey } },
             { $group: { _id: '$donor', totalAmount: { $sum: '$amount' } } },
-            { $sort: { totalAmount: -1 } },             {$limit: 10 }
+            { $sort: { totalAmount: -1 } },            {$limit: 10 }
         ]);
         res.json(ranking);
     } catch (e) {
@@ -350,10 +350,14 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     }
                 }
             } catch(e) {}
-            showAlert(d.donor + "님 " + d.amount + "원 후원!\\n" + d.message, useImage ? img : "", sound);
+            
+            // 첫 줄: 후원자 및 금액 정보, 둘째 줄: 메시지 (줄바꿈 문자를 분리)
+            const line1Text = d.donor + "님 " + d.amount + "원 후원!";
+            const line2Text = d.message || "";
+            showAlert(line1Text, line2Text, useImage ? img : "", sound);
         }
 
-        function showAlert(msg, imgUrl, soundUrl) {
+        function showAlert(l1Text, l2Text, imgUrl, soundUrl) {
             const c = document.getElementById('alert-container');
             const img = document.getElementById('alert-image');
             const l1 = document.getElementById('alert-line1');
@@ -363,19 +367,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
             if(hideTimeout) clearTimeout(hideTimeout);
             s.pause(); s.currentTime = 0;
             
-            let t1 = msg, t2 = "";
-            if (msg.includes('\\\\n')) {
-                const parts = msg.split('\\\\n');
-                t1 = parts[0]; t2 = parts.slice(1).join(' ');
-            } else if (msg.includes('\\n')) {
-                const parts = msg.split('\\n');
-                t1 = parts[0]; t2 = parts.slice(1).join(' ');
-            } else if (msg.includes('\n')) {
-                const parts = msg.split('\n');
-                t1 = parts[0]; t2 = parts.slice(1).join(' ');
-            }
-            l1.innerText = t1; 
-            l2.innerText = t2; 
+            l1.innerText = l1Text; 
+            l2.innerText = l2Text; 
             
             if(imgUrl && imgUrl.trim() !== "") {
                 img.src = imgUrl;
