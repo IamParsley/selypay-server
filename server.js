@@ -2,6 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +14,24 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
+// 업로드 폴더가 없으면 생성
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
+// Multer 파일 저장 설정 (컴퓨터에서 선택한 이미지/사운드 저장)
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
+
 // 1. MongoDB 연결
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -19,20 +40,19 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 2. Mongoose 스키마 정의 (스트리머 계정, 후원 내역, 금액별 커스텀 리액션 포함)
+// 2. Mongoose 스키마 정의
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
     createdAt: { type: Date, default: Date.now },
-    // 🎁 특정 금액별 커스텀 후원 리액션 규칙 목록
     reactions: [{
-        amount: { type: Number, required: true }, // 조건 금액 (예: 10000원)
-        imageUrl: { type: String, required: true }, // 출력할 이미지 주소/파일명
-        soundUrl: { type: String, default: 'coinsound.mp3' } // 재생할 사운드 파일명
+        amount: { type: Number, required: true },
+        imageUrl: { type: String, required: true },
+        soundUrl: { type: String, default: '/coinsound.mp3' }
     }],
     alertSettings: {
-        soundType: { type: String, default: 'coinsound.mp3' },
+        soundType: { type: String, default: '/coinsound.mp3' },
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' }
     }
@@ -51,7 +71,7 @@ const donationSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 
-// 한국 시간 구하는 헬퍼 함수
+// 한국 시간 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { 
         timeZone: 'Asia/Seoul', 
@@ -69,6 +89,9 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
+// 업로드된 파일에 접근할 수 있도록 static 미들웨어 추가
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // 🎁 리액션 설정 조회 API
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
@@ -80,22 +103,35 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
     }
 });
 
-// 🎁 리액션 규칙 추가 API
-app.post('/api/reactions/:apiKey', async (req, res) => {
+// 🎁 리액션 규칙 추가 API (파일 업로드 처리: 이미지 파일과 사운드 파일 동시 수신)
+app.post('/api/reactions/:apiKey', upload.fields([
+    { name: 'imageFile', maxCount: 1 },
+    { name: 'soundFile', maxCount: 1 }
+]), async (req, res) => {
     try {
-        const { amount, imageUrl, soundUrl } = req.body;
-        if (!amount || !imageUrl) {
-            return res.status(400).json({ success: false, error: '금액과 이미지는 필수입니다.' });
+        const { amount } = req.body;
+        const files = req.files;
+
+        if (!amount || !files || !files['imageFile']) {
+            return res.status(400).json({ success: false, error: '금액과 이미지 파일은 필수입니다.' });
+        }
+
+        const imageUrl = '/uploads/' + files['imageFile'][0].filename;
+        let soundUrl = '/coinsound.mp3';
+        
+        if (files['soundFile']) {
+            soundUrl = '/uploads/' + files['soundFile'][0].filename;
         }
 
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
-            { $push: { reactions: { amount: Number(amount), imageUrl, soundUrl: soundUrl || 'coinsound.mp3' } } },
+            { $push: { reactions: { amount: Number(amount), imageUrl, soundUrl } } },
             { new: true }
         );
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
         res.json({ success: true, reactions: user.reactions });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
@@ -354,7 +390,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (금액별 커스텀 이미지/사운드 적용)
+// 7. 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -422,21 +458,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
 
                 async function triggerAlert(donation) {
-                    // 기본값 설정
                     let imageUrl = "/alerticon.gif";
                     let soundUrl = "/coinsound.mp3";
 
-                    // 스트리머가 등록한 리액션 규칙 불러와서 금액 매칭 확인
                     try {
                         const res = await fetch('/api/reactions/' + '${apiKey}');
                         const data = await res.json();
                         if (data.success && data.reactions && data.reactions.length > 0) {
-                            // 금액이 높은 순으로 정렬 후, 현재 후원 금액 이상의 조건 중 가장 먼저 만족하는 것 선택
                             const sortedReactions = data.reactions.sort((a, b) => b.amount - a.amount);
                             const matched = sortedReactions.find(r => donation.amount >= r.amount);
                             if (matched) {
                                 imageUrl = matched.imageUrl;
-                                soundUrl = matched.soundUrl.startsWith('/') ? matched.soundUrl : '/' + matched.soundUrl;
+                                soundUrl = matched.soundUrl;
                             }
                         }
                     } catch (e) {
@@ -484,7 +517,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 후원 리액션 관리 페이지 (금액별 이미지 및 노래 추가/삭제 사이트)
+// 7-1. 후원 리액션 관리 페이지 (내 컴퓨터 파일 선택 팝업창 연동)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -502,7 +535,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .form-group input[type="number"], .form-group input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
                 .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn-danger { background: #e74c3c; }
                 .btn:hover { opacity: 0.9; }
@@ -517,21 +550,21 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
                 
-                <h3>➕ 새로운 금액별 리액션 추가</h3>
+                <h3>➕ 새로운 금액별 리액션 추가 (컴퓨터 파일 선택)</h3>
                 <form id="reactionForm">
                     <div class="form-group">
                         <label>조건 금액 (원)</label>
                         <input type="number" id="amount" placeholder="예: 10000" required>
                     </div>
                     <div class="form-group">
-                        <label>출력할 이미지 주소 (URL 또는 파일명)</label>
-                        <input type="text" id="imageUrl" placeholder="예: /images/special_alert.gif 또는 외부 링크" required>
+                        <label>출력할 이미지 파일 선택 (컴퓨터에서 찾기)</label>
+                        <input type="file" id="imageFile" accept="image/*" required>
                     </div>
                     <div class="form-group">
-                        <label>재생할 효과음 파일명</label>
-                        <input type="text" id="soundUrl" value="coinsound.mp3" required>
+                        <label>재생할 효과음/노래 파일 선택 (선택사항)</label>
+                        <input type="file" id="soundFile" accept="audio/*">
                     </div>
-                    <button type="submit" class="btn">리액션 규칙 추가하기</button>
+                    <button type="submit" class="btn">컴퓨터에서 파일 업로드 및 규칙 추가</button>
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
@@ -562,7 +595,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             div.innerHTML = \`
                                 <div>
                                     <b>\${r.amount.toLocaleString()}원 이상</b><br>
-                                    <small style="color:#555;">이미지: \${r.imageUrl} | 사운드: \${r.soundUrl}</small>
+                                    <small style="color:#555;">이미지: <a href="\${r.imageUrl}" target="_blank">보기</a> | 사운드: <a href="\${r.soundUrl}" target="_blank">듣기</a></small>
                                 </div>
                                 <button class="btn btn-danger" onclick="deleteReaction('\${r._id}')">삭제</button>
                             \`;
@@ -574,19 +607,28 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 document.getElementById('reactionForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const amount = document.getElementById('amount').value;
-                    const imageUrl = document.getElementById('imageUrl').value;
-                    const soundUrl = document.getElementById('soundUrl').value;
+                    const imageInput = document.getElementById('imageFile');
+                    const soundInput = document.getElementById('soundFile');
+
+                    const formData = new FormData();
+                    formData.append('amount', amount);
+                    if (imageInput.files[0]) {
+                        formData.append('imageFile', imageInput.files[0]);
+                    }
+                    if (soundInput.files[0]) {
+                        formData.append('soundFile', soundInput.files[0]);
+                    }
 
                     const res = await fetch('/api/reactions/' + '${apiKey}', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ amount, imageUrl, soundUrl })
+                        body: formData
                     });
                     const result = await res.json();
                     if (result.success) {
-                        alert('리액션이 추가되었습니다!');
+                        alert('리액션과 파일이 성공적으로 업로드되었습니다!');
                         document.getElementById('amount').value = '';
-                        document.getElementById('imageUrl').value = '';
+                        imageInput.value = '';
+                        soundInput.value = '';
                         loadReactions();
                     } else {
                         alert('추가 실패: ' + result.error);
