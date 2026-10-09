@@ -19,7 +19,8 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 2. Mongoose 스키마 정의 (스트리머 계정, 후원 내역, 알림 설정 포함)
+// 2. Mongoose 스키마 정의
+// 스트리머 계정, 후원 내역, 알림 설정 포함
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -34,6 +35,18 @@ const userSchema = new mongoose.Schema({
     }
 });
 
+// 리액션 설정 스키마 추가 (조건 금액, 이미지 URL, 오디오 URL 저장)
+const reactionSchema = new mongoose.Schema({
+    streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    minAmount: { type: Number, default: 0 }, // 얼마 이상 후원일 때?
+    messageText: { type: String, default: "" }, // 출력될 텍스트
+    imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
+    audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
+});
+const Reaction = mongoose.model('Reaction', reactionSchema);
+
+// 기본알림 설정 스키마
+
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
@@ -46,6 +59,53 @@ const donationSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
+
+// 리액션 설정 스키마 및 모델 추가
+const reactionSchema = new mongoose.Schema({
+    streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    minAmount: { type: Number, default: 0 }, // 조건 금액
+    messageText: { type: String, default: "" }, // 출력될 메시지
+    imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
+    audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
+});
+const Reaction = mongoose.model('Reaction', reactionSchema);
+
+// 리액션 설정 저장 API
+app.post('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const { minAmount, messageText, imageUrl, audioUrl } = req.body;
+
+        const newReaction = new Reaction({
+            streamerId: user._id,
+            minAmount,
+            messageText,
+            imageUrl,
+            audioUrl
+        });
+
+        await newReaction.save();
+        res.json({ success: true, message: '리액션이 성공적으로 저장되었습니다.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+// 리액션 목록 조회 API
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ minAmount: 1 });
+        res.json(reactions);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
 
 // 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
@@ -441,7 +501,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (설정 저장 기능 탑재)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (파일 업로드 기능 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -453,9 +513,11 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
         <head>
             <meta charset="UTF-8">
             <title>알림창 관리 - ` + user.username + `</title>
+            <!-- Supabase 클라이언트 라이브러리 CDN 추가 -->
+            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
             <style>
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
                 .form-group { margin-bottom: 20px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
@@ -463,11 +525,12 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
+                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 5px; margin-bottom: 10px; font-size: 14px; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h2>🔔 알림창(후원 리액션) 설정 및 관리</h2>
+                <h2>🔔 알림창 및 후원 리액션 관리</h2>
                 <p>OBS 브라우저 소스 주소:</p>
                 <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
@@ -476,79 +539,149 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <h3>⚙️ 기본 알림창 세부 설정</h3>
                 <form id="alertSettingsForm">
                     <div class="form-group">
-                        <label>알림 효과음 파일</label>
-                        <select name="soundType" id="soundType">
-                            <option value="coinsound.mp3">기본 코인 효과음 (coinsound.mp3)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label>알림 지속 시간 (초)</label>
                         <input type="number" name="duration" id="duration" min="1" max="15" value="5">
                     </div>
                     <div class="form-group">
-                        <label>메시지 폰트 크기 (예: 7.5vh, 40px)</label>
+                        <label>메시지 폰트 크기</label>
                         <input type="text" name="fontSize" id="fontSize" value="7.5vh">
                     </div>
-                    <div class="form-group">
-                        <label>기본 알림 이미지 사용 여부</label>
-                        <select name="useImage" id="useImage">
-                            <option value="true">사용함 (알림 이미지 표시)</option>
-                            <option value="false">사용 안 함 (이미지 숨기기)</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn">설정 저장하기</button>
+                    <button type="submit" class="btn">기본 설정 저장하기</button>
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3>🛠️ 기타 리액션 설정</h3>
-                <p style="color: #666; font-size: 14px;">개발 중인 기능입니다.</p>
+                <h3>🎨 후원 리액션 및 파일 업로드 (이미지/오디오)</h3>
+                <form id="reactionForm">
+                    <div class="form-group">
+                        <label>조건 금액 (원 이상)</label>
+                        <input type="number" id="minAmount" placeholder="예: 10000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>출력될 텍스트 메시지</label>
+                        <input type="text" id="messageText" placeholder="예: 거금 후원 감사합니다!" required>
+                    </div>
+                    <div class="form-group">
+                        <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
+                        <input type="file" id="imageFile" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>오디오 파일 선택 (MP3, WAV 등)</label>
+                        <input type="file" id="audioFile" accept="audio/*">
+                    </div>
+                    <button type="button" id="uploadBtn" class="btn" style="background:#2ed573;">리액션 업로드 및 등록</button>
+                </form>
+
+                <h4 style="margin-top:30px;">📋 등록된 리액션 목록</h4>
+                <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
 
                 <br>
                 <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
             </div>
 
             <script>
-                async function loadSettings() {
+                // 💡 Supabase 설정 (아까 확인하신 본인의 값으로 채워넣으세요)
+                const SUPABASE_URL = 'https://xknlqyjyxdjuupfzzrgg.supabase.co'; //project url
+                const SUPABASE_ANON_KEY = 'sb_publishable__dUo38dpMaBTXZYQ-7Y6dQ_NFzMslhn'; //publishable key
+                const STORAGE_BUCKET = 'reactions'; // 버킷이름
+
+                const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                // 리액션 목록 불러오기
+                async function loadReactions() {
                     try {
-                        const res = await fetch('/api/settings/alert/' + '${apiKey}');
+                        const res = await fetch('/api/reactions/' + '${apiKey}');
                         const data = await res.json();
-                        if (data.success && data.settings) {
-                            if (data.settings.soundType) document.getElementById('soundType').value = data.settings.soundType;
-                            if (data.settings.duration) document.getElementById('duration').value = data.settings.duration;
-                            if (data.settings.fontSize) document.getElementById('fontSize').value = data.settings.fontSize;
-                            if (data.settings.useImage !== undefined) {
-                                document.getElementById('useImage').value = data.settings.useImage ? 'true' : 'false';
-                            }
+                        const container = document.getElementById('reactionList');
+                        container.innerHTML = '';
+                        if (!data || data.length === 0) {
+                            container.innerHTML = '<div style="color:#666;">등록된 리액션이 없습니다.</div>';
+                            return;
                         }
+                        data.forEach(r => {
+                            const div = document.createElement('div');
+                            div.className = 'reaction-item';
+                            div.innerHTML = '<b>' + r.minAmount.toLocaleString() + '원 이상:</b> ' + r.messageText + 
+                                '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
+                            container.appendChild(div);
+                        });
                     } catch (e) { console.error(e); }
                 }
 
-                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const soundType = document.getElementById('soundType').value;
-                    const duration = document.getElementById('duration').value;
-                    const fontSize = document.getElementById('fontSize').value;
-                    const useImage = document.getElementById('useImage').value === 'true';
+                // 파일 업로드 및 리액션 등록 버튼 이벤트
+                document.getElementById('uploadBtn').addEventListener('click', async () => {
+                    const minAmount = document.getElementById('minAmount').value;
+                    const messageText = document.getElementById('messageText').value;
+                    const imageInput = document.getElementById('imageFile').files[0];
+                    const audioInput = document.getElementById('audioFile').files[0];
+
+                    if (!minAmount || !messageText) {
+                        alert('금액과 메시지를 입력해주세요.');
+                        return;
+                    }
+
+                    document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
+                    document.getElementById('uploadBtn').disabled = true;
 
                     try {
-                        const res = await fetch('/api/settings/alert/' + '${apiKey}', {
+                        let imageUrl = "";
+                        let audioUrl = "";
+
+                        // 1. 이미지 파일이 있다면 Supabase로 직접 업로드
+                        if (imageInput) {
+                            const imgName = 'img_' + Date.now + '_' + imageInput.name;
+                            const { data: imgData, error: imgError } = await supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .upload(imgName, imageInput);
+                            
+                            if (imgError) throw imgError;
+                            
+                            const { data: imgPublic } = supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .getPublicUrl(imgName);
+                            imageUrl = imgPublic.publicUrl;
+                        }
+
+                        // 2. 오디오 파일이 있다면 Supabase로 직접 업로드
+                        if (audioInput) {
+                            const audioName = 'audio_' + Date.now + '_' + audioInput.name;
+                            const { data: audioData, error: audioError } = await supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .upload(audioName, audioInput);
+                            
+                            if (audioError) throw audioError;
+
+                            const { data: audioPublic } = supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .getPublicUrl(audioName);
+                            audioUrl = audioPublic.publicUrl;
+                        }
+
+                        // 3. 파일 URL과 텍스트 정보를 내 Render 서버로 전송하여 MongoDB에 저장
+                        const res = await fetch('/api/reactions/' + '${apiKey}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ soundType, duration, fontSize, useImage })
+                            body: JSON.stringify({ minAmount, messageText, imageUrl, audioUrl })
                         });
                         const result = await res.json();
+
                         if (result.success) {
-                            alert('설정이 성공적으로 저장되었습니다!');
+                            alert('리액션이 성공적으로 등록되었습니다!');
+                            document.getElementById('reactionForm').reset();
+                            loadReactions();
                         } else {
-                            alert('저장 실패: ' + result.error);
+                            alert('등록 실패: ' + result.error);
                         }
                     } catch (err) {
-                        alert('서버 통신 오류가 발생했습니다.');
+                        console.error(err);
+                        alert('업로드 중 오류가 발생했습니다.');
+                    } finally {
+                        document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
+                        document.getElementById('uploadBtn').disabled = false;
                     }
                 });
 
-                loadSettings();
+                loadReactions();
             </script>
         </body>
         </html>
@@ -654,7 +787,9 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 9. 스트리머별 후원 로그 가져오기 API
+// 9. API 코드 모음
+
+// 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -667,7 +802,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 10. 스트리머별 오늘의 후원 랭킹 API
+// 스트리머별 오늘의 후원 랭킹 API
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -717,6 +852,43 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
         res.json(rankingList.slice(0, 5));
     } catch (e) {
         console.error(e);
+        res.status(500).json([]);
+    }
+});
+
+// 🛠️ 리액션 설정 저장 API (Supabase에서 받은 URL들을 저장)
+app.post('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const { minAmount, messageText, imageUrl, audioUrl } = req.body;
+
+        const newReaction = new Reaction({
+            streamerId: user._id,
+            minAmount,
+            messageText,
+            imageUrl,
+            audioUrl
+        });
+
+        await newReaction.save();
+        res.json({ success: true, message: '리액션이 저장되었습니다.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+// 🛠️ 리액션 목록 불러오기 API
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ minAmount: 1 });
+        res.json(reactions);
+    } catch (e) {
         res.status(500).json([]);
     }
 });
