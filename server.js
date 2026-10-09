@@ -53,7 +53,7 @@ const Donation = mongoose.model('Donation', donationSchema);
 // 리액션 설정 스키마 및 모델 (금액과 미디어 파일만 관리)
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    minAmount: { type: Number, default: 0 }, // 조건 금액
+    Amount: { type: Number, default: 0 }, // 특정 금액
     imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
     audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
 });
@@ -88,7 +88,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
-        const reactions = await Reaction.find({ streamerId: user._id }).sort({ minAmount: 1 });
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ Amount: 1 });
         res.json(reactions);
     } catch (e) {
         res.status(500).json([]);
@@ -853,18 +853,17 @@ app.post('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { minAmount, messageText, imageUrl, audioUrl } = req.body;
+        const { amount, imageUrl, audioUrl } = req.body;
 
         const newReaction = new Reaction({
             streamerId: user._id,
-            minAmount,
-            messageText,
+            amount: Number(amount),
             imageUrl,
             audioUrl
         });
 
         await newReaction.save();
-        res.json({ success: true, message: '리액션이 저장되었습니다.' });
+        res.json({ success: true, message: '리액션이 성공적으로 저장되었습니다.' });
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, error: 'Server Error' });
