@@ -375,8 +375,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 font-family: 'Pretendard', 'Malgun Gothic', '맑은 고딕', sans-serif;
                 overflow: hidden;
             }
-
-            // 알림창 설정, 등장 효과 등
             
             #alert-container {
                 width: fit-content; 
