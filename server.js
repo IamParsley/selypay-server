@@ -502,11 +502,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (서버 경유 파일 업로드 적용)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (미리보기 기능 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
+
+    const settings = user.alertSettings || {};
 
     res.send(`
         <!DOCTYPE html>
@@ -515,16 +517,23 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>알림창 관리 - ` + user.username + `</title>
             <style>
-                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .form-group { margin-bottom: 20px; }
-                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                body { font-family: sans-serif; background: #f4f7f6; padding: 30px; margin: 0; }
+                .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; font-size: 13px; }
+                .form-group { margin-bottom: 15px; }
+                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+                .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
                 .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
                 .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 5px; margin-bottom: 10px; font-size: 14px; }
+                
+                /* 💡 미리보기 영역 스타일 */
+                .preview-section { background: #111; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 25px; position: relative; overflow: hidden; height: 220px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                .preview-title { color: #aaa; font-size: 12px; position: absolute; top: 10px; left: 15px; }
+                #preview-image { max-height: 80px; width: auto; object-fit: contain; margin-bottom: 10px; }
+                #preview-line1 { color: #ffffff; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; line-height: 1.2; margin-bottom: 5px; word-break: keep-all; }
+                #preview-line2 { color: #ffffff; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; line-height: 1.2; }
             </style>
         </head>
         <body>
@@ -534,27 +543,41 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <!-- 💡 실시간 미리보기 화면 -->
+                <h3>👀 알림창 실시간 미리보기</h3>
+                <div class="preview-section">
+                    <div class="preview-title">PREVIEW</div>
+                    <img id="preview-image" src="/alerticon.gif" alt="Preview Image">
+                    <div id="preview-line1">테스트후원알림님 1,000원</div>
+                    <div id="preview-line2">후원 감사합니다!</div>
+                </div>
                 
                 <h3>⚙️ 기본 알림창 세부 설정</h3>
                 <form id="alertSettingsForm">
                     <div class="form-group">
                         <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                        <input type="number" name="duration" id="duration" min="1" max="15" value="${settings.duration || 5}">
                     </div>
                     <div class="form-group">
-                        <label>메시지 폰트 크기</label>
-                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                        <label>메시지 폰트 크기 (CSS 단위, 예: 32px 또는 5vh)</label>
+                        <input type="text" name="fontSize" id="fontSize" value="${settings.fontSize || '32px'}">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="useImage" id="useImage" ${settings.useImage !== false ? 'checked' : ''} style="width:auto;"> 기본 알림 이미지 사용 여부
+                        </label>
                     </div>
                     <button type="submit" class="btn">기본 설정 저장하기</button>
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
+                <h3>🎨 금액별 커스텀 리액션 등록 (동일 금액 매칭)</h3>
                 <form id="reactionForm">
                     <div class="form-group">
                         <label>특정 후원 금액 (원)</label>
-                        <input type="number" id="amount" placeholder="예: 9999" required>
+                        <input type="number" id="amount" placeholder="예: 5000" required>
                     </div>
                     <div class="form-group">
                         <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
@@ -570,12 +593,55 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <h4 style="margin-top:30px;">📋 등록된 리액션 목록</h4>
                 <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
 
-                <br>
+                <br><br>
                 <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
             </div>
 
             <script>
                 const currentApiKey = "` + apiKey + `";
+
+                // 💡 입력폼 변경 시 미리보기 실시간 반영 함수
+                function updatePreview() {
+                    const fontSizeInput = document.getElementById('fontSize').value;
+                    const useImageCheckbox = document.getElementById('useImage').checked;
+
+                    const line1 = document.getElementById('preview-line1');
+                    const line2 = document.getElementById('preview-line2');
+                    const img = document.getElementById('preview-image');
+
+                    line1.style.fontSize = fontSizeInput;
+                    line2.style.fontSize = fontSizeInput;
+                    img.style.display = useImageCheckbox ? 'block' : 'none';
+                }
+
+                document.getElementById('fontSize').addEventListener('input', updatePreview);
+                document.getElementById('useImage').addEventListener('change', updatePreview);
+                updatePreview(); // 초기 실행
+
+                // 기본 설정 저장 처리
+                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const duration = document.getElementById('duration').value;
+                    const fontSize = document.getElementById('fontSize').value;
+                    const useImage = document.getElementById('useImage').checked;
+
+                    try {
+                        const res = await fetch('/api/settings/alert/' + currentApiKey, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ duration, fontSize, useImage })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            alert('기본 설정이 저장되었습니다!');
+                        } else {
+                            alert('저장 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('오류가 발생했습니다.');
+                    }
+                });
 
                 async function loadReactions() {
                     try {
@@ -590,7 +656,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
+                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 (동일 금액 매칭)</b>' + 
                                 '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
                             container.appendChild(div);
                         });
@@ -612,7 +678,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
 
-                    document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
+                    document.getElementById('uploadBtn').innerText = '업로드 중...';
                     document.getElementById('uploadBtn').disabled = true;
 
                     try {
