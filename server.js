@@ -471,13 +471,30 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                     container.style.display = 'flex';
                     sound.currentTime = 0;
+                    
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
-                    setTimeout(() => { 
-                        container.style.display = 'none'; 
-                    }, ${ (settings.duration || 5) * 1000 });
-                }
+                    // 💡 오디오 파일의 길이에 맞춰 알림창 유지 시간 동적 조절 (기본값 설정: 5초)
+                    let hideTimeout = 5000;
+                    
+                    sound.onloadedmetadata = function() {
+                        if (sound.duration && !isNaN(sound.duration)) {
+                            hideTimeout = sound.duration * 1000;
+                        }
+                        
+                        // 기존 타이머가 있다면 클리어하고 오디오 길이에 맞춤
+                        clearTimeout(window.alertTimer);
+                        window.alertTimer = setTimeout(() => { 
+                            container.style.display = 'none'; 
+                        }, hideTimeout);
+                    };
 
+                    // 메타데이터 로드가 지연될 경우를 대비한 안전망 타이머
+                    window.alertTimer = setTimeout(() => { 
+                        container.style.display = 'none'; 
+                    }, hideTimeout);
+                }
+                
                 setInterval(checkNewDonation, 1000);
             </script>
         </body>
