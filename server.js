@@ -50,11 +50,10 @@ const donationSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 
-// 리액션 설정 스키마 및 모델 추가
+// 리액션 설정 스키마 및 모델 (금액과 미디어 파일만 관리)
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     minAmount: { type: Number, default: 0 }, // 조건 금액
-    messageText: { type: String, default: "" }, // 출력될 메시지
     imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
     audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
 });
@@ -66,12 +65,11 @@ app.post('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { minAmount, messageText, imageUrl, audioUrl } = req.body;
+        const { minAmount, imageUrl, audioUrl } = req.body;
 
         const newReaction = new Reaction({
             streamerId: user._id,
             minAmount,
-            messageText,
             imageUrl,
             audioUrl
         });
@@ -503,7 +501,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
         <head>
             <meta charset="UTF-8">
             <title>알림창 관리 - ` + user.username + `</title>
-            <!-- Supabase 클라이언트 라이브러리 CDN 추가 -->
             <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
             <style>
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
@@ -511,7 +508,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
                 .form-group { margin-bottom: 20px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-                .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
                 .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
@@ -541,15 +538,11 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3>🎨 후원 리액션 및 파일 업로드 (이미지/오디오)</h3>
+                <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
                 <form id="reactionForm">
                     <div class="form-group">
                         <label>조건 금액 (원 이상)</label>
                         <input type="number" id="minAmount" placeholder="예: 10000" required>
-                    </div>
-                    <div class="form-group">
-                        <label>출력될 텍스트 메시지</label>
-                        <input type="text" id="messageText" placeholder="예: 거금 후원 감사합니다!" required>
                     </div>
                     <div class="form-group">
                         <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
@@ -570,14 +563,13 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                // 💡 Supabase 설정 (아까 확인하신 본인의 값으로 채워넣으세요)
-                const SUPABASE_URL = 'https://xknlqyjyxdjuupfzzrgg.supabase.co'; //project url
-                const SUPABASE_ANON_KEY = 'sb_publishable__dUo38dpMaBTXZYQ-7Y6dQ_NFzMslhn'; //publishable key
-                const STORAGE_BUCKET = 'reactions'; // 버킷이름
+                // 본인의 Supabase 정보 입력
+                const SUPABASE_URL = 'https://당신의프로젝트주소.supabase.co';
+                const SUPABASE_ANON_KEY = '당신의Publishable키';
+                const STORAGE_BUCKET = '본인이만든버킷이름';
 
                 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-                // 리액션 목록 불러오기
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + '${apiKey}');
@@ -591,22 +583,20 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.minAmount.toLocaleString() + '원 이상:</b> ' + r.messageText + 
+                            div.innerHTML = '<b>' + r.minAmount.toLocaleString() + '원 이상 조건</b>' + 
                                 '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
                 }
 
-                // 파일 업로드 및 리액션 등록 버튼 이벤트
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const minAmount = document.getElementById('minAmount').value;
-                    const messageText = document.getElementById('messageText').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
 
-                    if (!minAmount || !messageText) {
-                        alert('금액과 메시지를 입력해주세요.');
+                    if (!minAmount) {
+                        alert('조건 금액을 입력해주세요.');
                         return;
                     }
 
@@ -617,9 +607,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let imageUrl = "";
                         let audioUrl = "";
 
-                        // 1. 이미지 파일이 있다면 Supabase로 직접 업로드
                         if (imageInput) {
-                            const imgName = 'img_' + Date.now + '_' + imageInput.name;
+                            const imgName = 'img_' + Date.now() + '_' + imageInput.name;
                             const { data: imgData, error: imgError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .upload(imgName, imageInput);
@@ -632,9 +621,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             imageUrl = imgPublic.publicUrl;
                         }
 
-                        // 2. 오디오 파일이 있다면 Supabase로 직접 업로드
                         if (audioInput) {
-                            const audioName = 'audio_' + Date.now + '_' + audioInput.name;
+                            const audioName = 'audio_' + Date.now() + '_' + audioInput.name;
                             const { data: audioData, error: audioError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .upload(audioName, audioInput);
@@ -647,11 +635,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             audioUrl = audioPublic.publicUrl;
                         }
 
-                        // 3. 파일 URL과 텍스트 정보를 내 Render 서버로 전송하여 MongoDB에 저장
                         const res = await fetch('/api/reactions/' + '${apiKey}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ minAmount, messageText, imageUrl, audioUrl })
+                            body: JSON.stringify({ minAmount, imageUrl, audioUrl })
                         });
                         const result = await res.json();
 
