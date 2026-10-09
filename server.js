@@ -581,33 +581,33 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
                 <!-- 💡 실시간 미리보기 화면 -->
-                <h3>👀 알림창 실시간 미리보기</h3>
-                <div class="preview-section">
-                    <div class="preview-title">PREVIEW</div>
-                    <img id="preview-image" src="/alerticon.gif" alt="Preview Image">
-                    <div id="preview-line1">테스트후원알림님 1,000원</div>
-                    <div id="preview-line2">후원 감사합니다!</div>
-                </div>
-                
-                <h3>⚙️ 기본 알림창 세부 설정</h3>
-                <form id="alertSettingsForm">
-                    <div class="form-group">
-                        <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="${settings.duration || 5}">
-                    </div>
-                    <div class="form-group">
-                        <label>메시지 폰트 크기 (CSS 단위, 예: 32px 또는 5vh)</label>
-                        <input type="text" name="fontSize" id="fontSize" value="${settings.fontSize || '32px'}">
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" name="useImage" id="useImage" ${settings.useImage !== false ? 'checked' : ''} style="width:auto;"> 기본 알림 이미지 사용 여부
-                        </label>
-                    </div>
-                    <button type="submit" class="btn">기본 설정 저장하기</button>
-                </form>
+            <h3 style="margin-top: 0;">👀 알림창 실시간 미리보기</h3>
+            <div class="preview-section">
+                <div class="preview-title">PREVIEW</div>
+                <img id="preview-image" src="/alerticon.gif" alt="Preview Image">
+                <div id="preview-line1">테스트후원알림님 1,000원</div>
+                <div id="preview-line2">후원 감사합니다!</div>
+            </div>
 
-                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+            <!-- 💡 테스트 후원 직접 입력 및 시뮬레이션 폼 -->
+            <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                <h4 style="margin-top: 0; color: #856404;">🧪 테스트 후원 시뮬레이터</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold;">닉네임</label>
+                        <input type="text" id="testNickname" value="테스트후원알림" style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold;">금액 (원)</label>
+                        <input type="number" id="testAmount" value="1000" style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size: 12px; font-weight: bold;">후원 메시지</label>
+                    <input type="text" id="testMessage" value="후원 감사합니다!" style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <button type="button" id="sendTestBtn" class="btn" style="background: #e67e22; width: 100%;">🚀 테스트 후원 보내기</button>
+            </div>
 
                 <h3>🎨 금액별 커스텀 리액션 등록 (동일 금액 매칭)</h3>
                 <form id="reactionForm">
@@ -636,49 +636,61 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             <script>
                 const currentApiKey = "` + apiKey + `";
 
-                // 💡 입력폼 변경 시 미리보기 실시간 반영 함수
-                function updatePreview() {
-                    const fontSizeInput = document.getElementById('fontSize').value;
-                    const useImageCheckbox = document.getElementById('useImage').checked;
+                // 💡 미리보기 업데이트 및 테스트 데이터 실시간 반영 함수
+            function updatePreview() {
+                const fontSizeInput = document.getElementById('fontSize').value;
+                const useImageCheckbox = document.getElementById('useImage').checked;
 
-                    const line1 = document.getElementById('preview-line1');
-                    const line2 = document.getElementById('preview-line2');
-                    const img = document.getElementById('preview-image');
+                const line1 = document.getElementById('preview-line1');
+                const line2 = document.getElementById('preview-line2');
+                const img = document.getElementById('preview-image');
 
-                    line1.style.fontSize = fontSizeInput;
-                    line2.style.fontSize = fontSizeInput;
-                    img.style.display = useImageCheckbox ? 'block' : 'none';
+                const nickname = document.getElementById('testNickname').value || '익명';
+                const amount = Number(document.getElementById('testAmount').value || 0).toLocaleString();
+                const message = document.getElementById('testMessage').value;
+
+                // 텍스트 반영 (실제 오버레이와 동일한 2줄 포맷)
+                line1.innerText = `${nickname}님 ${amount}원`;
+                line2.innerText = message;
+
+                // 폰트 크기 및 이미지 표시 여부 적용
+                line1.style.fontSize = fontSizeInput;
+                line2.style.fontSize = `calc(${fontSizeInput} * 0.9)`;
+                img.style.display = useImageCheckbox ? 'block' : 'none';
+            }
+
+            // 이벤트 리스너 연결
+            document.getElementById('fontSize').addEventListener('input', updatePreview);
+            document.getElementById('useImage').addEventListener('change', updatePreview);
+            document.getElementById('testNickname').addEventListener('input', updatePreview);
+            document.getElementById('testAmount').addEventListener('input', updatePreview);
+            document.getElementById('testMessage').addEventListener('input', updatePreview);
+            
+            // 초기 실행
+            updatePreview();
+
+            // 🚀 테스트 후원 보내기 버튼 클릭 시 효과 시뮬레이션
+            document.getElementById('sendTestBtn').addEventListener('click', () => {
+                const previewSection = document.querySelector('.preview-section');
+                
+                // 간단한 팝업 바운스 효과 주기
+                previewSection.style.transform = 'scale(1.02)';
+                setTimeout(() => { previewSection.style.transform = 'scale(1)'; }, 150);
+
+                // 테스트 사운드 재생 (기본 코인 소리)
+                try {
+                    const testSound = new Audio('/coinsound.mp3');
+                    testSound.currentTime = 0;
+                    testSound.play().catch(e => console.log('미리보기 사운드 재생 제한', e));
+                } catch (e) {
+                    console.error(e);
                 }
 
-                document.getElementById('fontSize').addEventListener('input', updatePreview);
-                document.getElementById('useImage').addEventListener('change', updatePreview);
-                updatePreview(); // 초기 실행
+                alert('테스트 후원이 미리보기에 반영되었습니다!');
+            });
 
-                // 기본 설정 저장 처리
-                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const duration = document.getElementById('duration').value;
-                    const fontSize = document.getElementById('fontSize').value;
-                    const useImage = document.getElementById('useImage').checked;
-
-                    try {
-                        const res = await fetch('/api/settings/alert/' + currentApiKey, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ duration, fontSize, useImage })
-                        });
-                        const result = await res.json();
-                        if (result.success) {
-                            alert('기본 설정이 저장되었습니다!');
-                        } else {
-                            alert('저장 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert('오류가 발생했습니다.');
-                    }
-                });
-
+                // 후원 금액별 리액션(이미지·오디오 설정) 목록 띄워주
+                
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + currentApiKey);
@@ -699,6 +711,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
+                // 리액션 추가 저장 처
+                
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
