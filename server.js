@@ -121,7 +121,7 @@ app.post('/api/login', async (req, res) => {
         const user = await User.findOne({ username, password });
         if (!user) return res.send(`<script>alert('로그인 실패'); history.back();</script>`);
         
-        res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>대시보드</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.log-box{background:#fafafa;border:1px solid #ddd;padding:15px;border-radius:5px;max-height:200px;overflow-y:auto;margin-top:10px;}.log-item{padding:5px 0;border-bottom:1px solid #eee;font-size:13px;}.btn{display:inline-block;margin-top:10px;padding:8px 12px;background:#3498db;color:white;text-decoration:none;border-radius:5px;font-weight:bold;font-size:13px;}</style></head><body><div class="container"><h2>` + user.username + `님 환영합니다!</h2><p><b>API Key:</b></p><div class="box">` + user.apiKey + `</div><p style="margin-top:15px;"><b>오버레이 주소:</b></p><div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div><a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙️ 알림창 설정/관리</a><p style="margin-top:20px;"><b>최근 후원 내역</b></p><div class="log-box" id="logList">불러오는 중...</div><br><a href="/login">로그아웃</a></div><script>async function fetchLogs(){try{const res=await fetch('/api/logs/` + user.apiKey + `');const logs=await res.json();const box=document.getElementById('logList');box.innerHTML='';if(!logs.length){box.innerHTML='내역이 없습니다.';return;}logs.forEach(l=>{box.innerHTML+='<div class="log-item">['+l.datetime+'] '+l.nickname+' ('+l.amount.toLocaleString()+'원): '+l.message+'</div>';});}catch(e){}}fetchLogs();setInterval(fetchLogs, 3000);</script></body></html>`);
+        res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>대시보드</title><style>body{font-family:sans-serif;background:#f4f7f6;padding:40px;margin:0;}.container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}.box{background:#eee;padding:10px;font-family:monospace;word-break:break-all;border-radius:5px;margin-top:5px;}.log-box{background:#fafafa;border:1px solid #ddd;padding:15px;border-radius:5px;max-height:200px;overflow-y:auto;margin-top:10px;}.log-item{padding:5px 0;border-bottom:1px solid #eee;font-size:13px;}.btn{display:inline-block;margin-top:10px;padding:8px 12px;background:#3498db;color:white;text-decoration:none;border-radius:5px;font-weight:bold;font-size:13px;}</style></head><body><div class="container"><h2>` + user.username + `님 환영합니다!</h2><p><b>API Key:</b></p><div class="box">` + user.apiKey + `</div><p style="margin-top:15px;"><b>오버레이 주소:</b></p><div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div><a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙️ 알림창 설정/관리</a><p style="margin-top:20px;"><b>🏆 실시간 후원 랭킹</b></p><div class="log-box" id="rankList">불러오는 중...</div><p style="margin-top:20px;"><b>최근 후원 내역</b></p><div class="log-box" id="logList">불러오는 중...</div><br><a href="/login">로그아웃</a></div><script>async function fetchLogs(){try{const res=await fetch('/api/logs/` + user.apiKey + `');const logs=await res.json();const box=document.getElementById('logList');box.innerHTML='';if(!logs.length){box.innerHTML='내역이 없습니다.';return;}logs.forEach(l=>{box.innerHTML+='<div class="log-item">['+l.datetime+'] '+l.nickname+' ('+l.amount.toLocaleString()+'원): '+l.message+'</div>';});}catch(e){}}async function fetchRank(){try{const res=await fetch('/api/ranking/` + user.apiKey + `');const list=await res.json();const box=document.getElementById('rankList');box.innerHTML='';if(!list.length){box.innerHTML='오늘 랭킹 내역이 없습니다.';return;}list.forEach((item,idx)=>{box.innerHTML+='<div class="log-item"><b>'+(idx+1)+'위</b> '+item._id+' - '+item.totalamount.toLocaleString()+'원</div>';});}catch(e){}}fetchLogs();fetchRank();setInterval(fetchLogs, 3000);setInterval(fetchRank, 5000);</script></body></html>`);
     } catch (e) {
         res.status(500).send('Server Error');
     }
@@ -314,6 +314,45 @@ app.get('/api/logs/:apiKey', async (req, res) => {
         const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
         res.json(logs);
     } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const todayKey = getKSTDateKey();
+        const todayDonations = await Donation.find(
+            { streamerId: user._id, dateKey: todayKey },
+            { nickname: 1, amount: 1, timestamp: 1 }
+        ).sort({ timestamp: 1 });
+
+        const rankingMap = {};
+        todayDonations.forEach(d => {
+            let cleanName = d.nickname.trim();
+            if (cleanName.endsWith("님")) cleanName = cleanName.slice(0, -1).trim();
+            if (!rankingMap[cleanName]) {
+                rankingMap[cleanName] = { totalamount: 0, count: 0, firstDonationTime: d.timestamp };
+            }
+            rankingMap[cleanName].totalamount += d.amount;
+            rankingMap[cleanName].count += 1;
+        });
+
+        const rankingList = Object.keys(rankingMap).map(name => ({
+            _id: name,
+            totalamount: rankingMap[name].totalamount,
+            count: rankingMap[name].count,
+            firstDonationTime: rankingMap[name].firstDonationTime
+        }));
+
+        rankingList.sort((a, b) => {
+            if (b.totalamount !== a.totalamount) return b.totalamount - a.totalamount;
+            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime);
+        });
+
+        res.json(rankingList.slice(0, 5));
+    } catch (e) {
+        res.status(500).json([]);
+    }
 });
 
 app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
