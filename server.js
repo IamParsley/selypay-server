@@ -20,7 +20,6 @@ mongoose.connect(process.env.MONGO_URI, {
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
 // 2. Mongoose 스키마 정의
-// 스트리머 계정, 후원 내역, 알림 설정 포함
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -31,11 +30,9 @@ const userSchema = new mongoose.Schema({
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' },
         bgColor: { type: String, default: 'transparent' },
-        useImage: { type: Boolean, default: true } // 알림 이미지 사용 여부 추가
+        useImage: { type: Boolean, default: true }
     }
 });
-
-// 기본알림 설정 스키마
 
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -50,12 +47,12 @@ const donationSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 
-// 리액션 설정 스키마 및 모델 (금액과 미디어 파일만 관리)
+// 리액션 설정 스키마 및 모델
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    amount: { type: Number, default: 0 }, // 특정 금액
-    imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
-    audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
+    amount: { type: Number, default: 0 }, 
+    imageUrl: { type: String, default: "" },   
+    audioUrl: { type: String, default: "" }    
 });
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
@@ -65,11 +62,11 @@ app.post('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { minamount, imageUrl, audioUrl } = req.body;
+        const { amount, imageUrl, audioUrl } = req.body;
 
         const newReaction = new Reaction({
             streamerId: user._id,
-            minamount,
+            amount,
             imageUrl,
             audioUrl
         });
@@ -392,7 +389,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     if (!user) return res.status(404).send('Streamer not found');
 
     const settings = user.alertSettings || {};
-    const useImage = settings.useImage !== false; // 기본값 true
+    const useImage = settings.useImage !== false;
 
     res.send(`
         <!DOCTYPE html>
@@ -489,7 +486,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (파일 업로드 기능 포함)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (파일 업로드 오류 해결 완료)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -563,16 +560,16 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                // 본인의 Supabase 정보 입력
                 const SUPABASE_URL = 'https://당신의프로젝트주소.supabase.co';
                 const SUPABASE_ANON_KEY = '당신의Publishable키';
                 const STORAGE_BUCKET = '본인이만든버킷이름';
 
                 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const currentApiKey = "` + apiKey + `";
 
                 async function loadReactions() {
                     try {
-                        const res = await fetch('/api/reactions/' + user.apiKey);
+                        const res = await fetch('/api/reactions/' + currentApiKey);
                         const data = await res.json();
                         const container = document.getElementById('reactionList');
                         container.innerHTML = '';
@@ -583,14 +580,14 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
+                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 일치 조건</b>' + 
                                 '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
                 }
 
-                   document.getElementById('uploadBtn').addEventListener('click', async () => {
+                document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
@@ -607,15 +604,14 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let imageUrl = "";
                         let audioUrl = "";
                         
-                        //  이미지 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
                         if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${imgName}`, {
+                            const uploadRes = await fetch(\`\${SUPABASE_URL}/storage/v1/object/\${STORAGE_BUCKET}/\${imgName}\`, {
                                 method: 'POST',
                                 headers: {
-                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'Authorization': \`Bearer \${SUPABASE_ANON_KEY}\`,
                                     'apikey': SUPABASE_ANON_KEY,
                                     'Content-Type': imageInput.type || 'application/octet-stream',
                                     'x-upsert': 'false'
@@ -634,15 +630,14 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             imageUrl = imgPublic.publicUrl;
                         }
 
-                        //  오디오 파일 직접 업로드 (Fetch API 사용)
                         if (audioInput) {
                             const fileExt = audioInput.name.split('.').pop();
                             const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${audioName}`, {
+                            const uploadRes = await fetch(\`\${SUPABASE_URL}/storage/v1/object/\${STORAGE_BUCKET}/\${audioName}\`, {
                                 method: 'POST',
                                 headers: {
-                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'Authorization': \`Bearer \${SUPABASE_ANON_KEY}\`,
                                     'apikey': SUPABASE_ANON_KEY,
                                     'Content-Type': audioInput.type || 'application/octet-stream',
                                     'x-upsert': 'false'
@@ -661,8 +656,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             audioUrl = audioPublic.publicUrl;
                         }
 
-                        // 3. 서버 DB에 리액션 저장 요청
-                        const res = await fetch('/api/reactions/' + '${apiKey}', {
+                        const res = await fetch('/api/reactions/' + currentApiKey, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ amount, imageUrl, audioUrl })
@@ -860,7 +854,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 🛠️ 리액션 설정 저장 API (Supabase에서 받은 URL들을 저장)
+// 🛠️ 리액션 설정 저장 API
 app.post('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
