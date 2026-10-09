@@ -607,40 +607,54 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let imageUrl = "";
                         let audioUrl = "";
                         
-                        // 1. 이미지 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
+                        //  이미지 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
                         if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            // 원본 파일의 바이트와 타입을 유지한 새로운 안전한 파일 객체 생성
-                            const safeImageFile = new File([imageInput], imgName, { type: imageInput.type });
-
-                            const { data: imgData, error: imgError } = await supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .upload(imgName, safeImageFile);
-                            
-                            if (imgError) throw imgError;
-                            
+                            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${imgName}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Content-Type': imageInput.type || 'application/octet-stream',
+                                    'x-upsert': 'false'
+                                },
+                                body: imageInput
+                            });
+                        
+                            if (!uploadRes.ok) {
+                                const errJson = await uploadRes.json();
+                                throw new Error(errJson.message || '이미지 업로드 실패');
+                            }
+                        
                             const { data: imgPublic } = supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .getPublicUrl(imgName);
                             imageUrl = imgPublic.publicUrl;
                         }
 
-                        // 2. 오디오 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
+                        //  오디오 파일 직접 업로드 (Fetch API 사용)
                         if (audioInput) {
                             const fileExt = audioInput.name.split('.').pop();
                             const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            // 원본 파일의 바이트와 타입을 유지한 새로운 안전한 파일 객체 생성
-                            const safeAudioFile = new File([audioInput], audioName, { type: audioInput.type });
-
-                            const { data: audioData, error: audioError } = await supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .upload(audioName, safeAudioFile);
-                            
-                            if (audioError) throw audioError;
-
+                            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${audioName}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Content-Type': audioInput.type || 'application/octet-stream',
+                                    'x-upsert': 'false'
+                                },
+                                body: audioInput
+                            });
+                        
+                            if (!uploadRes.ok) {
+                                const errJson = await uploadRes.json();
+                                throw new Error(errJson.message || '오디오 업로드 실패');
+                            }
+                        
                             const { data: audioPublic } = supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .getPublicUrl(audioName);
