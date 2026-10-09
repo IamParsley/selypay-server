@@ -408,19 +408,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 margin-bottom: 1.5vh;
                 filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
             }
-        
-            #alert-line1 {
+
+        // 텍스트 설정
+            #alert-line1, #alert-line2 {
                 color: #ffffff; 
                 font-size: ${settings.fontSize || '32px'}; 
                 font-weight: 800; 
-                text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
                 width: auto; 
                 max-width: 80vw; 
-                word-break: keep-all; 
-                overflow-wrap: break-word; 
-                line-height: 1.2; 
-                margin-bottom: 0.8vh;
-            }
+                word-break: break-all; 
+                line-height: 1.4; /* 💡 줄간격을 넉넉하게 수정하여 겹침 방지 */
+                margin-bottom: 5px;
         
             #alert-line2 {
                 color: #b5e48c; /* 채도 낮은 연두색 포인트 */
