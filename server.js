@@ -433,7 +433,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (미리보기 및 테스트 시뮬레이터 포함)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (실제 오버레이와 100% 동일한 iframe 미리보기 적용)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -454,42 +454,27 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 
+                /* 실제 오버레이 화면을 그대로 담아내는 16:9 비율의 iframe 프리뷰 박스 */
                 .preview-section { 
                     background: #111; 
                     border-radius: 8px; 
-                    padding: 25px; 
-                    text-align: center; 
                     margin-bottom: 25px; 
                     position: relative; 
-                    overflow: hidden; 
-                    display: flex; 
-                    flex-direction: column; 
-                    justify-content: center; 
-                    align-items: center; 
                     width: 100%;
-                    aspect-ratio: 16 / 9; /* 1920:1080과 같은 16:9 비율 유지 */
+                    aspect-ratio: 16 / 9; 
+                    overflow: hidden;
                     box-sizing: border-box;
+                    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
                 }
-                .preview-title { color: #aaa; font-size: 12px; position: absolute; top: 10px; left: 15px; }
-                #preview-image { max-height: 80px; width: auto; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8)); }
+                .preview-title { color: #aaa; font-size: 12px; position: absolute; top: 10px; left: 15px; z-index: 10; pointer-events: none; }
                 
-                #preview-line1 { 
-                    color: #ffffff; 
-                    font-weight: 800; 
-                    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
-                    line-height: 1.3; 
-                    margin-bottom: 8px; 
-                    word-break: keep-all; 
-                    overflow-wrap: break-word;
+                #preview-iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                    background: transparent;
                 }
-                #preview-line2 { 
-                    color: #b5e48c; 
-                    font-weight: 800; 
-                    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
-                    line-height: 1.3; 
-                    word-break: keep-all; 
-                    overflow-wrap: break-word;
-                }
+
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
                 .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
@@ -504,13 +489,11 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <!-- 💡 실시간 미리보기 화면 -->
-                <h3 style="margin-top: 0;">👀 알림창 실시간 미리보기</h3>
+                <!-- 💡 실제 오버레이를 그대로 임베드한 16:9 비율의 완벽한 미리보기 -->
+                <h3 style="margin-top: 0;">👀 알림창 실시간 미리보기 (16:9 OBS 비율)</h3>
                 <div class="preview-section">
                     <div class="preview-title">PREVIEW</div>
-                    <img id="preview-image" src="/alerticon.gif" alt="Preview Image">
-                    <div id="preview-line1">테스트후원알림님 1,000원 후원감사합니다</div>
-                    <div id="preview-line2">후원 감사합니다!</div>
+                    <iframe id="preview-iframe" src="/overlay/${user.apiKey}"></iframe>
                 </div>
 
                 <!-- 💡 테스트 후원 직접 입력 및 시뮬레이터 -->
@@ -558,48 +541,28 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                function updatePreview() {
-                    const fontSizeInput = document.getElementById('fontSize').value;
-                    const useImageCheckbox = document.getElementById('useImage').checked;
-
-                    const line1 = document.getElementById('preview-line1');
-                    const line2 = document.getElementById('preview-line2');
-                    const img = document.getElementById('preview-image');
-
-                    const nickname = document.getElementById('testNickname').value || '익명';
-                    const amount = Number(document.getElementById('testAmount').value || 0).toLocaleString();
-                    const message = document.getElementById('testMessage').value;
-
-                    line1.innerText = nickname + '님 ' + amount + '원 후원감사합니다';
-                    line2.innerText = message;
-
-                    line1.style.fontSize = fontSizeInput;
-                    line2.style.fontSize = 'calc(' + fontSizeInput + ' * 0.9)';
-                    img.style.display = useImageCheckbox ? 'block' : 'none';
-                }
-
-                document.getElementById('fontSize').addEventListener('input', updatePreview);
-                document.getElementById('useImage').addEventListener('change', updatePreview);
-                document.getElementById('testNickname').addEventListener('input', updatePreview);
-                document.getElementById('testAmount').addEventListener('input', updatePreview);
-                document.getElementById('testMessage').addEventListener('input', updatePreview);
-                
-                updatePreview();
-
+                // 🚀 테스트 후원 버튼 클릭 시 iframe 내부의 showAlert 함수를 직접 호출하여 100% 동일하게 테스트
                 document.getElementById('sendTestBtn').addEventListener('click', () => {
-                    const previewSection = document.querySelector('.preview-section');
-                    previewSection.style.transform = 'scale(1.02)';
-                    setTimeout(() => { previewSection.style.transform = 'scale(1)'; }, 150);
-
+                    const iframe = document.getElementById('preview-iframe');
                     try {
-                        const testSound = new Audio('/coinsound.mp3');
-                        testSound.currentTime = 0;
-                        testSound.play().catch(e => console.log('사운드 재생 제한', e));
+                        const iframeWindow = iframe.contentWindow;
+                        const nickname = document.getElementById('testNickname').value || '익명';
+                        const amount = Number(document.getElementById('testAmount').value || 0);
+                        const message = document.getElementById('testMessage').value;
+
+                        if (iframeWindow && typeof iframeWindow.showAlert === 'function') {
+                            iframeWindow.showAlert({
+                                nickname: nickname,
+                                amount: amount,
+                                message: message
+                            });
+                        }
                     } catch (e) {
-                        console.error(e);
+                        console.error('테스트 트리거 실패', e);
                     }
                 });
 
+                // 설정 저장 처리
                 document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const duration = document.getElementById('duration').value;
@@ -614,7 +577,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         });
                         const result = await response.json();
                         if (result.success) {
-                            alert('설정이 성공적으로 저장되었습니다!');
+                            alert('설정이 성공적으로 저장되었습니다! 오버레이에 즉시 반영됩니다.');
+                            document.getElementById('preview-iframe').contentWindow.location.reload();
                         } else {
                             alert('설정 저장 실패: ' + (result.error || '알 수 없는 오류'));
                         }
