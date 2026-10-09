@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +11,9 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+
+// 메모리에 파일을 일시 저장하여 Supabase로 전송하기 위한 multer 설정
+const upload = multer({ storage: multer.memoryStorage() });
 
 // 1. MongoDB 연결
 mongoose.connect(process.env.MONGO_URI, {
@@ -55,42 +59,6 @@ const reactionSchema = new mongoose.Schema({
     audioUrl: { type: String, default: "" }    
 });
 const Reaction = mongoose.model('Reaction', reactionSchema);
-
-// 리액션 설정 저장 API
-app.post('/api/reactions/:apiKey', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
-
-        const { amount, imageUrl, audioUrl } = req.body;
-
-        const newReaction = new Reaction({
-            streamerId: user._id,
-            amount,
-            imageUrl,
-            audioUrl
-        });
-
-        await newReaction.save();
-        res.json({ success: true, message: '리액션이 성공적으로 저장되었습니다.' });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: 'Server Error' });
-    }
-});
-
-// 리액션 목록 조회 API
-app.get('/api/reactions/:apiKey', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json([]);
-
-        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
-        res.json(reactions);
-    } catch (e) {
-        res.status(500).json([]);
-    }
-});
 
 // 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
@@ -486,7 +454,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (파일 업로드 오류 해결 완료)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (서버 경유 파일 업로드 적용)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -498,7 +466,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
         <head>
             <meta charset="UTF-8">
             <title>알림창 관리 - ` + user.username + `</title>
-            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
             <style>
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
                 .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -560,11 +527,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                const SUPABASE_URL = 'https://당신의프로젝트주소.supabase.co';
-                const SUPABASE_ANON_KEY = '당신의Publishable키';
-                const STORAGE_BUCKET = '본인이만든버킷이름';
-
-                const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 const currentApiKey = "` + apiKey + `";
 
                 async function loadReactions() {
@@ -580,7 +542,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 일치 조건</b>' + 
+                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
                                 '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
                             container.appendChild(div);
                         });
@@ -591,61 +553,27 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
-                
+
                     if (!amount) {
                         alert('특정 금액을 입력해주세요.');
                         return;
                     }
-                
+
+                    const formData = new FormData();
+                    formData.append('amount', amount);
+                    if (imageInput) formData.append('image', imageInput);
+                    if (audioInput) formData.append('audio', audioInput);
+
                     document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
                     document.getElementById('uploadBtn').disabled = true;
-                
+
                     try {
-                        let imageUrl = "";
-                        let audioUrl = "";
-                        
-                        // 이미지 파일 업로드 (SDK 방식 + 영문 난수 파일명)
-                        if (imageInput) {
-                            const fileExt = imageInput.name.split('.').pop();
-                            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-                            
-                            const { error: imgError } = await supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .upload(imgName, imageInput, { upsert: false });
-                            
-                            if (imgError) throw imgError;
-                            
-                            const { data: imgPublic } = supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .getPublicUrl(imgName);
-                            imageUrl = imgPublic.publicUrl;
-                        }
-                
-                        // 오디오 파일 업로드 (SDK 방식 + 영문 난수 파일명)
-                        if (audioInput) {
-                            const fileExt = audioInput.name.split('.').pop();
-                            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-                            
-                            const { error: audioError } = await supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .upload(audioName, audioInput, { upsert: false });
-                            
-                            if (audioError) throw audioError;
-                
-                            const { data: audioPublic } = supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .getPublicUrl(audioName);
-                            audioUrl = audioPublic.publicUrl;
-                        }
-                
-                        // 서버 DB에 리액션 저장 요청
                         const res = await fetch('/api/reactions/' + currentApiKey, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ amount, imageUrl, audioUrl })
+                            body: formData
                         });
                         const result = await res.json();
-                
+
                         if (result.success) {
                             alert('리액션이 성공적으로 등록되었습니다!');
                             document.getElementById('reactionForm').reset();
@@ -655,7 +583,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         }
                     } catch (err) {
                         console.error(err);
-                        alert('업로드 중 오류가 발생했습니다: ' + (err.message || err));
+                        alert('업로드 중 오류가 발생했습니다.');
                     } finally {
                         document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
                         document.getElementById('uploadBtn').disabled = false;
@@ -837,13 +765,52 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 🛠️ 리액션 설정 저장 API
-app.post('/api/reactions/:apiKey', async (req, res) => {
+// 🛠️ 리액션 설정 및 파일 업로드 처리 API (multer 경유 방식)
+const { createClient } = require('@supabase/supabase-js');
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
+const STORAGE_BUCKET = process.env.STORAGE_BUCKET || '본인이만든버킷이름';
+
+app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { amount, imageUrl, audioUrl } = req.body;
+        const { amount } = req.body;
+        let imageUrl = "";
+        let audioUrl = "";
+
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        if (req.files && req.files['image']) {
+            const file = req.files['image'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: imgError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (imgError) throw imgError;
+
+            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
+            imageUrl = imgPublic.publicUrl;
+        }
+
+        if (req.files && req.files['audio']) {
+            const file = req.files['audio'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: audioError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (audioError) throw audioError;
+
+            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
+            audioUrl = audioPublic.publicUrl;
+        }
 
         const newReaction = new Reaction({
             streamerId: user._id,
@@ -853,10 +820,10 @@ app.post('/api/reactions/:apiKey', async (req, res) => {
         });
 
         await newReaction.save();
-        res.json({ success: true, message: '리액션이 성공적으로 저장되었습니다.' });
+        res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ success: false, error: 'Server Error' });
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
     }
 });
 
