@@ -607,14 +607,17 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let imageUrl = "";
                         let audioUrl = "";
                         
-                        // 1. 이미지 파일 업로드 (원본 이름 일체 배제, 강제 영문/난수 파일명 사용)
+                        // 1. 이미지 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
                         if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
+                            // 원본 파일의 바이트와 타입을 유지한 새로운 안전한 파일 객체 생성
+                            const safeImageFile = new File([imageInput], imgName, { type: imageInput.type });
+
                             const { data: imgData, error: imgError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
-                                .upload(imgName, imageInput);
+                                .upload(imgName, safeImageFile);
                             
                             if (imgError) throw imgError;
                             
@@ -624,14 +627,17 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             imageUrl = imgPublic.publicUrl;
                         }
 
-                        // 2. 오디오 파일 업로드 (원본 이름 일체 배제, 강제 영문/난수 파일명 사용)
+                        // 2. 오디오 파일 업로드 (Blob으로 감싸서 한글 파일명 헤더 에러 원천 차단)
                         if (audioInput) {
                             const fileExt = audioInput.name.split('.').pop();
                             const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
+                            // 원본 파일의 바이트와 타입을 유지한 새로운 안전한 파일 객체 생성
+                            const safeAudioFile = new File([audioInput], audioName, { type: audioInput.type });
+
                             const { data: audioData, error: audioError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
-                                .upload(audioName, audioInput);
+                                .upload(audioName, safeAudioFile);
                             
                             if (audioError) throw audioError;
 
