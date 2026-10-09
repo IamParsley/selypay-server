@@ -572,7 +572,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 async function loadReactions() {
                     try {
-                        const res = await fetch('/api/reactions/' + apiKey);
+                        const res = await fetch('/api/reactions/' + '${user.apiKey}');
                         const data = await res.json();
                         const container = document.getElementById('reactionList');
                         container.innerHTML = '';
