@@ -590,13 +590,13 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                document.getElementById('uploadBtn').addEventListener('click', async () => {
-                    const minAmount = document.getElementById('minAmount').value;
+                    document.getElementById('uploadBtn').addEventListener('click', async () => {
+                    const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
 
-                    if (!minAmount) {
-                        alert('조건 금액을 입력해주세요.');
+                    if (!amount) {
+                        alert('특정 금액을 입력해주세요.');
                         return;
                     }
 
@@ -608,21 +608,13 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let audioUrl = "";
                         
                         // 이미지 파일 업로드 한글/특수문자 안전코드 버전
-                        if (imageInput) {
+                            if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
                             const { data: imgData, error: imgError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .upload(imgName, imageInput);
-                            
-                            if (imgError) throw imgError;
-                            
-                            const { data: imgPublic } = supabaseClient.storage
-                                .from(STORAGE_BUCKET)
-                                .getPublicUrl(imgName);
-                            imageUrl = imgPublic.publicUrl;
-                        }
                             
                             if (imgError) throw imgError;
                             
@@ -649,10 +641,11 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             audioUrl = audioPublic.publicUrl;
                         }
 
+                        // 서버 DB에 리액션 저장 요청
                         const res = await fetch('/api/reactions/' + '${apiKey}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ minAmount, imageUrl, audioUrl })
+                            body: JSON.stringify({ amount, imageUrl, audioUrl })
                         });
                         const result = await res.json();
 
