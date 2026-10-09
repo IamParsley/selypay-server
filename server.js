@@ -591,78 +591,61 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
-
+                
                     if (!amount) {
                         alert('특정 금액을 입력해주세요.');
                         return;
                     }
-
+                
                     document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
                     document.getElementById('uploadBtn').disabled = true;
-
+                
                     try {
                         let imageUrl = "";
                         let audioUrl = "";
                         
+                        // 이미지 파일 업로드 (SDK 방식 + 영문 난수 파일명)
                         if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            const uploadRes = await fetch(\`\${SUPABASE_URL}/storage/v1/object/\${STORAGE_BUCKET}/\${imgName}\`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': \`Bearer \${SUPABASE_ANON_KEY}\`,
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Content-Type': imageInput.type || 'application/octet-stream',
-                                    'x-upsert': 'false'
-                                },
-                                body: imageInput
-                            });
-                        
-                            if (!uploadRes.ok) {
-                                const errJson = await uploadRes.json();
-                                throw new Error(errJson.message || '이미지 업로드 실패');
-                            }
-                        
+                            const { error: imgError } = await supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .upload(imgName, imageInput, { upsert: false });
+                            
+                            if (imgError) throw imgError;
+                            
                             const { data: imgPublic } = supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .getPublicUrl(imgName);
                             imageUrl = imgPublic.publicUrl;
                         }
-
+                
+                        // 오디오 파일 업로드 (SDK 방식 + 영문 난수 파일명)
                         if (audioInput) {
                             const fileExt = audioInput.name.split('.').pop();
                             const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
-                            const uploadRes = await fetch(\`\${SUPABASE_URL}/storage/v1/object/\${STORAGE_BUCKET}/\${audioName}\`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': \`Bearer \${SUPABASE_ANON_KEY}\`,
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Content-Type': audioInput.type || 'application/octet-stream',
-                                    'x-upsert': 'false'
-                                },
-                                body: audioInput
-                            });
-                        
-                            if (!uploadRes.ok) {
-                                const errJson = await uploadRes.json();
-                                throw new Error(errJson.message || '오디오 업로드 실패');
-                            }
-                        
+                            const { error: audioError } = await supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .upload(audioName, audioInput, { upsert: false });
+                            
+                            if (audioError) throw audioError;
+                
                             const { data: audioPublic } = supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .getPublicUrl(audioName);
                             audioUrl = audioPublic.publicUrl;
                         }
-
+                
+                        // 서버 DB에 리액션 저장 요청
                         const res = await fetch('/api/reactions/' + currentApiKey, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ amount, imageUrl, audioUrl })
                         });
                         const result = await res.json();
-
+                
                         if (result.success) {
                             alert('리액션이 성공적으로 등록되었습니다!');
                             document.getElementById('reactionForm').reset();
