@@ -10,19 +10,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB 연결 (필요시 수정)
-// mongoose.connect('mongodb://localhost:27017/selypay');
-
 // Supabase 설정
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET || '본인이만든버킷이름';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Multer 메모리 스토리지 설정 (서버 경유 Supabase 업로드용)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 몽고디비 스키마 정의
 const userSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
@@ -56,7 +51,6 @@ const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
-// 한국 시간 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -66,7 +60,6 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// API: 알림 설정 불러오기
 app.get('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -77,7 +70,6 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// API: 알림 설정 저장하기
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const { soundType, duration, fontSize, useImage } = req.body;
@@ -100,12 +92,10 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 3. 홈 루트
 app.get('/', (req, res) => {
     res.send(`<div style="font-family:sans-serif; text-align:center; margin-top:50px;"><h1>SelyPay 멀티 테넌트 서버 실행 중 🚀</h1><p><a href="/register">스트리머 회원가입</a> | <a href="/login">로그인</a></p></div>`);
 });
 
-// 4. 회원가입 페이지
 app.get('/register', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>스트리머 회원가입</title></head><body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;"><div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;"><h2>스트리머 회원가입</h2><form action="/api/register" method="POST"><div style="margin-bottom:15px;"><label>아이디</label><br><input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required></div><div style="margin-bottom:15px;"><label>비밀번호</label><br><input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required></div><button type="submit" style="width:100%; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">가입하기</button></form><p style="text-align:center; margin-top:15px;"><a href="/login">이미 계정이 있으신가요? 로그인</a></p></div></body></html>`);
 });
@@ -122,7 +112,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 5. 로그인 페이지
 app.get('/login', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>스트리머 로그인</title></head><body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;"><div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;"><h2>스트리머 로그인</h2><form action="/api/login" method="POST"><div style="margin-bottom:15px;"><label>아이디</label><br><input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required></div><div style="margin-bottom:15px;"><label>비밀번호</label><br><input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required></div><button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button></form><p style="text-align:center; margin-top:15px;"><a href="/register" style="color:#ff4757; text-decoration:none;">계정이 없으신가요? 회원가입</a></p></div></body></html>`);
 });
@@ -140,7 +129,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
     if (!apiKey || !message) {
@@ -170,15 +158,12 @@ app.post('/api/notification', async (req, res) => {
             dateKey: getKSTDateKey()
         });
         await donationData.save();
-        console.log(`[${user.username}] 후원 수신 성공:`, donationData);
         res.status(200).json({ success: true, data: donationData });
     } catch (e) {
-        console.error(e);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면 (정확한 금액 매칭 및 사운드 길이 자동 조절 적용)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -276,7 +261,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     line1.innerText = firstText;
                     line2.innerText = secondText;
 
-                    // 정확히 일치하는 리액션 찾기
                     const matchedReaction = reactions.find(r => r.amount === amount);
 
                     if (useImageSetting) {
@@ -294,5 +278,44 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
                     const sound = new Audio(audioSrc);
 
-                    container.
-                
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                    let hideTimeout = ${ (settings.duration || 5) * 1000 };
+                    
+                    sound.onloadedmetadata = function() {
+                        if (sound.duration && !isNaN(sound.duration)) {
+                            hideTimeout = sound.duration * 1000;
+                        }
+                        clearTimeout(window.alertTimer);
+                        window.alertTimer = setTimeout(() => { 
+                            container.style.display = 'none'; 
+                        }, hideTimeout);
+                    };
+
+                    window.alertTimer = setTimeout(() => { 
+                        container.style.display = 'none'; 
+                    }, hideTimeout);
+                }
+
+                setInterval(checkNewDonation, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+app.get('/manage/alert/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    const settings = user.alertSettings || {};
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>알림창 관리 - ` +
