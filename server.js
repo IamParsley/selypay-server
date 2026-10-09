@@ -541,8 +541,9 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
                 <form id="reactionForm">
                     <div class="form-group">
-                        <label>조건 금액 (원 이상)</label>
-                        <input type="number" id="minAmount" placeholder="예: 10000" required>
+                        <label>특정 후원 금액 (원)</label>
+                        <!-- id를 minAmount에서 amount로 변경 -->
+                        <input type="number" id="amount" placeholder="예: 9999" required>
                     </div>
                     <div class="form-group">
                         <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
