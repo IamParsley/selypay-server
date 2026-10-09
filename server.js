@@ -542,7 +542,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <form id="reactionForm">
                     <div class="form-group">
                         <label>특정 후원 금액 (원)</label>
-                        <!-- id를 minAmount에서 amount로 변경 -->
                         <input type="number" id="amount" placeholder="예: 9999" required>
                     </div>
                     <div class="form-group">
