@@ -392,20 +392,15 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     
-                    const message = donation.message;
+                    const message = donation.message || '';
                     const amount = donation.amount || 0;
+                    const nickname = donation.nickname || '익명';
                             
-                    let firstText = message;
-                    let secondText = '';
+                    // 첫 번째 줄: 닉네임 + 금액 + 후원 감사합니다 형식으로 고정하거나 메시지 그대로 출력
+                    line1.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원감사합니다';
                     
-                    const newlineIdx = message.indexOf('\\n');
-                    if (newlineIdx !== -1) {
-                        firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 2);
-                    }
-
-                    line1.innerText = firstText;
-                    line2.innerText = secondText;
+                    // 두 번째 줄: 실제 사용자가 보낸 후원 메시지 출력
+                    line2.innerText = message;
 
                     const matchedReaction = reactions.find(r => r.amount === amount);
 
