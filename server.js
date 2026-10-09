@@ -359,6 +359,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const settings = user.alertSettings || {};
     const useImage = settings.useImage !== false;
 
+    // 해당 스트리머의 리액션 목록 조회
+    const reactions = await Reaction.find({ streamerId: user._id });
+
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -401,9 +404,14 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 <div id="alert-line2"></div>
             </div>
 
-            <audio id="alert-sound" src="/${settings.soundType || 'coinsound.mp3'}"></audio>
+            <audio id="alert-sound"></audio>
 
             <script>
+                const reactions = ${JSON.stringify(reactions)};
+                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+                const defaultImage = "/alerticon.gif";
+                const useImageSetting = ${useImage};
+
                 let lastCheckedTime = "";
                 
                 async function checkNewDonation() {
@@ -414,17 +422,20 @@ app.get('/overlay/:apiKey', async (req, res) => {
                             const latest = logs[0];
                             if (latest.datetime !== lastCheckedTime) {
                                 lastCheckedTime = latest.datetime;
-                                showAlert(latest.message);
+                                showAlert(latest);
                             }
                         }
                     } catch (e) { console.error(e); }
                 }
 
-                function showAlert(message) {
+                function showAlert(donation) {
                     const container = document.getElementById('alert-container');
+                    const imgElement = document.getElementById('alert-image');
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
-                    const sound = document.getElementById('alert-sound');
+                    
+                    const message = donation.message;
+                    const amount = donation.amount || 0;
                             
                     let firstText = message;
                     let secondText = "";
@@ -437,6 +448,26 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                     line1.innerText = firstText;
                     line2.innerText = secondText;
+
+                    // 후원 금액과 정확히 일치하는 리액션 찾기
+                    const matchedReaction = reactions.find(r => r.amount === amount);
+
+                    // 이미지 설정
+                    if (useImageSetting) {
+                        if (matchedReaction && matchedReaction.imageUrl) {
+                            imgElement.src = matchedReaction.imageUrl;
+                            imgElement.style.display = 'block';
+                        } else {
+                            imgElement.src = defaultImage;
+                            imgElement.style.display = 'block';
+                        }
+                    } else {
+                        imgElement.style.display = 'none';
+                    }
+
+                    // 오디오 설정
+                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                    const sound = new Audio(audioSrc);
 
                     container.style.display = 'flex';
                     sound.currentTime = 0;
