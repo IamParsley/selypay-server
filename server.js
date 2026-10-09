@@ -606,9 +606,12 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     try {
                         let imageUrl = "";
                         let audioUrl = "";
-
+                        
+                        // 이미지 파일 업로드 한글/특수문자 안전코드 버전
                         if (imageInput) {
-                            const imgName = 'img_' + Date.now() + '_' + imageInput.name;
+                            const fileExt = imageInput.name.split('.').pop();
+                            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+                            
                             const { data: imgData, error: imgError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .upload(imgName, imageInput);
@@ -620,9 +623,20 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                                 .getPublicUrl(imgName);
                             imageUrl = imgPublic.publicUrl;
                         }
+                            
+                            if (imgError) throw imgError;
+                            
+                            const { data: imgPublic } = supabaseClient.storage
+                                .from(STORAGE_BUCKET)
+                                .getPublicUrl(imgName);
+                            imageUrl = imgPublic.publicUrl;
+                        }
 
+                        //오디오 파일 업로드 한글/특수문자 안전코드 버전
                         if (audioInput) {
-                            const audioName = 'audio_' + Date.now() + '_' + audioInput.name;
+                            const fileExt = audioInput.name.split('.').pop();
+                            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+                            
                             const { data: audioData, error: audioError } = await supabaseClient.storage
                                 .from(STORAGE_BUCKET)
                                 .upload(audioName, audioInput);
