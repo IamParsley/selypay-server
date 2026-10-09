@@ -787,9 +787,13 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
             const fileExt = file.originalname.split('.').pop();
             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
 
+            // 파일 객체가 아닌 순수 buffer와 영문 파일명만 전달
             const { error: imgError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+                .upload(imgName, file.buffer, { 
+                    contentType: file.mimetype,
+                    upsert: false 
+                });
 
             if (imgError) throw imgError;
 
@@ -804,7 +808,10 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
 
             const { error: audioError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+                .upload(audioName, file.buffer, { 
+                    contentType: file.mimetype,
+                    upsert: false 
+                });
 
             if (audioError) throw audioError;
 
