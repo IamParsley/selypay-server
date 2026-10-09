@@ -1,3 +1,4 @@
+JavaScript
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -7,20 +8,16 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 미들웨어 설정
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// 메모리에 파일을 일시 저장하여 Supabase로 전송하기 위한 multer 설정
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 1. MongoDB 연결
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
     .catch((err) => console.error('❌ MongoDB 연결 에러', err));
 
-// 2. Mongoose 스키마 정의
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -48,7 +45,6 @@ const donationSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 
-// 리액션 설정 스키마 및 모델
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, default: 0 },
@@ -57,7 +53,6 @@ const reactionSchema = new mongoose.Schema({
 });
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
-// 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -67,7 +62,6 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// 🔔 알림 설정 불러오기 API
 app.get('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -78,7 +72,6 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const { soundType, duration, fontSize, useImage } = req.body;
@@ -101,12 +94,10 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 3. 홈 루트
 app.get('/', (req, res) => {
     res.send('<div style="font-family:sans-serif; text-align:center; margin-top:50px;"><h1>SelyPay 멀티 테넌트 서버 실행 중 🚀</h1><p><a href="/register">스트리머 회원가입</a> | <a href="/login">로그인</a></p></div>');
 });
 
-// 4. 회원가입 페이지
 app.get('/register', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>스트리머 회원가입</title></head><body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;"><div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;"><h2>스트리머 회원가입</h2><form action="/api/register" method="POST"><div style="margin-bottom:15px;"><label>아이디</label><br><input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required></div><div style="margin-bottom:15px;"><label>비밀번호</label><br><input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required></div><button type="submit" style="width:100%; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">가입하기</button></form><p style="text-align:center; margin-top:15px;"><a href="/login">이미 계정이 있으신가요? 로그인</a></p></div></body></html>`);
 });
@@ -123,7 +114,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 5. 로그인 페이지
 app.get('/login', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>스트리머 로그인</title></head><body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;"><div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;"><h2>스트리머 로그인</h2><form action="/api/login" method="POST"><div style="margin-bottom:15px;"><label>아이디</label><br><input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required></div><div style="margin-bottom:15px;"><label>비밀번호</label><br><input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required></div><button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button></form><p style="text-align:center; margin-top:15px;"><a href="/register" style="color:#ff4757; text-decoration:none;">계정이 없으신가요? 회원가입</a></p></div></body></html>`);
 });
@@ -238,7 +228,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
     if (!apiKey || !message) {
@@ -341,19 +330,21 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
                     width: auto; 
                     max-width: 80vw; 
-                    word-break: break-all; 
-                    line-height: 1.4; 
-                    margin-bottom: 5px;
+                    word-break: keep-all; 
+                    overflow-wrap: break-word;
+                    line-height: 1.3; 
+                    margin-bottom: 8px;
                 }
                 #alert-line2 {
                     color: #b5e48c; 
                     font-size: calc(${settings.fontSize || '32px'} * 0.9); 
                     font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
                     width: auto; 
                     max-width: 80vw; 
-                    word-break: break-word; 
-                    line-height: 1.2;
+                    word-break: keep-all; 
+                    overflow-wrap: break-word;
+                    line-height: 1.3;
                 }
             </style>
         </head>
@@ -392,14 +383,11 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const line1 = document.getElementById('alert-line1');
                     const line2 = document.getElementById('alert-line2');
                     
-                    const message = donation.message || '';
-                    const amount = donation.amount || 0;
                     const nickname = donation.nickname || '익명';
+                    const amount = donation.amount || 0;
+                    const message = donation.message || '';
                             
-                    // 첫 번째 줄: 닉네임 + 금액 + 후원 감사합니다 형식으로 고정하거나 메시지 그대로 출력
                     line1.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원감사합니다';
-                    
-                    // 두 번째 줄: 실제 사용자가 보낸 후원 메시지 출력
                     line2.innerText = message;
 
                     const matchedReaction = reactions.find(r => r.amount === amount);
@@ -467,7 +455,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 
-                /* 실시간 미리보기 영역 (오버레이와 완벽 일치) */
                 .preview-section { background: #111; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 25px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 180px; }
                 .preview-title { color: #aaa; font-size: 12px; position: absolute; top: 10px; left: 15px; }
                 #preview-image { max-height: 80px; width: auto; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8)); }
@@ -476,16 +463,18 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     color: #ffffff; 
                     font-weight: 800; 
                     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
-                    line-height: 1.4; 
-                    margin-bottom: 5px; 
-                    word-break: break-all; 
+                    line-height: 1.3; 
+                    margin-bottom: 8px; 
+                    word-break: keep-all; 
+                    overflow-wrap: break-word;
                 }
                 #preview-line2 { 
                     color: #b5e48c; 
                     font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); 
-                    line-height: 1.2; 
-                    word-break: break-word; 
+                    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
+                    line-height: 1.3; 
+                    word-break: keep-all; 
+                    overflow-wrap: break-word;
                 }
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
@@ -506,7 +495,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <div class="preview-section">
                     <div class="preview-title">PREVIEW</div>
                     <img id="preview-image" src="/alerticon.gif" alt="Preview Image">
-                    <div id="preview-line1">테스트후원알림님 1,000원</div>
+                    <div id="preview-line1">테스트후원알림님 1,000원 후원감사합니다</div>
                     <div id="preview-line2">후원 감사합니다!</div>
                 </div>
 
@@ -555,7 +544,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                // 💡 미리보기 업데이트 및 실시간 반영 함수
                 function updatePreview() {
                     const fontSizeInput = document.getElementById('fontSize').value;
                     const useImageCheckbox = document.getElementById('useImage').checked;
@@ -568,7 +556,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     const amount = Number(document.getElementById('testAmount').value || 0).toLocaleString();
                     const message = document.getElementById('testMessage').value;
 
-                    line1.innerText = nickname + '님 ' + amount + '원';
+                    line1.innerText = nickname + '님 ' + amount + '원 후원감사합니다';
                     line2.innerText = message;
 
                     line1.style.fontSize = fontSizeInput;
@@ -584,7 +572,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 
                 updatePreview();
 
-                // 🚀 테스트 후원 버튼 클릭 시 사운드 재생
                 document.getElementById('sendTestBtn').addEventListener('click', () => {
                     const previewSection = document.querySelector('.preview-section');
                     previewSection.style.transform = 'scale(1.02)';
@@ -599,7 +586,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     }
                 });
 
-                // 설정 저장 처리
                 document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const duration = document.getElementById('duration').value;
@@ -629,7 +615,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -683,7 +668,6 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8-1. 랭킹판 전용 세부 관리 및 설정 페이지
 app.get('/manageranking/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -722,7 +706,6 @@ app.get('/manageranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 9. API 코드 모음
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -762,7 +745,6 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
     }
 });
 
-// 서버 구동
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
