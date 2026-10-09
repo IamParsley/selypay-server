@@ -590,7 +590,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     } catch (e) { console.error(e); }
                 }
 
-                    document.getElementById('uploadBtn').addEventListener('click', async () => {
+                   document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
@@ -607,8 +607,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         let imageUrl = "";
                         let audioUrl = "";
                         
-                        // 이미지 파일 업로드 한글/특수문자 안전코드 버전
-                            if (imageInput) {
+                        // 1. 이미지 파일 업로드 (원본 이름 일체 배제, 강제 영문/난수 파일명 사용)
+                        if (imageInput) {
                             const fileExt = imageInput.name.split('.').pop();
                             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
                             
@@ -624,7 +624,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             imageUrl = imgPublic.publicUrl;
                         }
 
-                        //오디오 파일 업로드 한글/특수문자 안전코드 버전
+                        // 2. 오디오 파일 업로드 (원본 이름 일체 배제, 강제 영문/난수 파일명 사용)
                         if (audioInput) {
                             const fileExt = audioInput.name.split('.').pop();
                             const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
@@ -641,7 +641,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                             audioUrl = audioPublic.publicUrl;
                         }
 
-                        // 서버 DB에 리액션 저장 요청
+                        // 3. 서버 DB에 리액션 저장 요청
                         const res = await fetch('/api/reactions/' + '${apiKey}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -658,7 +658,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         }
                     } catch (err) {
                         console.error(err);
-                        alert('업로드 중 오류가 발생했습니다.');
+                        alert('업로드 중 오류가 발생했습니다: ' + (err.message || err));
                     } finally {
                         document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
                         document.getElementById('uploadBtn').disabled = false;
