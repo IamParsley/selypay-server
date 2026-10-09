@@ -250,11 +250,23 @@ app.post('/api/notification', async (req, res) => {
             nickname = message.split('님')[0].trim();
         }
 
+        // 💡 앱에서 전달된 전체 메시지에서 순수 메시지만 추출 (후원금액/알림 문구 제거)
+        let pureMessage = message;
+        if (message.includes('후원감사합니다')) {
+            const parts = message.split('후원감사합니다');
+            if (parts.length > 1) {
+                pureMessage = parts[1].trim();
+            }
+        }
+        if (pureMessage.startsWith('\n')) {
+            pureMessage = pureMessage.substring(1).trim();
+        }
+
         const donationData = new Donation({
             streamerId: user._id,
             nickname,
             amount, 
-            message, 
+            message: pureMessage, // 순수 메시지만 DB에 저장하여 중복 출력 방지
             datetime: getKSTDateTime(),
             dateKey: getKSTDateKey()
         });
@@ -293,6 +305,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     background-color: transparent !important;
                     font-family: 'Pretendard', 'Malgun Gothic', '맑은 고딕', sans-serif;
                     overflow: hidden;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
                 }
                 #alert-container {
                     width: fit-content; 
@@ -314,12 +329,12 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     100% { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 #alert-image { 
-                    max-height: 35vh; 
+                    max-height: 120px; 
                     width: auto; 
                     max-width: 60vw;
                     object-fit: contain; 
                     display: ${useImage ? 'block' : 'none'}; 
-                    margin-bottom: 1.5vh;
+                    margin-bottom: 15px;
                     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
                 }
                 #alert-line1 {
@@ -388,6 +403,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
                             
                     line1.innerText = nickname + '님 ' + amount.toLocaleString() + '원 후원감사합니다';
                     line2.innerText = message;
+                    
+                    // 메시지가 없으면 둘째 줄 숨김
+                    if (!message || message.trim() === '') {
+                        line2.style.display = 'none';
+                    } else {
+                        line2.style.display = 'block';
+                    }
 
                     const matchedReaction = reactions.find(r => r.amount === amount);
 
@@ -433,7 +455,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (실제 오버레이와 100% 동일한 iframe 미리보기 적용)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (16:9 iframe 미리보기 적용)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -454,7 +476,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 
-                /* 실제 오버레이 화면을 그대로 담아내는 16:9 비율의 iframe 프리뷰 박스 */
                 .preview-section { 
                     background: #111; 
                     border-radius: 8px; 
@@ -489,7 +510,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <!-- 💡 실제 오버레이를 그대로 임베드한 16:9 비율의 완벽한 미리보기 -->
+                <!-- 💡 16:9 비율 iframe 미리보기 -->
                 <h3 style="margin-top: 0;">👀 알림창 실시간 미리보기 (16:9 OBS 비율)</h3>
                 <div class="preview-section">
                     <div class="preview-title">PREVIEW</div>
@@ -541,7 +562,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                // 🚀 테스트 후원 버튼 클릭 시 iframe 내부의 showAlert 함수를 직접 호출하여 100% 동일하게 테스트
                 document.getElementById('sendTestBtn').addEventListener('click', () => {
                     const iframe = document.getElementById('preview-iframe');
                     try {
@@ -562,7 +582,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     }
                 });
 
-                // 설정 저장 처리
                 document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const duration = document.getElementById('duration').value;
@@ -577,7 +596,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         });
                         const result = await response.json();
                         if (result.success) {
-                            alert('설정이 성공적으로 저장되었습니다! 오버레이에 즉시 반영됩니다.');
+                            alert('설정이 성공적으로 저장되었습니다!');
                             document.getElementById('preview-iframe').contentWindow.location.reload();
                         } else {
                             alert('설정 저장 실패: ' + (result.error || '알 수 없는 오류'));
