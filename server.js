@@ -35,16 +35,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// 리액션 설정 스키마 추가 (조건 금액, 이미지 URL, 오디오 URL 저장)
-const reactionSchema = new mongoose.Schema({
-    streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    minAmount: { type: Number, default: 0 }, // 얼마 이상 후원일 때?
-    messageText: { type: String, default: "" }, // 출력될 텍스트
-    imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
-    audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
-});
-const Reaction = mongoose.model('Reaction', reactionSchema);
-
 // 기본알림 설정 스키마
 
 const donationSchema = new mongoose.Schema({
