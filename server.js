@@ -454,7 +454,22 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 
-                .preview-section { background: #111; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 25px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 180px; }
+                .preview-section { 
+                    background: #111; 
+                    border-radius: 8px; 
+                    padding: 25px; 
+                    text-align: center; 
+                    margin-bottom: 25px; 
+                    position: relative; 
+                    overflow: hidden; 
+                    display: flex; 
+                    flex-direction: column; 
+                    justify-content: center; 
+                    align-items: center; 
+                    width: 100%;
+                    aspect-ratio: 16 / 9; /* 1920:1080과 같은 16:9 비율 유지 */
+                    box-sizing: border-box;
+                }
                 .preview-title { color: #aaa; font-size: 12px; position: absolute; top: 10px; left: 15px; }
                 #preview-image { max-height: 80px; width: auto; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8)); }
                 
