@@ -53,7 +53,7 @@ const Donation = mongoose.model('Donation', donationSchema);
 // 리액션 설정 스키마 및 모델 (금액과 미디어 파일만 관리)
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    Amount: { type: Number, default: 0 }, // 특정 금액
+    amount: { type: Number, default: 0 }, // 특정 금액
     imageUrl: { type: String, default: "" },   // Supabase 이미지 URL
     audioUrl: { type: String, default: "" }    // Supabase 오디오 URL
 });
@@ -65,11 +65,11 @@ app.post('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { minAmount, imageUrl, audioUrl } = req.body;
+        const { minamount, imageUrl, audioUrl } = req.body;
 
         const newReaction = new Reaction({
             streamerId: user._id,
-            minAmount,
+            minamount,
             imageUrl,
             audioUrl
         });
@@ -88,7 +88,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
-        const reactions = await Reaction.find({ streamerId: user._id }).sort({ Amount: 1 });
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
         res.json(reactions);
     } catch (e) {
         res.status(500).json([]);
@@ -322,7 +322,7 @@ app.post('/api/login', async (req, res) => {
                             ranking.forEach((item, index) => {
                                 const div = document.createElement('div');
                                 div.className = 'log-item';
-                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalAmount.toLocaleString() + '원 (' + item.count + '회)';
+                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalamount.toLocaleString() + '원 (' + item.count + '회)';
                                 rankContainer.appendChild(div);
                             });
                         } catch (e) { console.error(e); }
@@ -583,7 +583,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.minAmount.toLocaleString() + '원 이상 조건</b>' + 
+                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
                                 '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
                             container.appendChild(div);
                         });
@@ -719,7 +719,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
                         ranking.forEach((item, index) => {
                             const div = document.createElement('div');
                             div.className = 'rank-item';
-                            div.innerHTML = '<span class="name">' + (index + 1) + '. ' + item._id + '</span><span class="amount">' + item.totalAmount.toLocaleString() + '원</span>';
+                            div.innerHTML = '<span class="name">' + (index + 1) + '. ' + item._id + '</span><span class="amount">' + item.totalamount.toLocaleString() + '원</span>';
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
@@ -808,27 +808,27 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
 
             if (!rankingMap[cleanName]) {
                 rankingMap[cleanName] = {
-                    totalAmount: 0,
+                    totalamount: 0,
                     count: 0,
                     firstDonationTime: d.timestamp
                 };
             }
-            rankingMap[cleanName].totalAmount += d.amount;
+            rankingMap[cleanName].totalamount += d.amount;
             rankingMap[cleanName].count += 1;
         });
 
         const rankingList = Object.keys(rankingMap).map(name => {
             return {
                 _id: name,
-                totalAmount: rankingMap[name].totalAmount,
+                totalamount: rankingMap[name].totalamount,
                 count: rankingMap[name].count,
                 firstDonationTime: rankingMap[name].firstDonationTime
             };
         });
 
         rankingList.sort((a, b) => {
-            if (b.totalAmount !== a.totalAmount) {
-                return b.totalAmount - a.totalAmount;
+            if (b.totalamount !== a.totalamount) {
+                return b.totalamount - a.totalamount;
             }
             return new Date(a.firstDonationTime) - new Date(b.firstDonationTime);
         });
@@ -869,7 +869,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
-        const reactions = await Reaction.find({ streamerId: user._id }).sort({ minAmount: 1 });
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
         res.json(reactions);
     } catch (e) {
         res.status(500).json([]);
