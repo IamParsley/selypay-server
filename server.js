@@ -719,3 +719,55 @@ app.get('/manageranking/:apiKey', async (req, res) => {
                 
                 <h3>⚙️ 세부 설정 (준비 중)</h3>
                 <p style="color: #666; font-size: 14px;">여기에 랭킹 표시 명수 조절, 배경 투명도, 글자 색상 테마 변경 등의 세부 설정을 추가할 예정입니다.</p>
+
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 9. API 코드 모음
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        
+        const todayKey = getKSTDateKey();
+        const ranking = await Donation.aggregate([
+            { $match: { streamerId: user._id, dateKey: todayKey } },
+            { $group: { _id: '$nickname', totalAmount: {$sum: '$amount' }, count: {$sum: 1 } } },
+            { $sort: { totalAmount: -1 } },             {$limit: 10 }
+        ]);
+        res.json(ranking);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        res.json(reactions);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+// 서버 구동
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
