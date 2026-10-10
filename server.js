@@ -54,9 +54,11 @@ const Donation = mongoose.model('Donation', donationSchema);
 // 리액션 설정 스키마 및 모델
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, default: "" }, // 리액션 이름 필드 추가
     amount: { type: Number, default: 0 }, 
     imageUrl: { type: String, default: "" },   
-    audioUrl: { type: String, default: "" }    
+    audioUrl: { type: String, default: "" },
+    timestamp: { type: Date, default: Date.now} // 정렬(최신순)을 위한 timestamp
 });
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
@@ -508,142 +510,231 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
 
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>알림창 관리 - ` + user.username + `</title>
-            <style>
-                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .form-group { margin-bottom: 20px; }
-                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-                .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-                .btn:hover { background: #2980b9; }
-                .btn-secondary { background: #7f8c8d; }
-                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 5px; margin-bottom: 10px; font-size: 14px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h2>🔔 알림창 및 후원 리액션 관리</h2>
-                <p>OBS 브라우저 소스 주소:</p>
-                <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
-                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
-                
-                <h3>⚙️ 기본 알림창 세부 설정</h3>
-                <form id="alertSettingsForm">
-                    <div class="form-group">
-                        <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
-                    </div>
-                    <div class="form-group">
-                        <label>메시지 폰트 크기</label>
-                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
-                    </div>
-                    <button type="submit" class="btn">기본 설정 저장하기</button>
-                </form>
+    // 알림창 관리 페이지 HTML
+    
+   res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>알림창 관리 - ` + user.username + `</title>
+        <style>
+            body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+            .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+            .form-group { margin-bottom: 15px; }
+            .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+            .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+            .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+            .btn:hover { background: #2980b9; }
+            .btn-secondary { background: #7f8c8d; }
+            
+            /* 리스트 가로 4개 배치 그리드 */
+            .sort-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 15px; }
+            .reaction-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+            .reaction-card { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
+            .reaction-card img { width: 100%; height: 90px; object-fit: contain; background: #222; border-radius: 4px; margin-bottom: 8px; }
+            .reaction-card h5 { margin: 5px 0; font-size: 15px; }
+            .reaction-card p { margin: 5px 0; font-size: 13px; color: #555; }
+            .card-btns { display: flex; gap: 5px; margin-top: 8px; }
+            .card-btns button { flex: 1; padding: 5px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+            .btn-edit { background: #f39c12; color: white; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>🔔 알림창 및 후원 리액션 관리</h2>
+            <p>OBS 브라우저 소스 주소:</p>
+            <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
 
-                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+            <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+            
+            <h3>⚙️ 기본 알림창 세부 설정</h3>
+            <form id="alertSettingsForm">
+                <div class="form-group">
+                    <label>알림 지속 시간 (초)</label>
+                    <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                </div>
+                <div class="form-group">
+                    <label>메시지 폰트 크기</label>
+                    <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                </div>
+                <button type="submit" class="btn">기본 설정 저장하기</button>
+            </form>
 
-                <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
-                <form id="reactionForm">
-                    <div class="form-group">
-                        <label>특정 후원 금액 (원)</label>
-                        <input type="number" id="amount" placeholder="예: 9999" required>
-                    </div>
-                    <div class="form-group">
-                        <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
-                        <input type="file" id="imageFile" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>오디오 파일 선택 (MP3, WAV 등)</label>
-                        <input type="file" id="audioFile" accept="audio/*">
-                    </div>
-                    <button type="button" id="uploadBtn" class="btn" style="background:#2ed573;">리액션 업로드 및 등록</button>
-                </form>
+            <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h4 style="margin-top:30px;">📋 등록된 리액션 목록</h4>
-                <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
+            <h3 id="formTitle">🎨 금액별 커스텀 리액션 등록</h3>
+            <form id="reactionForm">
+                <input type="hidden" id="reactionId">
+                <div class="form-group">
+                    <label>리액션 이름</label>
+                    <input type="text" id="reactionName" placeholder="예: 최고급 폭죽 리액션" required>
+                </div>
+                <div class="form-group">
+                    <label>특정 후원 금액 (원)</label>
+                    <input type="number" id="amount" placeholder="예: 9999" required>
+                </div>
+                <div class="form-group">
+                    <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
+                    <input type="file" id="imageFile" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>오디오 파일 선택 (MP3, WAV 등)</label>
+                    <input type="file" id="audioFile" accept="audio/*">
+                </div>
+                <button type="button" id="uploadBtn" class="btn" style="background:#2ed573;">리액션 등록하기</button>
+                <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none;">수정 취소</button>
+            </form>
 
-                <br>
-                <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
+            <div class="sort-bar">
+                <h4 style="margin:0;">📋 등록된 리액션 목록</h4>
+                <select id="sortSelect" class="btn" style="background:#fff; color:#333; border:1px solid #ddd; padding:5px 10px;">
+                    <option value="latest">최신순</option>
+                    <option value="high">가격 높은순</option>
+                    <option value="low">가격 낮은순</option>
+                </select>
             </div>
+            
+            <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
 
-            <script>
-                const currentApiKey = "` + apiKey + `";
+            <br><br>
+            <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
+        </div>
 
-                async function loadReactions() {
-                    try {
-                        const res = await fetch('/api/reactions/' + currentApiKey);
-                        const data = await res.json();
-                        const container = document.getElementById('reactionList');
-                        container.innerHTML = '';
-                        if (!data || data.length === 0) {
-                            container.innerHTML = '<div style="color:#666;">등록된 리액션이 없습니다.</div>';
-                            return;
-                        }
-                        data.forEach(r => {
-                            const div = document.createElement('div');
-                            div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
-                                '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
-                            container.appendChild(div);
-                        });
-                    } catch (e) { console.error(e); }
+        <script>
+            const currentApiKey = "` + apiKey + `";
+            let globalReactions = [];
+
+            async function loadReactions() {
+                try {
+                    const res = await fetch('/api/reactions/' + currentApiKey);
+                    globalReactions = await res.json();
+                    renderReactions();
+                } catch (e) { console.error(e); }
+            }
+
+            function renderReactions() {
+                const container = document.getElementById('reactionList');
+                container.innerHTML = '';
+                
+                if (!globalReactions || globalReactions.length === 0) {
+                    container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
+                    return;
                 }
 
-                document.getElementById('uploadBtn').addEventListener('click', async () => {
-                    const amount = document.getElementById('amount').value;
-                    const imageInput = document.getElementById('imageFile').files[0];
-                    const audioInput = document.getElementById('audioFile').files[0];
+                // 정렬 로직
+                const sortType = document.getElementById('sortSelect').value;
+                let sorted = [...globalReactions];
+                if (sortType === 'high') {
+                    sorted.sort((a, b) => b.amount - a.amount);
+                } else if (sortType === 'low') {
+                    sorted.sort((a, b) => a.amount - b.amount);
+                } else {
+                    // 최신순 (timestamp 기준 내림차순, 없으면 _id 생성시간 활용)
+                    sorted.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+                }
 
-                    if (!amount) {
-                        alert('특정 금액을 입력해주세요.');
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('amount', amount);
-                    if (imageInput) formData.append('image', imageInput);
-                    if (audioInput) formData.append('audio', audioInput);
-
-                    document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
-                    document.getElementById('uploadBtn').disabled = true;
-
-                    try {
-                        const res = await fetch('/api/reactions/' + currentApiKey, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const result = await res.json();
-
-                        if (result.success) {
-                            alert('리액션이 성공적으로 등록되었습니다!');
-                            document.getElementById('reactionForm').reset();
-                            loadReactions();
-                        } else {
-                            alert('등록 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert('업로드 중 오류가 발생했습니다.');
-                    } finally {
-                        document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
-                        document.getElementById('uploadBtn').disabled = false;
-                    }
+                sorted.forEach(r => {
+                    const card = document.createElement('div');
+                    card.className = 'reaction-card';
+                    
+                    const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
+                    card.innerHTML = `
+                        <div>
+                            <img src="\${imgSrc}" alt="이미지">
+                            <h5>\${r.name || '이름 없음'}</h5>
+                            <p><b>\${r.amount.toLocaleString()}원</b></p>
+                            <small style="color:#888;">음악: \${r.audioUrl ? 'O' : 'X'}</small>
+                        </div>
+                        <div class="card-btns">
+                            <button class="btn-edit" onclick="editReaction('\${r._id}')">수정</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
                 });
+            }
 
-                loadReactions();
-            </script>
-        </body>
-        </html>
-    `);
-});
+            document.getElementById('sortSelect').addEventListener('change', renderReactions);
+
+            function editReaction(id) {
+                const target = globalReactions.find(r => r._id === id);
+                if (!target) return;
+
+                document.getElementById('reactionId').value = target._id;
+                document.getElementById('reactionName').value = target.name || '';
+                document.getElementById('amount').value = target.amount;
+                
+                document.getElementById('formTitle').innerText = '✏️ 리액션 수정하기';
+                document.getElementById('uploadBtn').innerText = '수정사항 저장하기';
+                document.getElementById('cancelEditBtn').style.display = 'inline-block';
+                window.scrollTo({ top: document.getElementById('reactionForm').offsetTop - 50, behavior: 'smooth' });
+            }
+
+            document.getElementById('cancelEditBtn').addEventListener('click', () => {
+                resetForm();
+            });
+
+            function resetForm() {
+                document.getElementById('reactionForm').reset();
+                document.getElementById('reactionId').value = '';
+                document.getElementById('formTitle').innerText = '🎨 금액별 커스텀 리액션 등록';
+                document.getElementById('uploadBtn').innerText = '리액션 등록하기';
+                document.getElementById('cancelEditBtn').style.display = 'none';
+            }
+
+            document.getElementById('uploadBtn').addEventListener('click', async () => {
+                const reactionId = document.getElementById('reactionId').value;
+                const name = document.getElementById('reactionName').value;
+                const amount = document.getElementById('amount').value;
+                const imageInput = document.getElementById('imageFile').files[0];
+                const audioInput = document.getElementById('audioFile').files[0];
+
+                if (!name || !amount) {
+                    alert('리액션 이름과 금액을 모두 입력해주세요.');
+                    return;
+                }
+
+                const formData = new FormData();
+                if (reactionId) formData.append('reactionId', reactionId);
+                formData.append('name', name);
+                formData.append('amount', amount);
+                if (imageInput) formData.append('image', imageInput);
+                if (audioInput) formData.append('audio', audioInput);
+
+                const isEditing = !!reactionId;
+                document.getElementById('uploadBtn').innerText = isEditing ? '수정 중...' : '업로드 중...';
+                document.getElementById('uploadBtn').disabled = true;
+
+                try {
+                    const res = await fetch('/api/reactions/' + currentApiKey, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await res.json();
+
+                    if (result.success) {
+                        alert(result.message);
+                        resetForm();
+                        loadReactions();
+                    } else {
+                        alert('실패: ' + result.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('요청 중 오류가 발생했습니다.');
+                } finally {
+                    document.getElementById('uploadBtn').innerText = isEditing ? '수정사항 저장하기' : '리액션 등록하기';
+                    document.getElementById('uploadBtn').disabled = false;
+                }
+            });
+
+            loadReactions();
+        </script>
+    </body>
+    </html>
+`);
 
 // 8. 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
@@ -813,38 +904,28 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 🛠️ 리액션 설정 및 파일 업로드 처리 API (multer 경유 방식)
-const { createClient } = require('@supabase/supabase-js');
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
-const STORAGE_BUCKET = process.env.STORAGE_BUCKET || '본인이만든버킷이름';
-
+// 🛠️ 리액션 설정 및 파일 업로드/수정 처리 API
 app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { amount } = req.body;
-        let imageUrl = "";
-        let audioUrl = "";
-
+        const { reactionId, name, amount } = req.body;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let imageUrl;
+        let audioUrl;
 
         if (req.files && req.files['image']) {
             const file = req.files['image'][0];
             const fileExt = file.originalname.split('.').pop();
             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
 
-            // 파일 객체가 아닌 순수 buffer와 영문 파일명만 전달
             const { error: imgError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(imgName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
+                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
 
             if (imgError) throw imgError;
-
             const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
             imageUrl = imgPublic.publicUrl;
         }
@@ -856,26 +937,37 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
 
             const { error: audioError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(audioName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
+                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
 
             if (audioError) throw audioError;
-
             const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
             audioUrl = audioPublic.publicUrl;
         }
 
-        const newReaction = new Reaction({
-            streamerId: user._id,
-            amount: Number(amount),
-            imageUrl,
-            audioUrl
-        });
+        if (reactionId) {
+            // 기존 리액션 수정
+            const updateData = { name, amount: Number(amount) };
+            if (imageUrl) updateData.imageUrl = imageUrl;
+            if (audioUrl) updateData.audioUrl = audioUrl;
 
-        await newReaction.save();
-        res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
+            await Reaction.findOneAndUpdate(
+                { _id: reactionId, streamerId: user._id },
+                { $set: updateData },
+                { new: true }
+            );
+            res.json({ success: true, message: '리액션이 성공적으로 수정되었습니다!' });
+        } else {
+            // 신규 리액션 등록
+            const newReaction = new Reaction({
+                streamerId: user._id,
+                name,
+                amount: Number(amount),
+                imageUrl: imageUrl || "",
+                audioUrl: audioUrl || ""
+            });
+            await newReaction.save();
+            res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
+        }
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, error: e.message || 'Server Error' });
