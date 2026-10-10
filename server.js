@@ -555,6 +555,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
                 <form id="reactionForm">
                     <div class="form-group">
+                    <label>리액션 이름</label>
+                    <input type="text" id="reactionName" placeholder="예: 폭죽 리액션" required> <!-- 👈 이 입력창 추가 -->
+                    </div>
+                    <div class="form-group">
                         <label>특정 후원 금액 (원)</label>
                         <input type="number" id="amount" placeholder="예: 9999" required>
                     </div>
@@ -610,6 +614,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     }
 
                     const formData = new FormData();
+                    formData.append('name', name);
                     formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
@@ -826,61 +831,36 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { amount } = req.body;
-        let imageUrl = "";
-        let audioUrl = "";
-
+        const { name, amount } = req.body; // 👈 name을 함께 받습니다.
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let imageUrl, audioUrl;
 
+        // 파일 업로드 로직 (기존과 동일)
         if (req.files && req.files['image']) {
             const file = req.files['image'][0];
-            const fileExt = file.originalname.split('.').pop();
-            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-
-            // 파일 객체가 아닌 순수 buffer와 영문 파일명만 전달
-            const { error: imgError } = await supabaseClient.storage
-                .from(STORAGE_BUCKET)
-                .upload(imgName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
-
-            if (imgError) throw imgError;
-
-            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
-            imageUrl = imgPublic.publicUrl;
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + file.originalname.split('.').pop();
+            await supabaseClient.storage.from(STORAGE_BUCKET).upload(imgName, file.buffer, { contentType: file.mimetype });
+            imageUrl = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName).data.publicUrl;
         }
 
         if (req.files && req.files['audio']) {
             const file = req.files['audio'][0];
-            const fileExt = file.originalname.split('.').pop();
-            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-
-            const { error: audioError } = await supabaseClient.storage
-                .from(STORAGE_BUCKET)
-                .upload(audioName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
-
-            if (audioError) throw audioError;
-
-            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
-            audioUrl = audioPublic.publicUrl;
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + file.originalname.split('.').pop();
+            await supabaseClient.storage.from(STORAGE_BUCKET).upload(audioName, file.buffer, { contentType: file.mimetype });
+            audioUrl = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName).data.publicUrl;
         }
 
         const newReaction = new Reaction({
             streamerId: user._id,
+            name: name || "", // 👈 이름 저장
             amount: Number(amount),
-            imageUrl,
-            audioUrl
+            imageUrl: imageUrl || "",
+            audioUrl: audioUrl || ""
         });
-
         await newReaction.save();
         res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: e.message || 'Server Error' });
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
