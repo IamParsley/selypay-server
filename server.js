@@ -67,17 +67,6 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// 🔔 알림 설정 불러오기 API
-app.get('/api/settings/alert/:apiKey', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
-        res.json({ success: true, settings: user.alertSettings || {} });
-    } catch (e) {
-        res.status(500).json({ success: false, error: 'Server Error' });
-    }
-});
-
 // 홈 루트
 app.get('/', (req, res) => {
     res.send(`
@@ -337,7 +326,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const container = document.getElementById('alert-container');
                     const imgElement = document.getElementById('alert-image');
                     const line1 = document.getElementById('alert-line1');
-                    const line2 = document.getElementById('alert-line2');
                     
                     line1.innerText = donation.message;
                     const matched = reactions.find(r => r.amount === donation.amount);
@@ -416,7 +404,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
     }
 });
 
-// 알림창 관리 페이지
+// 알림창 관리 페이지 (가로 4개 그리드 및 정렬 기능 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -595,7 +583,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     `);
 });
 
-// 기타 API (로그, 랭킹)
+// 로그 및 랭킹 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -655,9 +643,36 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
 });
 
 app.get('/manage/ranking/:apiKey', async (req, res) => {
-    res.send(`<h2>랭킹판 관리 페이지</h2><a href="javascript:history.back();">돌아가기</a>`);
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>랭킹판 관리 - ${user.username}</title>
+            <style>
+                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🏆 방송용 랭킹판 설정 및 관리</h2>
+                <p>OBS 브라우저 소스에 아래 주소를 입력하여 사용하세요.</p>
+                <div class="box">https://${req.get('host')}/ranking-overlay/${user.apiKey}</div>
+                <br>
+                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
+// 서버 구동
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
