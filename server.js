@@ -503,7 +503,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (서버 경유 파일 업로드 적용)
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -525,7 +525,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
-                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 5px; margin-bottom: 10px; font-size: 14px; }
+                .btn-success { background: #2ed573; }
+                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; font-size: 14px; }
             </style>
         </head>
         <body>
@@ -551,8 +552,12 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3>🎨 금액별 커스텀 리액션 등록 (이미지/오디오)</h3>
+                <h3>🎨 신규 커스텀 리액션 등록</h3>
                 <form id="reactionForm">
+                    <div class="form-group">
+                        <label>리액션 이름</label>
+                        <input type="text" id="name" placeholder="예: 폭탄 리액션" required>
+                    </div>
                     <div class="form-group">
                         <label>특정 후원 금액 (원)</label>
                         <input type="number" id="amount" placeholder="예: 9999" required>
@@ -565,10 +570,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         <label>오디오 파일 선택 (MP3, WAV 등)</label>
                         <input type="file" id="audioFile" accept="audio/*">
                     </div>
-                    <button type="button" id="uploadBtn" class="btn" style="background:#2ed573;">리액션 업로드 및 등록</button>
+                    <button type="button" id="uploadBtn" class="btn btn-success">리액션 업로드 및 등록</button>
                 </form>
 
-                <h4 style="margin-top:30px;">📋 등록된 리액션 목록</h4>
+                <h4 style="margin-top:30px;">📋 등록된 리액션 목록 및 수정</h4>
                 <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
 
                 <br>
@@ -591,29 +596,50 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         data.forEach(r => {
                             const div = document.createElement('div');
                             div.className = 'reaction-item';
-                            div.innerHTML = '<b>' + r.amount.toLocaleString() + '원 이상 조건</b>' + 
-                                '<br><small style="color:#888;">이미지: ' + (r.imageUrl ? 'O' : 'X') + ' / 오디오: ' + (r.audioUrl ? 'O' : 'X') + '</small>';
+                            div.innerHTML = \`
+                                <div class="form-group">
+                                    <label>리액션 이름</label>
+                                    <input type="text" id="edit-name-\${r._id}" value="\${r.name || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label>후원 금액 (원)</label>
+                                    <input type="number" id="edit-amount-\${r._id}" value="\${r.amount}">
+                                </div>
+                                <div class="form-group">
+                                    <label>새 이미지 변경 (선택)</label>
+                                    <input type="file" id="edit-image-\${r._id}" accept="image/*">
+                                </div>
+                                <div class="form-group">
+                                    <label>새 오디오 변경 (선택)</label>
+                                    <input type="file" id="edit-audio-\${r._id}" accept="audio/*">
+                                </div>
+                                <small style="color:#888; display:block; margin-bottom:10px;">기존 이미지: \${r.imageUrl ? 'O' : 'X'} / 기존 오디오: \${r.audioUrl ? 'O' : 'X'}</small>
+                                <button type="button" class="btn" onclick="updateReaction('\${r._id}')">수정 사항 저장</button>
+                            \`;
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
                 }
 
+                // 신규 등록
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
+                    const name = document.getElementById('name').value;
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
 
-                    if (!amount) {
-                        alert('특정 금액을 입력해주세요.');
+                    if (!name || !amount) {
+                        alert('리액션 이름과 금액을 입력해주세요.');
                         return;
                     }
 
                     const formData = new FormData();
+                    formData.append('name', name);
                     formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
 
-                    document.getElementById('uploadBtn').innerText = '업로드 중... (잠시만 기다려주세요)';
+                    document.getElementById('uploadBtn').innerText = '업로드 중...';
                     document.getElementById('uploadBtn').disabled = true;
 
                     try {
@@ -638,6 +664,43 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         document.getElementById('uploadBtn').disabled = false;
                     }
                 });
+
+                // 기존 리액션 수정 함수
+                async function updateReaction(id) {
+                    const name = document.getElementById('edit-name-' + id).value;
+                    const amount = document.getElementById('edit-amount-' + id).value;
+                    const imageInput = document.getElementById('edit-image-' + id).files[0];
+                    const audioInput = document.getElementById('edit-audio-' + id).files[0];
+
+                    if (!name || !amount) {
+                        alert('이름과 금액을 입력해주세요.');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    formData.append('amount', amount);
+                    if (imageInput) formData.append('image', imageInput);
+                    if (audioInput) formData.append('audio', audioInput);
+
+                    try {
+                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, {
+                            method: 'PUT',
+                            body: formData
+                        });
+                        const result = await res.json();
+
+                        if (result.success) {
+                            alert('리액션이 성공적으로 수정되었습니다!');
+                            loadReactions();
+                        } else {
+                            alert('수정 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('수정 중 오류가 발생했습니다.');
+                    }
+                }
 
                 loadReactions();
             </script>
