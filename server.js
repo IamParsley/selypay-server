@@ -363,18 +363,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     overflow: hidden;
                 }
                 #alert-container {
-                    width: 100vw; 
-                    height: 100vh;
-                    display: none;
-                    flex-direction: column; // column 세로로 길게 배치
-                    justify-content: flex-start; // 상단flex-start, 중간center, 하단flex-end
-                    align-items: center; 
-                    text-align: center; 
-                    box-sizing: border-box; 
-                    padding: 0vh;
-                    padding-left: 0vh;
-                    padding-right: 0vh;
-                    background: transparent !important;
+                    width: 100vw; // 알림창 박스의 가로 크기를 브라우저 전체 너비(100%)로 설정
+                    height: 100vh; // 알림창 박스의 세로 크기를 브라우저 전체 높이(100%)로 설정
+                    display: none; // 평소에는 숨겨두었다가 후원이 들어올 때만 보이도록 설정
+                    flex-direction: column;// 내부 요소(이미지, 글자들)를 위에서 아래로 세로 방향 배치
+                    justify-content: flex-start;// 세로 정렬 방식 (상단: flex-start, 중앙: center, 하단: flex-end)
+                    align-items: center; // 가로(좌우) 방향으로 요소들을 한가운데로 정렬
+                    text-align: center; // 박스 안의 텍스트 정렬을 가운데로 설정
+                    box-sizing: border-box; // 테두리와 여백이 크기에 포함되도록 계산 방식 고정
+                    padding: 0vh; // 전체 기본 안쪽 여백 크기
+                    padding-left: 0vh; // 왼쪽 안쪽 여백(공간) 크기
+                    padding-right: 0vh; // 오른쪽 안쪽 여백(공간) 크기
+                    background: transparent !important; // OBS 송출 시 배경이 투명하게 보이도록 설정
                 }
                 #alert-image { 
                     max-height: 35vh; width: auto; max-width: 80%;
@@ -383,12 +383,12 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 #alert-line1 {
                     color: #ffffff; font-size: 6.5vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
+                    width: 100vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
                 #alert-line2 {
                     color: #ffffff; font-size: 5.0vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: break-word; line-height: 1.2;
+                    width: 100vw; word-break: break-word; line-height: 1.2;
                 }
             </style>
         </head>
