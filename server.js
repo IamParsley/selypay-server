@@ -250,25 +250,31 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢/🔴 로그인 버튼 (가로 폭을 넓혀서 팻말 이미지 버튼과 일치시킴) */
+               /* 5. 🟢 로그인 버튼 기본 스타일 (투명하게 처리하여 아래의 1번 사진 버튼이 보임) */
                 .login-btn {
-                    width: 380px; /* 입력창보다 넓게 설정 */
-                    margin-left: -34px; /* 중앙 정렬용 여백 */
-                    height: 64px; /* 버튼 높이 확장 */
-                    background: url('/button_inactive.png') no-repeat center center/contain;
-                    background-size: 100% 100%; /*👈 이미지가 찌그러지지 않고 지정한 크기에 딱 채워지도록 설정 */
+                    width: 100%;
+                    height: 54px;
+                    background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 20px;
+                    margin-top: 2px;
                     outline: none;
-                    transition: transform 0.1s ease;
+                    transition: all 0.15s ease;
                 }
 
-                /* 🔴 누를 때: 사진 자체에 필터와 그림자를 주어 붉게 빛나게 연출 (버벅임 없음) */
+                /* 🖱️ 마우스를 갖다 댈 때(Hover): 초록색 버튼 위에 은은한 초록빛 광채 부여 */
+                .login-btn:hover {
+                    background: rgba(46, 213, 115, 0.2);
+                    border-radius: 12px;
+                    box-shadow: 0 0 15px rgba(46, 213, 115, 0.5);
+                }
+
+                /* 🔴 마우스로 꾹 누를 때(Active): 시뻘겁고 강렬한 붉은빛으로 반짝임 */
                 .login-btn:active {
-                    /* 사진의 색감을 붉은 계열로 바꾸고 밝기와 대비를 높여 자체 발광하는 느낌 부여 */
-                    filter: sepia(1) hue-rotate(120deg) saturate(8) brightness(0.95);
-                    transform: scale(0.98); /* 살짝 눌리는 느낌 */
+                    background: rgba(255, 71, 87, 0.35);
+                    border-radius: 12px;
+                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.5);
+                    transform: scale(0.98);
                 }
 
                 /* 6. 하단 링크 영역 */
