@@ -363,30 +363,24 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     overflow: hidden;
                 }
                 #alert-container {
-                    width: 100vw; // 알림창 박스의 가로 크기를 브라우저 전체 너비(100%)로 설정
-                    height: 100vh; // 알림창 박스의 세로 크기를 브라우저 전체 높이(100%)로 설정
-                    display: none; // 평소에는 숨겨두었다가 후원이 들어올 때만 보이도록 설정
-                    flex-direction: column; // 내부 요소(이미지, 글자들)를 위에서 아래로 세로 방향 배치
-                    justify-content: center; // 세로 정렬 방식 (상단: flex-start, 중앙: center, 하단: flex-end)
-                    align-items: center; // 가로(좌우) 방향으로 요소들을 한가운데로 정렬
-                    text-align: center; // 박스 안의 텍스트 정렬을 가운데로 설정
-                    box-sizing: border-box; // 테두리와 여백이 크기에 포함되도록 계산 방식 고정
-                    padding: 3vh 1vw;
-                    background: transparent !important; // OBS 송출 시 배경이 투명하게 보이도록 설정
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: center; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    background: transparent !important;
                 }
                 #alert-image { 
-                    max-height: 45vh; width: auto; max-width: 90%;
+                    max-height: 35vh; width: auto; max-width: 80%;
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: 8vh; font-weight: 800; 
+                    color: #ffffff; font-size: ${settings.fontSize || '7.5vh'}; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 98vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1.5vh;
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
                 #alert-line2 {
-                    color: #ffffff; font-size: 6vh; font-weight: 800; 
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 98vw; word-break: break-word; line-height: 1.2;
+                    width: 90vw; word-break: break-word; line-height: 1.2;
                 }
             </style>
         </head>
