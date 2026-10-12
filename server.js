@@ -828,13 +828,14 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                    // 리액션 기능 켜기/끄기 체크박스
+                    <!-- 리액션 기능 켜기/끄기 체크박스 -->
                     <div class="form-group">
                     <label>
                         <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용
                     </label>
                     </div>
 
+                <!-- 등록된 리액션 목록 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">                
                     <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
                     <div>
