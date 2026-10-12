@@ -180,7 +180,7 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 1. 로그인 전체 컨테이너 (가로 세로 1:1 정사각형 비율로 고정) */
+                /* 1. 로그인 전체 컨테이너 (750px 정사각형) */
                 .login-container {
                     position: relative;
                     width: 750px;
@@ -190,7 +190,7 @@ app.get('/login', (req, res) => {
                     align-items: center;
                 }
 
-                /* 2. 나무 팻말 박스 이미지 (컨테이너와 동일한 1:1 비율로 찌그러짐 방지) */
+                /* 2. 나무 팻말 박스 이미지 */
                 .login-board {
                     position: absolute;
                     width: 750px;
@@ -199,27 +199,27 @@ app.get('/login', (req, res) => {
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 (팻말 상단 테두리에 안정적으로 걸치게 조정) */
+                /* 3. 🐱 고양이 레이어 크기를 2배 정도 크게 확대 및 위치 조정 */
                 .hanging-cat {
                     position: absolute;
-                    top: 15px;
+                    top: -65px; /* 팻말 상단에 큼직하게 걸쳐지도록 위로 올림 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 210px;
-                    height: 150px;
+                    width: 420px;
+                    height: 280px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
-                    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.6));
+                    filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 오버레이 (타이틀 아래 빈 목판 공간에 정확히 안착) */
+                /* 4. 🎯 입력 폼 영역 (아이디/비밀번호 칸을 아래로 더 내림) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 360px; /* 1:1 정사각형 비율에 맞춘 목판 빈 공간 위치 */
+                    top: 395px; /* 입력칸 위치를 더 아래로 조정 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 420px; /* 입력 폼 폭 */
+                    width: 420px;
                     z-index: 10;
                     text-align: center;
                 }
@@ -271,25 +271,30 @@ app.get('/login', (req, res) => {
                     transform: scale(0.98);
                 }
 
-                /* 하단 링크 영역 */
+                /* 5. 하단 링크 영역 (글씨 크기 키우고 굵게 + 검은 테두리/그림자로 가독성 극대화) */
                 .links {
-                    margin-top: 22px;
+                    margin-top: 25px;
                     text-align: center;
-                    font-size: 14px;
+                    font-size: 15px;
+                    font-weight: bold;
                     display: flex;
                     flex-direction: column;
-                    gap: 6px;
+                    gap: 8px;
                 }
 
                 .links a {
-                    color: #a4b0be;
+                    color: #ffffff; /* 하얀색 글씨 */
                     text-decoration: none;
-                    transition: color 0.2s;
+                    /* 검은색 외곽선(그림자) 효과를 주어 나무 배경에서 확 띄게 함 */
+                    text-shadow: 
+                        -2px -2px 0 #000,  2px -2px 0 #000, 
+                        -2px  2px 0 #000,  2px  2px 0 #000,
+                        0 3px 6px rgba(0,0,0,0.9);
+                    transition: color 0.2s, transform 0.2s;
                 }
 
                 .links a:hover {
-                    color: #2ed573;
-                    text-decoration: underline;
+                    color: #2ed573; /* 마우스 올리면 초록빛으로 반짝 */
                 }
             </style>
         </head>
@@ -317,7 +322,7 @@ app.get('/login', (req, res) => {
 
                     <div class="links">
                         <a href="/forgot-password">비밀번호를 잊으셨나요?</a>
-                        <div>계정이 없으신가요? <a href="/register">회원가입</a></div>
+                        <div><a href="/register">계정이 없으신가요? 회원가입</a></div>
                     </div>
                 </div>
             </div>
