@@ -279,7 +279,7 @@ app.get('/login', (req, res) => {
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 10px;
+                    margin-top: 5px;
                     text-align: center;
                     font-size: 11px;
                     font-weight: 900;
