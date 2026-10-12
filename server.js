@@ -267,7 +267,6 @@ app.get('/login', (req, res) => {
                 /* 🖱️ 마우스를 올릴 때(Hover): 초록색 사진 자체가 은은하게 달아오르는 느낌 */
                 .login-btn:hover {
                     filter: brightness(1.1) saturate(1.2);
-                    box-shadow: 0 0 12px rgba(46, 213, 115, 0.5);
                 }
 
                 /* 🔴 마우스로 누를 때(Active): 사진 자체가 시뻘건 핏빛/불꽃 색상으로 확 변하면서 발광 */
