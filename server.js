@@ -15,11 +15,15 @@ app.use(express.static(__dirname));
 const upload = multer({ storage: multer.memoryStorage() });
 
 // 1. MongoDB 연결
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true, })
+    .then(async () => {
+        console.log('✅ MongoDB Atlas 연결 성공!');
+        // 💡 꼬인 설정 자동 초기화 (서버 켤 때 딱 한 번 실행됨)
+        await User.updateMany(
+            { "alertSettings.useImage": { $exists: false } }, 
+            { $set: { "alertSettings.useImage": true, "alertSettings.useReaction": true } }
+        );
+    })
 .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
 // 유저 스키마
