@@ -180,57 +180,57 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 1. 로그인 전체 컨테이너 */
+                /* 1. 로그인 전체 컨테이너 (가로 세로 1:1 정사각형 비율로 고정) */
                 .login-container {
                     position: relative;
-                    width: 1000px;
-                    height: 1000px;
+                    width: 750px;
+                    height: 750px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
                 }
 
-                /* 2. 나무 팻말 박스 이미지 */
+                /* 2. 나무 팻말 박스 이미지 (컨테이너와 동일한 1:1 비율로 찌그러짐 방지) */
                 .login-board {
                     position: absolute;
-                    width: 1000px;
-                    height: 1000px;
+                    width: 750px;
+                    height: 750px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 위치를 위로 살짝 올려서 '슬네이션' 타이틀과 안 겹치게 조정 */
+                /* 3. 🐱 고양이 레이어 (팻말 상단 테두리에 안정적으로 걸치게 조정) */
                 .hanging-cat {
                     position: absolute;
-                    top: -15px; /* 기존 25px에서 위로 올려서 팻말 테두리에 걸치게 함 */
+                    top: 15px;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 220px;
-                    height: 160px;
+                    width: 210px;
+                    height: 150px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
                     filter: drop-shadow(0 10px 14px rgba(0,0,0,0.6));
                 }
 
-                /* 4. 입력 폼 영역 (목판 빈 공간에 정확히 안착) */
+                /* 4. 🎯 입력 폼 오버레이 (타이틀 아래 빈 목판 공간에 정확히 안착) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 395px; /* 입력창 위치 */
+                    top: 360px; /* 1:1 정사각형 비율에 맞춘 목판 빈 공간 위치 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 420px;
+                    width: 420px; /* 입력 폼 폭 */
                     z-index: 10;
                     text-align: center;
                 }
 
                 .input-group {
-                    margin-bottom: 22px;
+                    margin-bottom: 20px;
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 54px;
+                    height: 52px;
                     padding: 0 18px;
                     background: rgba(10, 20, 15, 0.6);
                     border: 2px solid #1db954;
@@ -255,11 +255,11 @@ app.get('/login', (req, res) => {
                 /* 로그인 버튼 (클릭 시 붉게 빛나는 효과) */
                 .login-btn {
                     width: 100%;
-                    height: 56px;
+                    height: 54px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 4px;
+                    margin-top: 2px;
                     outline: none;
                     transition: all 0.1s ease;
                 }
@@ -273,12 +273,12 @@ app.get('/login', (req, res) => {
 
                 /* 하단 링크 영역 */
                 .links {
-                    margin-top: 26px;
+                    margin-top: 22px;
                     text-align: center;
                     font-size: 14px;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
                 .links a {
