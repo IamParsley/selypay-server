@@ -180,7 +180,7 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 1. 로그인 전체 컨테이너 (750px 정사각형) */
+                /* 1) 로그인 전체 컨테이너 (750px 정사각형) */
                 .login-container {
                     position: relative;
                     width: 750px;
@@ -190,7 +190,7 @@ app.get('/login', (req, res) => {
                     align-items: center;
                 }
 
-                /* 2. 새 나무 팻말 박스 이미지 (login_board.png) */
+                /* 2) 새 나무 팻말 박스 이미지 (login_board.png) */
                 .login-board {
                     position: absolute;
                     width: 750px;
@@ -199,7 +199,7 @@ app.get('/login', (req, res) => {
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 (상단 테두리에 큼직하게 매달림) */
+                /* 3) 🐱 고양이 레이어 (상단 테두리에 큼직하게 매달림) */
                 .hanging-cat {
                     position: absolute;
                     top: -65px;
@@ -213,10 +213,10 @@ app.get('/login', (req, res) => {
                     filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (새 이미지 속 빈 목판 칸들과 하단 '로그인' 버튼에 정확히 일치시킴) */
+                /* 4) 🎯 입력 폼 영역 (새 이미지 속 빈 목판 칸들과 하단 '로그인' 버튼에 정확히 일치시킴) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 410px; /* 새 이미지의 입력 칸 위치에 맞춤 */
+                    top: 455px; /* 새 이미지의 입력 칸 위치에 맞춤 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 400px; /* 입력 칸 가로 폭 */
@@ -252,7 +252,7 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢 이미지 속 '로그인' 글씨 버튼 위에 겹쳐지는 투명 버튼 (클릭 시 붉게 빛남) */
+                /* 5) 🟢 이미지 속 '로그인' 글씨 버튼 위에 겹쳐지는 투명 버튼 (클릭 시 붉게 빛남) */
                 .login-btn {
                     width: 100%;
                     height: 54px;
@@ -271,7 +271,7 @@ app.get('/login', (req, res) => {
                     transform: scale(0.98);
                 }
 
-                /* 6. 하단 링크 영역 (노란색/골드톤 + 검은 외곽선으로 가독성 극대화) */
+                /* 6) 하단 링크 영역 (노란색/골드톤 + 검은 외곽선으로 가독성 극대화) */
                 .links {
                     margin-top: 22px;
                     text-align: center;
