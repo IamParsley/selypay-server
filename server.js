@@ -171,7 +171,7 @@ app.get('/login', (req, res) => {
                     margin: 0;
                     padding: 0;
                     height: 100vh;
-                    /* 1. 배경 숲 이미지 */
+                    /* 배경 숲 이미지 */
                     background: url('/login_background.png') no-repeat center center/cover;
                     display: flex;
                     justify-content: center;
@@ -180,62 +180,63 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 전체 로그인 컨테이너 (정중앙 배치) */
+                /* 로그인 전체를 감싸는 부모 박스 */
                 .login-container {
                     position: relative;
-                    width: 420px;
-                    height: 480px;
-                    margin-top: 40px;
+                    width: 520px;
+                    height: 600px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
                 }
 
-                /* 2. 나무 팻말 박스 이미지 (중앙에 고정) */
+                /* 2. 나무 팻말 박스 크기를 키움 */
                 .login-board {
                     position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
+                    width: 520px;
+                    height: 600px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 3. 팻말 상단에 매달린 고양이 이미지 (자연스럽게 걸쳐지도록 위치 조정) */
+                /* 3. 커진 팻말에 비례하여 고양이 크기와 위치 조정 */
                 .hanging-cat {
                     position: absolute;
-                    top: -65px;
+                    top: 10px;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 140px;
-                    height: 100px;
+                    width: 160px;
+                    height: 120px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
-                    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.5));
+                    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.6));
                 }
 
-                /* 4. 나무 팻말 안쪽 빈 공간에 맞춘 실제 입력 폼 오버레이 */
+                /* 4. 커진 목판 내부 공간에 맞춘 입력 폼 영역 */
                 .login-form-overlay {
                     position: absolute;
-                    top: 155px; /* 나무 팻말 내부 빈 공간 위치에 맞춤 */
+                    top: 235px; /* 커진 팻말의 빈 목판 위치로 하향 조정 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 270px; /* 팻말 내부 너비에 맞춤 */
+                    width: 320px; /* 입력 폼 가로 폭도 넉넉하게 확장 */
                     z-index: 10;
+                    text-align: center;
                 }
 
                 .input-group {
-                    margin-bottom: 22px;
+                    margin-bottom: 20px;
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 42px;
-                    padding: 0 14px;
-                    background: rgba(0, 0, 0, 0.4);
+                    height: 48px;
+                    padding: 0 16px;
+                    background: rgba(10, 20, 15, 0.6);
                     border: 2px solid #1db954;
-                    border-radius: 8px;
+                    border-radius: 10px;
                     color: #2ed573;
-                    font-size: 15px;
+                    font-size: 16px;
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -243,18 +244,18 @@ app.get('/login', (req, res) => {
 
                 .input-group input:focus {
                     border-color: #2ed573;
-                    box-shadow: 0 0 12px rgba(46, 213, 115, 0.6);
-                    background: rgba(0, 0, 0, 0.6);
+                    box-shadow: 0 0 14px rgba(46, 213, 115, 0.7);
+                    background: rgba(10, 20, 15, 0.85);
                 }
 
                 .input-group input::placeholder {
                     color: rgba(46, 213, 115, 0.4);
                 }
 
-                /* 로그인 버튼 (클릭 시 악마 얼굴/버튼 영역이 붉게 빛나는 효과 적용) */
+                /* 로그인 버튼 (클릭 시 붉게 빛나는 효과) */
                 .login-btn {
                     width: 100%;
-                    height: 45px;
+                    height: 50px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
@@ -264,20 +265,20 @@ app.get('/login', (req, res) => {
                 }
 
                 .login-btn:active {
-                    background: rgba(255, 71, 87, 0.3);
-                    border-radius: 8px;
-                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.5);
+                    background: rgba(255, 71, 87, 0.35);
+                    border-radius: 10px;
+                    box-shadow: 0 0 22px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.5);
                     transform: scale(0.98);
                 }
 
                 /* 하단 링크 영역 */
                 .links {
-                    margin-top: 20px;
+                    margin-top: 25px;
                     text-align: center;
-                    font-size: 12px;
+                    font-size: 13px;
                     display: flex;
                     flex-direction: column;
-                    gap: 6px;
+                    gap: 8px;
                 }
 
                 .links a {
@@ -294,13 +295,13 @@ app.get('/login', (req, res) => {
         </head>
         <body>
             <div class="login-container">
-                <!-- 레이어 1: 팻말 위에 매달린 고양이 -->
+                <!-- 고양이 레이어 -->
                 <div class="hanging-cat"></div>
 
-                <!-- 레이어 2: 나무 팻말 박스 -->
+                <!-- 나무 팻말 레이어 -->
                 <div class="login-board"></div>
 
-                <!-- 레이어 3: 실제 작동하는 입력 폼 오버레이 -->
+                <!-- 입력 폼 오버레이 레이어 -->
                 <div class="login-form-overlay">
                     <form action="/api/login" method="POST">
                         <div class="input-group">
