@@ -200,7 +200,7 @@ app.get('/login', (req, res) => {
                 /* 3. 🐱 고양이 레이어 (값을 더 마이너스로 주어 위로 높게 올림) */
                 .hanging-cat {
                     position: absolute;
-                    top: -120px; /* 👈 이 숫자를 더 마이너스로 주어 고양이를 위로 높이 올림 */
+                    top: -150px; /* 👈 이 숫자를 더 마이너스로 주어 고양이를 위로 높이 올림 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
@@ -256,7 +256,7 @@ app.get('/login', (req, res) => {
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 2px;
+                    margin-top: 22px;
                     outline: none;
                     border-radius: 10px;
                     transition: all 0.1s ease;
@@ -270,7 +270,7 @@ app.get('/login', (req, res) => {
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 15px;
+                    margin-top: 15px; /* 👈 링크들도 로그인 버튼 아래로 예쁘게 간격 조절 */
                     text-align: center;
                     font-size: 14px;
                     font-weight: 900;
