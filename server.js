@@ -544,6 +544,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const settings = user.alertSettings || {};
     const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
     const useImage = settings.useImage !== undefined ? settings.useImage : true;
+    const useReaction = settings.useReaction !== undefined ? settings.useReaction : true; // 🟢 [추가] 리액션 기능 켜기/끄기 값 설정 (기본값 true)
 
     res.send(`
         <!DOCTYPE html>
@@ -591,10 +592,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
             const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
             const defaultImage = "/alerticon.gif";
             const useImageSetting = ${useImage};
+            const useReactionSetting = ${useReaction}; // 🟢 [추가] 클라이언트 스크립트에 리액션 사용 여부 전달
 
             let lastCheckedTime = "";
             
-            // 🌟 대기열 및 재생 상태 관리 변수
             const alertQueue = [];
             let isPlaying = false;
 
@@ -614,23 +615,21 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 } catch (e) { console.error(e); }
             }
 
-            // 🟢 [추가됨] 대시보드에서 재생 버튼을 눌렀을 때 호출되는 수동 재생 체크 함수
             async function checkManualPlay() {
                 try {
                     const response = await fetch('/api/manual-play/' + '${apiKey}');
                     const items = await response.json();
                     if (items && items.length > 0) {
                         items.forEach(item => {
-                            alertQueue.push(item); // 대기열 맨 뒤로 추가
+                            alertQueue.push(item);
                         });
-                        processQueue(); // 대기열 처리 시작
+                        processQueue();
                     }
                 } catch (e) {
                     console.error(e);
                 }
             }
 
-            // 🌟 대기열 순차 처리 함수
             function processQueue() {
                 if (isPlaying || alertQueue.length === 0) return;
 
@@ -639,51 +638,53 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 showAlert(donation);
             }
 
-           function showAlert(donation) {
-                    const container = document.getElementById('alert-container');
-                    const imgElement = document.getElementById('alert-image');
-                    const line1 = document.getElementById('alert-line1');
-                    const line2 = document.getElementById('alert-line2');
-                    
-                    const message = donation.message;
-                    const amount = donation.amount || 0;
-                            
-                    let firstText = message;
-                    let secondText = "";
-                    
-                    const newlineIdx = message.indexOf('\\n');
-                    if (newlineIdx !== -1) {
-                        firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 1);
-                    }
-
-                    line1.innerText = firstText;
-                    line2.innerText = secondText;
-
-                    const matchedReaction = reactions.find(r => r.amount === amount);
-
-                    if (useImageSetting) {
-                        if (matchedReaction && matchedReaction.imageUrl) {
-                            imgElement.src = matchedReaction.imageUrl;
-                            imgElement.style.display = 'block';
-                        } else {
-                            imgElement.src = defaultImage;
-                            imgElement.style.display = 'block';
-                        }
-                    } else {
-                        imgElement.style.display = 'none';
-                    }
-
-                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
-                    const sound = new Audio(audioSrc);
-
-                    container.style.display = 'flex';
-                    sound.currentTime = 0;
-                    
-                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
+            function showAlert(donation) {
+                const container = document.getElementById('alert-container');
+                const imgElement = document.getElementById('alert-image');
+                const line1 = document.getElementById('alert-line1');
+                const line2 = document.getElementById('alert-line2');
                 
+                const message = donation.message;
+                const amount = donation.amount || 0;
+                        
+                let firstText = message;
+                let secondText = "";
+                
+                const newlineIdx = message.indexOf('\\\\n');
+                if (newlineIdx !== -1) {
+                    firstText = message.substring(0, newlineIdx);
+                    secondText = message.substring(newlineIdx + 1);
+                }
+
+                line1.innerText = firstText;
+                line2.innerText = secondText;
+
+                // 🟢 [수정] 리액션 기능이 켜져 있을 때만 금액에 맞는 리액션을 찾음 (꺼져 있으면 무조건 null 처리되어 기본 알림 실행)
+                let matchedReaction = null;
+                if (useReactionSetting) {
+                    matchedReaction = reactions.find(r => r.amount === amount);
+                }
+
+                if (useImageSetting) {
+                    if (matchedReaction && matchedReaction.imageUrl) {
+                        imgElement.src = matchedReaction.imageUrl;
+                        imgElement.style.display = 'block';
+                    } else {
+                        imgElement.src = defaultImage;
+                        imgElement.style.display = 'block';
+                    }
+                } else {
+                    imgElement.style.display = 'none';
+                }
+
+                const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                const sound = new Audio(audioSrc);
+
+                container.style.display = 'flex';
+                sound.currentTime = 0;
+                
+                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
                 sound.onended = () => {
                     setTimeout(() => {
                         container.style.display = 'none';
@@ -702,7 +703,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
             }
             
             setInterval(checkNewDonation, 1000);
-            setInterval(checkManualPlay, 1000); // 🟢 [추가됨] 1초마다 수동 재생 요청 체크 루프 실행
+            setInterval(checkManualPlay, 1000);
         </script>
         </body>
         </html>
@@ -829,6 +830,8 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
 
+                    // 리액션 기능 켜기/끄기 체크박스
+                    
                     <div class="form-group">
                     <label>
                         <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용 (특정 금액별 이미지/노래 재생)
