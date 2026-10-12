@@ -371,13 +371,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center; // 가로(좌우) 방향으로 요소들을 한가운데로 정렬
                     text-align: center; // 박스 안의 텍스트 정렬을 가운데로 설정
                     box-sizing: border-box; // 테두리와 여백이 크기에 포함되도록 계산 방식 고정
-                    padding: 0vh; // 전체 기본 안쪽 여백 크기
-                    padding-left: 0vh; // 왼쪽 안쪽 여백(공간) 크기
-                    padding-right: 0vh; // 오른쪽 안쪽 여백(공간) 크기
+                    padding: 10vh; // 전체 기본 안쪽 여백 크기
+                    padding-left: 10vh; // 왼쪽 안쪽 여백(공간) 크기
+                    padding-right: 10vh; // 오른쪽 안쪽 여백(공간) 크기
                     background: transparent !important; // OBS 송출 시 배경이 투명하게 보이도록 설정
                 }
                 #alert-image { 
-                    max-height: 35vh; width: auto; max-width: 80%;
+                    max-height: 50vh; width: auto; max-width: 80%;
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
