@@ -366,9 +366,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     width: 100vw; 
                     height: 100vh;
                     display: none;
-                    flex-direction: column;
-                    justify-content: center; 
-                    align-items: center;
+                    flex-direction: column; // column 세로로 길게 배치
+                    justify-content: flex-start; // 상단flex-start, 중간center, 하단flex-end
+                    align-items: center; 
                     text-align: center; 
                     box-sizing: border-box; 
                     padding: 0vh;
