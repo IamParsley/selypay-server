@@ -459,8 +459,23 @@ app.post('/api/login', async (req, res) => {
                 }
             
                 async function fetchRanking() {
-                    // ... (기존 랭킹 코드 그대로 유지) ...
-                }
+                 try {
+                            const response = await fetch('/api/ranking/` + user.apiKey + `');
+                            const ranking = await response.json();
+                            const rankContainer = document.getElementById('rankingList');
+                            rankContainer.innerHTML = '';
+                            if (!ranking || ranking.length === 0) {
+                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+                            ranking.forEach((item, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalamount.toLocaleString() + '원 (' + item.count + '회)';
+                                rankContainer.appendChild(div);
+                            });
+                        } catch (e) { console.error(e); }
+                    }
             
                 fetchDonationLogs();
                 fetchRanking();
