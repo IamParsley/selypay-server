@@ -180,63 +180,63 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 로그인 전체를 감싸는 부모 박스 */
+                /* 1. 로그인 전체 컨테이너 */
                 .login-container {
                     position: relative;
-                    width: 600px;
-                    height: 680px;
+                    width: 720px;
+                    height: 800px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
                 }
 
-                /* 나무 팻말 박스 이미지 */
+                /* 2. 나무 팻말 박스 이미지 */
                 .login-board {
                     position: absolute;
-                    width: 600px;
-                    height: 680px;
+                    width: 720px;
+                    height: 800px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 팻말 상단에 매달린 고양이 이미지 */
+                /* 3. 🐱 고양이 위치를 위로 살짝 올려서 '슬네이션' 타이틀과 안 겹치게 조정 */
                 .hanging-cat {
                     position: absolute;
-                    top: 15px;
+                    top: -15px; /* 기존 25px에서 위로 올려서 팻말 테두리에 걸치게 함 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 360px;
-                    height: 260px;
+                    width: 220px;
+                    height: 160px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
-                    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.6));
+                    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.6));
                 }
 
-                /* 🎯 [핵심 조절] 입력 폼 영역: 타이틀 아래의 빈 목판 공간으로 위치를 확실히 내림 */
+                /* 4. 입력 폼 영역 (목판 빈 공간에 정확히 안착) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 335px; /* 이 숫자를 키우면 입력창이 더 아래로 내려갑니다 */
+                    top: 395px; /* 입력창 위치 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 360px; /* 입력 폼 폭 */
+                    width: 420px;
                     z-index: 10;
                     text-align: center;
                 }
 
                 .input-group {
-                    margin-bottom: 20px; /* 아이디와 비밀번호 창 사이 간격 */
+                    margin-bottom: 22px;
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 48px;
-                    padding: 0 16px;
+                    height: 54px;
+                    padding: 0 18px;
                     background: rgba(10, 20, 15, 0.6);
                     border: 2px solid #1db954;
-                    border-radius: 10px;
+                    border-radius: 12px;
                     color: #2ed573;
-                    font-size: 16px;
+                    font-size: 17px;
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -244,7 +244,7 @@ app.get('/login', (req, res) => {
 
                 .input-group input:focus {
                     border-color: #2ed573;
-                    box-shadow: 0 0 14px rgba(46, 213, 115, 0.7);
+                    box-shadow: 0 0 16px rgba(46, 213, 115, 0.7);
                     background: rgba(10, 20, 15, 0.85);
                 }
 
@@ -255,30 +255,30 @@ app.get('/login', (req, res) => {
                 /* 로그인 버튼 (클릭 시 붉게 빛나는 효과) */
                 .login-btn {
                     width: 100%;
-                    height: 50px;
+                    height: 56px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 2px;
+                    margin-top: 4px;
                     outline: none;
                     transition: all 0.1s ease;
                 }
 
                 .login-btn:active {
                     background: rgba(255, 71, 87, 0.35);
-                    border-radius: 10px;
-                    box-shadow: 0 0 22px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.5);
+                    border-radius: 12px;
+                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.5);
                     transform: scale(0.98);
                 }
 
                 /* 하단 링크 영역 */
                 .links {
-                    margin-top: 22px;
+                    margin-top: 26px;
                     text-align: center;
-                    font-size: 13px;
+                    font-size: 14px;
                     display: flex;
                     flex-direction: column;
-                    gap: 6px;
+                    gap: 8px;
                 }
 
                 .links a {
