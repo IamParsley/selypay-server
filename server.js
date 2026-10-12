@@ -364,7 +364,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 #alert-container {
                     width: 100vw; height: 100vh; display: none;
-                    flex-direction: column; justify-content: center; align-items: center;
+                    flex-direction: column; justify-content: flex-start; align-items: center;
                     text-align: center; box-sizing: border-box; padding: 2vh 3vw;
                     background: transparent !important;
                 }
