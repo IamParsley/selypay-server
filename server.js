@@ -405,27 +405,61 @@ app.post('/api/login', async (req, res) => {
                 </div>
 
                 <script>
-                    async function fetchDonationLogs() {
-                        try {
-                            const response = await fetch('/api/logs/` + user.apiKey + `');
-                            const logs = await response.json();
-                            const logContainer = document.getElementById('donationLogList');
-                            logContainer.innerHTML = '';
-                            if (!logs || logs.length === 0) {
-                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
-                                return;
-                            }
-                            logs.slice(0, 20).forEach(log => {
-                                const div = document.createElement('div');
-                                div.className = 'log-item';
-                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
-                                logContainer.appendChild(div);
-                            });
-                        } catch (e) { console.error(e); }
-                    }
-
-                    async function fetchRanking() {
-                        try {
+                async function fetchDonationLogs() {
+                    try {
+                        const response = await fetch('/api/logs/` + user.apiKey + `');
+                        const logs = await response.json();
+                        const logContainer = document.getElementById('donationLogList');
+                        logContainer.innerHTML = '';
+                        if (!logs || logs.length === 0) {
+                            logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
+                            return;
+                        }
+                        logs.slice(0, 20).forEach(log => {
+                            const div = document.createElement('div');
+                            div.className = 'log-item';
+                            div.style.display = 'flex';
+                            div.style.justifyContent = 'space-between';
+                            div.style.alignItems = 'center';
+            
+                            // 후원 텍스트 영역
+                            const textSpan = document.createElement('span');
+                            textSpan.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
+            
+                            // 🟢 재생 버튼 생성
+                            const playBtn = document.createElement('button');
+                            playBtn.innerText = '재생';
+                            playBtn.className = 'btn';
+                            playBtn.style.padding = '4px 8px';
+                            playBtn.style.fontSize = '12px';
+                            playBtn.style.flex = 'none';
+                            playBtn.style.marginLeft = '10px';
+                            
+                            // 재생 버튼 클릭 시 이벤트
+                            playBtn.onclick = async () => {
+                                try {
+                                    const res = await fetch('/api/play/` + user.apiKey + `/' + log._id, { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        alert('알림창 대기열에 추가되었습니다!');
+                                    } else {
+                                        alert('재생 요청 실패');
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                    alert('서버 통신 오류');
+                                }
+                            };
+            
+                            div.appendChild(textSpan);
+                            div.appendChild(playBtn);
+                            logContainer.appendChild(div);
+                        });
+                    } catch (e) { console.error(e); }
+                }
+            
+                async function fetchRanking() {
+                 try {
                             const response = await fetch('/api/ranking/` + user.apiKey + `');
                             const ranking = await response.json();
                             const rankContainer = document.getElementById('rankingList');
@@ -442,15 +476,15 @@ app.post('/api/login', async (req, res) => {
                             });
                         } catch (e) { console.error(e); }
                     }
-
-                    fetchDonationLogs();
-                    fetchRanking();
-                    setInterval(fetchDonationLogs, 3000);
-                    setInterval(fetchRanking, 5000);
-                </script>
+            
+                fetchDonationLogs();
+                fetchRanking();
+                setInterval(fetchDonationLogs, 3000);
+                setInterval(fetchRanking, 5000);
+            </script>
             </body>
             </html>
-        `);
+             `);
     } catch (e) {
         res.status(500).send('Server Error');
     }
@@ -551,44 +585,59 @@ app.get('/overlay/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                const reactions = ${JSON.stringify(reactions)};
-                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
-                const defaultImage = "/alerticon.gif";
-                const useImageSetting = ${useImage};
+            const reactions = ${JSON.stringify(reactions)};
+            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+            const defaultImage = "/alerticon.gif";
+            const useImageSetting = ${useImage};
 
-                let lastCheckedTime = "";
-                
-                // 🌟 대기열 및 재생 상태 관리 변수
-                const alertQueue = [];
-                let isPlaying = false;
+            let lastCheckedTime = "";
+            
+            // 🌟 대기열 및 재생 상태 관리 변수
+            const alertQueue = [];
+            let isPlaying = false;
 
-                async function checkNewDonation() {
-                    try {
-                        const response = await fetch('/api/logs/' + '${apiKey}');
-                        const logs = await response.json();
-                        if (logs.length > 0) {
-                            const latest = logs[0];
-                            if (latest.datetime !== lastCheckedTime) {
-                                lastCheckedTime = latest.datetime;
-                                
-                                // 🌟 새 후원이 들어오면 바로 실행하지 않고 큐에 적재 후 처리 함수 호출
-                                alertQueue.push(latest);
-                                processQueue();
-                            }
+            async function checkNewDonation() {
+                try {
+                    const response = await fetch('/api/logs/' + '${apiKey}');
+                    const logs = await response.json();
+                    if (logs.length > 0) {
+                        const latest = logs[0];
+                        if (latest.datetime !== lastCheckedTime) {
+                            lastCheckedTime = latest.datetime;
+                            
+                            alertQueue.push(latest);
+                            processQueue();
                         }
-                    } catch (e) { console.error(e); }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // 🟢 [추가됨] 대시보드에서 재생 버튼을 눌렀을 때 호출되는 수동 재생 체크 함수
+            async function checkManualPlay() {
+                try {
+                    const response = await fetch('/api/manual-play/' + '${apiKey}');
+                    const items = await response.json();
+                    if (items && items.length > 0) {
+                        items.forEach(item => {
+                            alertQueue.push(item); // 대기열 맨 뒤로 추가
+                        });
+                        processQueue(); // 대기열 처리 시작
+                    }
+                } catch (e) {
+                    console.error(e);
                 }
+            }
 
-                // 🌟 대기열 순차 처리 함수
-                function processQueue() {
-                    if (isPlaying || alertQueue.length === 0) return;
+            // 🌟 대기열 순차 처리 함수
+            function processQueue() {
+                if (isPlaying || alertQueue.length === 0) return;
 
-                    isPlaying = true;
-                    const donation = alertQueue.shift();
-                    showAlert(donation);
-                }
+                isPlaying = true;
+                const donation = alertQueue.shift();
+                showAlert(donation);
+            }
 
-                function showAlert(donation) {
+           function showAlert(donation) {
                     const container = document.getElementById('alert-container');
                     const imgElement = document.getElementById('alert-image');
                     const line1 = document.getElementById('alert-line1');
@@ -632,26 +681,27 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
                     // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
-                    sound.onended = () => {
-                        setTimeout(() => {
-                            container.style.display = 'none';
-                            isPlaying = false;
-                            processQueue(); // 다음 대기열 알림 실행
-                        }, 3500); // 3.5초 딜레이
-                    };
-
-                    // 오디오 오류 시 안전 장치 (3.5초 후 다음 진행)
-                    sound.onerror = () => {
-                        setTimeout(() => {
-                            container.style.display = 'none';
-                            isPlaying = false;
-                            processQueue();
-                        }, 3500);
-                    };
-                }
                 
-                setInterval(checkNewDonation, 1000);
-            </script>
+                sound.onended = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+
+                sound.onerror = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+            }
+            
+            setInterval(checkNewDonation, 1000);
+            setInterval(checkManualPlay, 1000); // 🟢 [추가됨] 1초마다 수동 재생 요청 체크 루프 실행
+        </script>
         </body>
         </html>
     `);
@@ -1103,6 +1153,9 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
 
         const rankingMap = {};
         todayDonations.forEach(d => {
+            // 🟢 '테스트후원알림' 닉네임은 랭킹 집계에서 제외
+            if (d.nickname === '테스트후원알림') return;
+
             let cleanName = d.nickname.trim();
             if (cleanName.endsWith("님")) {
                 cleanName = cleanName.slice(0, -1).trim();
@@ -1269,6 +1322,41 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
         res.status(500).json({ success: false, error: e.message || 'Server Error' });
     }
 });
+
+// 🔄 후원 수동 재생 메모리 큐 시스템 (DB 건드리지 않음)
+const manualPlayStore = {};
+
+app.post('/api/play/:apiKey/:donationId', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const donation = await Donation.findOne({ _id: req.params.donationId, streamerId: user._id });
+        if (!donation) return res.status(404).json({ success: false, error: 'Donation not found' });
+
+        if (!manualPlayStore[user.apiKey]) {
+            manualPlayStore[user.apiKey] = [];
+        }
+        
+        manualPlayStore[user.apiKey].push(donation.toObject());
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+app.get('/api/manual-play/:apiKey', async (req, res) => {
+    const apiKey = req.params.apiKey;
+    if (manualPlayStore[apiKey] && manualPlayStore[apiKey].length > 0) {
+        const items = [...manualPlayStore[apiKey]];
+        manualPlayStore[apiKey] = [];
+        res.json(items);
+    } else {
+        res.json([]);
+    }
+});
+
 
 // 서버 구동
 app.listen(PORT, () => {
