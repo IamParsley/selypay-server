@@ -543,14 +543,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
 
-    const settings = user.alertSettings || {};
-    const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
-    const useImage = settings.useImage !== undefined ? settings.useImage : true;
-    const useReaction = settings.useReaction !== undefined ? settings.useReaction : true; // 🟢 [추가] 리액션 기능 켜기/끄기 값 설정 (기본값 true)
-    const durationSec = settings.duration || 5; // 알림 지속 시간 (초)
-    const fontSize1 = settings.fontSize1 || '8vh';     // 첫 번째 줄 폰트 크기
-    const fontSize2 = settings.fontSize2 || '6.5vh';   // 두 번째 줄 폰트 크기
-    
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -559,157 +551,120 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <title>SelyPay Alert Overlay</title>
             <style>
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
-                #alert-container {
-                    width: 100vw; height: 100vh; display: none;
-                    flex-direction: column; justify-content: flex-start; align-items: center;
-                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
-                    background: transparent !important;
+                #alert-box {
+                    display: none;
+                    text-align: center;
+                    position: absolute;
+                    bottom: 20px;
+                    left: 20px;
+                    color: white;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
                 }
-                #alert-image { 
-                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
-                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
+                #alert-image {
+                    max-width: 300px;
+                    max-height: 300px;
+                    display: block;
+                    margin: 0 auto 10px auto;
                 }
-                #alert-line1 {
-                    color: #ffffff; font-size: ${fontSize1}; font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
-                }
-                #alert-line2 {
-                    color: #ffffff; font-size: ${fontSize2}; font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: break-word; line-height: 1.2;
-                }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
+                #alert-text1 { font-size: ${user.alertSettings.fontSize1}; font-weight: bold; }
+                #alert-text2 { font-size: ${user.alertSettings.fontSize2}; font-weight: bold; color: #f1c40f; }
             </style>
         </head>
         <body>
-            <div id="alert-container">
-                <img id="alert-image" src="" alt="리액션 이미지">
-                <div class="text-box" id="alert-line1"></div>
-                <div class="text-box" id="alert-line2"></div>
+            <div id="alert-box">
+                <img id="alert-image" src="" style="display:none;" />
+                <div id="alert-text1"></div>
+                <div id="alert-text2"></div>
             </div>
 
             <script>
-            const reactions = ${JSON.stringify(reactions)};
-            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
-            const defaultImage = "/alerticon.gif";
-            const useImageSetting = ${useImage};
-            const useReactionSetting = ${useReaction}; // 🟢 [추가] 클라이언트 스크립트에 리액션 사용 여부 전달
+                let reactions = [];
+                const useImage = ${user.alertSettings.useImage};
+                const useReaction = ${user.alertSettings.useReaction};
+                const defaultImage = "/alerticon.gif"; // 기본 이미지 경로
 
-            let lastCheckedTime = "";
-            
-            const alertQueue = [];
-            let isPlaying = false;
+                async function loadReactions() {
+                    try {
+                        const res = await fetch('/api/reactions/${apiKey}');
+                        reactions = await res.json();
+                    } catch (e) {
+                        console.error("리액션 로드 실패", e);
+                    }
+                }
+                loadReactions();
 
-            async function checkNewDonation() {
-                try {
-                    const response = await fetch('/api/logs/' + '${apiKey}');
-                    const logs = await response.json();
-                    if (logs.length > 0) {
-                        const latest = logs[0];
-                        if (latest.datetime !== lastCheckedTime) {
-                            lastCheckedTime = latest.datetime;
-                            
-                            alertQueue.push(latest);
-                            processQueue();
+                let alertQueue = [];
+                let isPlaying = false;
+
+                function enqueueAlert(data) {
+                    alertQueue.push(data);
+                    if (!isPlaying) processQueue();
+                }
+
+                function processQueue() {
+                    if (alertQueue.length === 0) {
+                        isPlaying = false;
+                        return;
+                    }
+                    isPlaying = true;
+                    const donation = alertQueue.shift();
+                    showAlert(donation);
+                }
+
+                function showAlert(donation) {
+                    const box = document.getElementById('alert-box');
+                    const img = document.getElementById('alert-image');
+                    const text1 = document.getElementById('alert-text1');
+                    const text2 = document.getElementById('alert-text2');
+
+                    text1.innerText = donation.nickname + " 님 " + Number(donation.amount).toLocaleString() + "원 후원!";
+                    text2.innerText = donation.message || "";
+
+                    // 이미지 처리 로직
+                    if (useImage) {
+                        let targetImg = defaultImage;
+                        if (useReaction && reactions.length > 0) {
+                            const matched = reactions.find(r => Number(r.amount) === Number(donation.amount));
+                            if (matched && matched.imageUrl) {
+                                targetImg = matched.imageUrl;
+                            }
+                        }
+                        img.src = targetImg;
+                        img.style.display = "block";
+                    } else {
+                        img.style.display = "none";
+                    }
+
+                    // 오디오 처리 (리액션 오디오 또는 기본 사운드)
+                    let audioSrc = "/${user.alertSettings.soundType}";
+                    if (useReaction && reactions.length > 0) {
+                        const matched = reactions.find(r => Number(r.amount) === Number(donation.amount));
+                        if (matched && matched.audioUrl) {
+                            audioSrc = matched.audioUrl;
                         }
                     }
-                } catch (e) { console.error(e); }
-            }
+                    const audio = new Audio(audioSrc);
+                    audio.play().catch(e => console.log("오디오 재생 실패:", e));
 
-            async function checkManualPlay() {
-                try {
-                    const response = await fetch('/api/manual-play/' + '${apiKey}');
-                    const items = await response.json();
-                    if (items && items.length > 0) {
-                        items.forEach(item => {
-                            alertQueue.push(item);
-                        });
-                        processQueue();
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            }
+                    box.style.display = "block";
 
-            function processQueue() {
-                if (isPlaying || alertQueue.length === 0) return;
-
-                isPlaying = true;
-                const donation = alertQueue.shift();
-                showAlert(donation);
-            }
-
-            function showAlert(donation) {
-                const container = document.getElementById('alert-container');
-                const imgElement = document.getElementById('alert-image');
-                const line1 = document.getElementById('alert-line1');
-                const line2 = document.getElementById('alert-line2');
-                
-                const message = donation.message;
-                const amount = donation.amount || 0;
-                        
-                let firstText = message;
-                let secondText = "";
-                
-                const newlineIdx = message.indexOf('\\\\n');
-                if (newlineIdx !== -1) {
-                    firstText = message.substring(0, newlineIdx);
-                    secondText = message.substring(newlineIdx + 1);
-                }
-
-                line1.innerText = firstText;
-                line2.innerText = secondText;
-
-                // 🟢 [수정] 리액션 기능이 켜져 있을 때만 금액에 맞는 리액션을 찾음 (꺼져 있으면 무조건 null 처리되어 기본 알림 실행)
-                let matchedReaction = null;
-                if (useReactionSetting) {
-                    matchedReaction = reactions.find(r => r.amount === amount);
-                }
-
-                if (useImageSetting) {
-                    if (matchedReaction && matchedReaction.imageUrl) {
-                        imgElement.src = matchedReaction.imageUrl;
-                        imgElement.style.display = 'block';
-                    } else {
-                        imgElement.src = defaultImage;
-                        imgElement.style.display = 'block';
-                    }
-                } else {
-                    imgElement.style.display = 'none';
-                }
-                // 리액션이 꺼져 있으면 matchedReaction이 null이 되므로 기본 사운드가 재생됨
-                const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
-                const sound = new Audio(audioSrc);
-
-                container.style.display = 'flex';
-                sound.currentTime = 0;
-                
-                sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                sound.onended = () => {
                     setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue();
-                    }, 3500);
-                };
+                        box.style.display = "none";
+                        setTimeout(processQueue, 500);
+                    }, ${user.alertSettings.duration * 1000});
+                }
 
-                sound.onerror = () => {
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue();
-                    }, 3500);
-                };
-            }
-            
-            setInterval(checkNewDonation, 1000);
-            setInterval(checkManualPlay, 1000);
-        </script>
+                // 수동 재생 폴링
+                setInterval(async () => {
+                    try {
+                        const res = await fetch('/api/manual-play/${apiKey}');
+                        const items = await res.json();
+                        if (items && items.length > 0) {
+                            items.forEach(item => enqueueAlert(item));
+                        }
+                    } catch (e) {}
+                }, 2000);
+            </script>
         </body>
         </html>
     `);
