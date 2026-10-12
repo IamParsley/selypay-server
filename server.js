@@ -216,7 +216,7 @@ app.get('/login', (req, res) => {
                 /* 4) 🎯 입력 폼 영역 (새 이미지 속 빈 목판 칸들과 하단 '로그인' 버튼에 정확히 일치시킴) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 455px; /* 새 이미지의 입력 칸 위치에 맞춤 */
+                    top: 300px; /* 새 이미지의 입력 칸 위치에 맞춤 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 400px; /* 입력 칸 가로 폭 */
