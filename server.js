@@ -255,7 +255,7 @@ app.get('/login', (req, res) => {
                     width: 380px; /* 입력창보다 넓게 설정 */
                     margin-left: -34px; /* 중앙 정렬용 여백 */
                     height: 64px; /* 버튼 높이 확장 */
-                    background: url('/button_inactive.png') no-repeat center center;
+                    background: url('/button_inactive.png') no-repeat center center/contain;
                     background-size: 100% 100%; /*👈 이미지가 찌그러지지 않고 지정한 크기에 딱 채워지도록 설정 */
                     border: none;
                     cursor: pointer;
@@ -264,11 +264,13 @@ app.get('/login', (req, res) => {
                     transition: transform 0.1s ease;
                 }
 
+                /* 🔴 누를 때: 사진 자체에 필터와 그림자를 주어 붉게 빛나게 연출 (버벅임 없음) */
                 .login-btn:active {
-                    background: url('/button_active.png') no-repeat center center;
-                    background-size: 100% 100%;
-                    box-shadow: none;
-                    transform: scale(0.98);
+                    /* 사진의 색감을 붉은 계열로 바꾸고 밝기와 대비를 높여 자체 발광하는 느낌 부여 */
+                    filter: sepia(1) hue-rotate(310deg) saturate(3) brightness(1.1);
+                    /* 사진 윤곽을 따라 은은한 붉은색 네온 광채 효과 추가 */
+                    box-shadow: 0 0 18px rgba(255, 71, 87, 0.8);
+                    transform: scale(0.98); /* 살짝 눌리는 느낌 */
                 }
 
                 /* 6. 하단 링크 영역 */
