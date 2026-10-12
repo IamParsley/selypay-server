@@ -381,7 +381,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: ${settings.fontSize || '7.5vh'}; font-weight: 800; 
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
@@ -438,7 +438,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     const newlineIdx = message.indexOf('\\n');
                     if (newlineIdx !== -1) {
                         firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 2);
+                        secondText = message.substring(newlineIdx + 1); // 줄바꿈 다음 글자 자를때 건너뛰는 글자수
                     }
 
                     line1.innerText = firstText;
