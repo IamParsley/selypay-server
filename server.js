@@ -180,7 +180,7 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 1. 로그인 전체 컨테이너 (750px -> 600px로 80% 축소) */
+                /* 1. 로그인 전체 컨테이너 */
                 .login-container {
                     position: relative;
                     width: 600px;
@@ -198,26 +198,26 @@ app.get('/login', (req, res) => {
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 (크기 및 위치 80% 비례 축소) */
+                /* 3. 🐱 고양이 레이어 */
                 .hanging-cat {
                     position: absolute;
-                    top: -130px; /* 고양이가 팻말 상단에 자연스럽게 걸치는 위치 */
+                    top: -130px;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 336px;  /* 420px * 0.8 */
-                    height: 224px; /* 280px * 0.8 */
+                    width: 336px;
+                    height: 224px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
                     filter: drop-shadow(0 10px 14px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (600px 크기에 맞춰 좌표 및 너비 비례 조정) */
+                /* 4. 🎯 입력 폼 영역 */
                 .login-form-overlay {
                     position: absolute;
-                    top: 290px; /* 365px * 0.8 근처 값으로 맞춤 */
-                    left: 144px; /* 180px * 0.8 */
-                    width: 312px; /* 390px * 0.8 */
+                    top: 290px;
+                    left: 144px;
+                    width: 312px;
                     z-index: 10;
                     text-align: center;
                 }
@@ -228,13 +228,13 @@ app.get('/login', (req, res) => {
 
                 .input-group input {
                     width: 100%;
-                    height: 38px; /* 48px * 0.8 */
+                    height: 38px;
                     padding: 0 14px;
                     background: rgba(10, 20, 15, 0.4);
                     border: 2px solid transparent;
                     border-radius: 8px;
                     color: #ffd32a;
-                    font-size: 13px; /* 16px * 0.8 */
+                    font-size: 13px;
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -250,29 +250,30 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢/🔴 로그인 버튼 (평소: 초록 버튼 이미지 / 누를 때: 붉은 악마 버튼 이미지) */
+                /* 5. 🟢/🔴 로그인 버튼 (가로 폭을 넓혀서 팻말 이미지 버튼과 일치시킴) */
                 .login-btn {
-                    width: 100%;
-                    height: 46px; /* 버튼 이미지 비율에 맞춘 높이 */
-                    background: url('/button_inactive.png') no-repeat center center/contain; /* 👈 평소 모습 */
+                    width: 380px; /* 입력창보다 넓게 설정 */
+                    margin-left: -34px; /* 중앙 정렬을 위해 좌측으로 당김 */
+                    height: 52px; /* 버튼 높이 확장 */
+                    background: url('/button_inactive.png') no-repeat center center/contain;
                     border: none;
                     cursor: pointer;
-                    margin-top: 22px;
+                    margin-top: 20px;
                     outline: none;
                     transition: transform 0.1s ease;
                 }
 
                 .login-btn:active {
-                    background: url('/button_active.png') no-repeat center center/contain; /* 👈 누를 때 모습 */
+                    background: url('/button_active.png') no-repeat center center/contain;
                     box-shadow: 0 0 20px rgba(255, 71, 87, 0.9);
                     transform: scale(0.98);
                 }
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 22px; /* 35px * 0.8 */
+                    margin-top: 20px;
                     text-align: center;
-                    font-size: 11px; /* 14px * 0.8 */
+                    font-size: 11px;
                     font-weight: 900;
                     display: flex;
                     flex-direction: column;
