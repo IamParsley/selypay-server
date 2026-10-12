@@ -99,7 +99,7 @@ app.get('/login', (req, res) => {
                     padding: 0;
                     height: 100vh;
                     /* 업로드하신 이미지를 전체 배경으로 깔아줍니다 */
-                    background: url('/image_43fa16.jpg') no-repeat center center/cover;
+                    background: url('login_sample.png') no-repeat center center/cover;
                     display: flex;
                     justify-content: center;
                     align-items: center;
