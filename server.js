@@ -369,7 +369,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     background: transparent !important;
                 }
                 #alert-image { 
-                    max-height: 40%; width: auto; max-width: 80%;
+                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
