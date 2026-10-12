@@ -190,16 +190,16 @@ app.get('/login', (req, res) => {
                     align-items: center;
                 }
 
-                /* 2. 나무 팻말 박스 이미지 */
+                /* 2. 나무 팻말 박스 이미지 (새로 수정하신 login_board_2.png 적용) */
                 .login-board {
                     position: absolute;
                     width: 750px;
                     height: 750px;
-                    background: url('/login_board.png') no-repeat center center/contain;
+                    background: url('/login_board_2.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 (2배 정도 큼직하게 윗 테두리에 매달림) */
+                /* 3. 🐱 고양이 레이어 (상단 테두리에 매달림) */
                 .hanging-cat {
                     position: absolute;
                     top: -65px;
@@ -213,10 +213,10 @@ app.get('/login', (req, res) => {
                     filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (아이디/비밀번호 칸과 투명 로그인 버튼 위치) */
+                /* 4. 🎯 입력 폼 영역 (새 이미지의 빈 공간과 '로그인' 버튼 그림 위치에 정확히 맞춤) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 415px; /* 입력칸 전체를 목판 빈 공간 아래쪽으로 맞춤 */
+                    top: 360px; /* 새 이미지의 목판 빈 공간과 버튼 위치에 맞춰 조정됨 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
@@ -225,18 +225,18 @@ app.get('/login', (req, res) => {
                 }
 
                 .input-group {
-                    margin-bottom: 16px;
+                    margin-bottom: 14px;
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 52px;
+                    height: 48px;
                     padding: 0 18px;
                     background: rgba(10, 20, 15, 0.6);
                     border: 2px solid #1db954;
                     border-radius: 12px;
                     color: #2ed573;
-                    font-size: 17px;
+                    font-size: 16px;
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -252,48 +252,46 @@ app.get('/login', (req, res) => {
                     color: rgba(46, 213, 115, 0.4);
                 }
 
-                /* 투명 로그인 버튼 (클릭 시 기존 팻말의 버튼 부위가 붉게 빛나는 효과) */
+                /* 5. 🟢 이미지 안의 '로그인' 버튼 그림 위에 얹어지는 투명 버튼 (클릭 시 붉게 빛남) */
                 .login-btn {
                     width: 100%;
-                    height: 54px;
+                    height: 52px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 5px;
+                    margin-top: 2px;
                     outline: none;
+                    border-radius: 12px;
                     transition: all 0.1s ease;
                 }
 
                 .login-btn:active {
-                    background: rgba(255, 71, 87, 0.35);
-                    border-radius: 12px;
-                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.5);
+                    background: rgba(255, 71, 87, 0.4);
+                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.6);
                     transform: scale(0.98);
                 }
 
-                /* 5. 하단 링크 영역 (글씨 크기 키우고 굵게 + 검은 테두리/그림자로 가독성 극대화) */
+                /* 6. 하단 링크 영역 (노란색/골드톤 + 검은 외곽선으로 가독성 극대화) */
                 .links {
-                    margin-top: 18px;
+                    margin-top: 24px;
                     text-align: center;
-                    font-size: 16px;
+                    font-size: 15px;
                     font-weight: 900;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
-                /* 클릭되지 않는 일반 안내 문구 스타일 */
                 .links span {
-                    color: #ffffff;
+                    color: #ffd32a; /* 따뜻한 노랑/골드톤 */
                     text-shadow: 
                         -2px -2px 0 #000,  2px -2px 0 #000, 
                         -2px  2px 0 #000,  2px  2px 0 #000,
                         0 3px 6px rgba(0,0,0,0.9);
                 }
 
-                /* 클릭 가능한 링크 스타일 (비밀번호 찾기, 회원가입) */
                 .links a {
-                    color: #ffffff; /* 선명한 하얀색 글씨 */
+                    color: #ffd32a; /* 따뜻한 노랑/골드톤 */
                     text-decoration: none;
                     text-shadow: 
                         -2px -2px 0 #000,  2px -2px 0 #000, 
@@ -312,7 +310,7 @@ app.get('/login', (req, res) => {
                 <!-- 고양이 레이어 -->
                 <div class="hanging-cat"></div>
 
-                <!-- 나무 팻말 레이어 -->
+                <!-- 나무 팻말 레이어 (login_board_2.png) -->
                 <div class="login-board"></div>
 
                 <!-- 입력 폼 오버레이 레이어 -->
@@ -326,7 +324,7 @@ app.get('/login', (req, res) => {
                             <input type="password" id="password" name="password" placeholder="비밀번호" required>
                         </div>
 
-                        <!-- 투명 버튼 (클릭 시 팻말 본래의 버튼 위치에서 붉게 빛남) -->
+                        <!-- 이미지 속 초록색 로그인 버튼 위치와 일치하는 투명 버튼 -->
                         <button type="submit" class="login-btn" title="로그인"></button>
                     </form>
 
