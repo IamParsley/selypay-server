@@ -10,16 +10,19 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname)); // 현재 폴더의 이미지 파일(login_background.png, login_board.png, login_cat.png 등)을 웹에서 바로 읽을 수 있게 설정
+app.use(express.static(__dirname));
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 // 1. MongoDB 연결
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
-    .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
+.catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 2. 유저 스키마 정의
+// 유저 스키마
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -32,7 +35,7 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// 3. 후원 스키마 정의
+// 후원 스키마
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
@@ -43,7 +46,7 @@ const donationSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 
-// 4. 리액션 설정 스키마 정의
+// 리액션 설정 스키마
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, default: "기본 리액션" },
@@ -56,7 +59,7 @@ const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
-// 5. 한국 시간 구하는 헬퍼 함수
+// 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -67,7 +70,7 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// 6. 🔔 알림 설정 불러오기 API
+// 🔔 알림 설정 불러오기 API
 app.get('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -78,7 +81,7 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 7. 🔔 알림 설정 저장하기 API
+// 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const { soundType, duration, fontSize, useImage } = req.body;
@@ -99,7 +102,7 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 8. 홈 루트
+// 홈 루트
 app.get('/', (req, res) => {
     res.send(`
         <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
@@ -109,7 +112,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 9. 회원가입 페이지
+// 회원가입 페이지
 app.get('/register', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -155,10 +158,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// ==========================================
-// 10. 🌲 3가지 분리된 이미지 레이어(배경, 팻말, 고양이) 적용 로그인 페이지 (80% 축소 버전)
-// ==========================================
-
+// 로그인 페이지
 app.get('/login', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -344,7 +344,119 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 11. 안드로이드 앱 알림 수신 엔드포인트
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({ username, password });
+
+        if (!user) {
+            return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>` + user.username + ` 대시보드</title>
+                <style>
+                    body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                    .log-box { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
+                    .log-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+                    .log-item:last-child { border-bottom: none; }
+                    .btn-group { display: flex; gap: 10px; margin-top: 8px; }
+                    .btn { flex: 1; padding: 8px 12px; background: #3498db; color: white; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 13px; }
+                    .btn:hover { background: #2980b9; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2>환영합니다, ` + user.username + `님! 🎉</h2>
+                    
+                    <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
+                    <div class="box">` + user.apiKey + `</div>
+                    
+                    <p style="margin-top:20px;"><b>내 알림창 오버레이 주소:</b></p>
+                    <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+                    <div class="btn-group">
+                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙ 알림창 세부 설정/관리 사이트 가기</a>
+                    </div>
+
+                    <p style="margin-top:20px;"><b>내 방송용 랭킹판 오버레이 주소:</b></p>
+                    <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
+                    <div class="btn-group">
+                        <a href="/manage/ranking/` + user.apiKey + `" class="btn" target="_blank" style="background:#e67e22;">⚙️ 랭킹판 세부 설정/관리 사이트 가기</a>
+                    </div>
+
+                    <p style="margin-top:30px;"><b> 🏆 계좌후원 랭킹 (KST 자정 기준)</b></p>
+                    <div class="log-box" id="rankingList">
+                        <div class="log-item">랭킹을 불러오는 중...</div>
+                    </div>
+                    
+                    <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
+                    <div class="log-box" id="donationLogList">
+                        <div class="log-item">후원 내역을 불러오는 중...</div>
+                    </div>
+
+                    <p style="margin-top:30px; text-align:right;"><a href="/login">로그아웃</a></p>
+                </div>
+
+                <script>
+                    async function fetchDonationLogs() {
+                        try {
+                            const response = await fetch('/api/logs/` + user.apiKey + `');
+                            const logs = await response.json();
+                            const logContainer = document.getElementById('donationLogList');
+                            logContainer.innerHTML = '';
+                            if (!logs || logs.length === 0) {
+                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+                            logs.slice(0, 20).forEach(log => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
+                                logContainer.appendChild(div);
+                            });
+                        } catch (e) { console.error(e); }
+                    }
+
+                    async function fetchRanking() {
+                        try {
+                            const response = await fetch('/api/ranking/` + user.apiKey + `');
+                            const ranking = await response.json();
+                            const rankContainer = document.getElementById('rankingList');
+                            rankContainer.innerHTML = '';
+                            if (!ranking || ranking.length === 0) {
+                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
+                                return;
+                            }
+                            ranking.forEach((item, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'log-item';
+                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalamount.toLocaleString() + '원 (' + item.count + '회)';
+                                rankContainer.appendChild(div);
+                            });
+                        } catch (e) { console.error(e); }
+                    }
+
+                    fetchDonationLogs();
+                    fetchRanking();
+                    setInterval(fetchDonationLogs, 3000);
+                    setInterval(fetchRanking, 5000);
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Server Error');
+    }
+});
+
+// 안드로이드 앱 알림 수신 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
 
@@ -387,23 +499,469 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 12. 스트리머별 OBS 알림 오버레이 화면
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
-    // 오버레이 관련 로직...
+
+    const settings = user.alertSettings || {};
+    const useImage = settings.useImage !== false;
+    const reactions = await Reaction.find({ streamerId: user._id });
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Overlay</title>
+            <style>
+                html, body {
+                    width: 100%; height: 100%; margin: 0; padding: 0;
+                    background-color: transparent !important;
+                    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+                    overflow: hidden;
+                }
+                #alert-container {
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: flex-start; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    background: transparent !important;
+                }
+                #alert-image { 
+                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
+                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
+                }
+                #alert-line1 {
+                    color: #ffffff; font-size: 8vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
+                }
+                #alert-line2 {
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: break-word; line-height: 1.2;
+                }
+            </style>
+        </head>
+        <body>
+            <div id="alert-container">
+                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
+            </div>
+
+            <audio id="alert-sound"></audio>
+
+            <script>
+                const reactions = ${JSON.stringify(reactions)};
+                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+                const defaultImage = "/alerticon.gif";
+                const useImageSetting = ${useImage};
+
+                let lastCheckedTime = "";
+                
+                async function checkNewDonation() {
+                    try {
+                        const response = await fetch('/api/logs/' + '${apiKey}');
+                        const logs = await response.json();
+                        if (logs.length > 0) {
+                            const latest = logs[0];
+                            if (latest.datetime !== lastCheckedTime) {
+                                lastCheckedTime = latest.datetime;
+                                showAlert(latest);
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                }
+
+                function showAlert(donation) {
+                    const container = document.getElementById('alert-container');
+                    const imgElement = document.getElementById('alert-image');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    
+                    const message = donation.message;
+                    const amount = donation.amount || 0;
+                            
+                    let firstText = message;
+                    let secondText = "";
+                    
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 1); // 줄바꿈 다음 글자 자를때 건너뛰는 글자수
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
+
+                    const matchedReaction = reactions.find(r => r.amount === amount);
+
+                    if (useImageSetting) {
+                        if (matchedReaction && matchedReaction.imageUrl) {
+                            imgElement.src = matchedReaction.imageUrl;
+                            imgElement.style.display = 'block';
+                        } else {
+                            imgElement.src = defaultImage;
+                            imgElement.style.display = 'block';
+                        }
+                    } else {
+                        imgElement.style.display = 'none';
+                    }
+
+                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                    const sound = new Audio(audioSrc);
+
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+                    
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                    let hideTimeout = 5000;
+                    
+                    sound.onloadedmetadata = function() {
+                        if (sound.duration && !isNaN(sound.duration)) {
+                            hideTimeout = sound.duration * 1000;
+                        }
+                        clearTimeout(window.alertTimer);
+                        window.alertTimer = setTimeout(() => { 
+                            container.style.display = 'none'; 
+                        }, hideTimeout);
+                    };
+
+                    window.alertTimer = setTimeout(() => { 
+                        container.style.display = 'none'; 
+                    }, hideTimeout);
+                }
+                
+                setInterval(checkNewDonation, 1000);
+            </script>
+        </body>
+        </html>
+    `);
 });
 
-// 13. 알림창 세부 관리 및 설정 페이지
+// 알림창 세부 관리 및 설정 페이지 (정렬 드롭다운 및 수정 모달 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
-    // 관리 페이지 로직...
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>알림창 관리 - ` + user.username + `</title>
+            <style>
+                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+                .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
+                .form-group { margin-bottom: 15px; }
+                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+                .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 12px; }
+                .btn:hover { background: #2980b9; }
+                .btn-secondary { background: #7f8c8d; }
+                .btn-success { background: #2ed573; font-size: 14px; padding: 10px 15px; }
+                .btn-warning { background: #f39c12; margin-top: 6px; }
+                
+                .reaction-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                .reaction-card {
+                    background: #fafafa;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 12px;
+                    text-align: center;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .reaction-card img {
+                    width: 70px;
+                    height: 70px;
+                    object-fit: contain;
+                    border-radius: 4px;
+                    background: #eee;
+                    margin-bottom: 8px;
+                }
+                .reaction-info {
+                    font-size: 13px;
+                    width: 100%;
+                    word-break: break-all;
+                    margin-bottom: 8px;
+                }
+
+                .modal {
+                    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+                    background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+                }
+                .modal-content {
+                    background: white; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;
+                }
+                .close-btn {
+                    position: absolute; right: 15px; top: 15px; font-size: 20px; font-weight: bold; cursor: pointer; color: #888;
+                }
+                .close-btn:hover { color: #000; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🔔 알림창 및 후원 리액션 관리</h2>
+                <p>OBS 브라우저 소스 주소:</p>
+                <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+                
+                <h3>⚙️ 기본 알림창 세부 설정</h3>
+                <form id="alertSettingsForm">
+                    <div class="form-group">
+                        <label>알림 지속 시간 (초)</label>
+                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>메시지 폰트 크기</label>
+                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                    </div>
+                    <button type="submit" class="btn" style="font-size:14px; padding:10px 15px;">기본 설정 저장하기</button>
+                </form>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <h3>🎨 신규 커스텀 리액션 등록</h3>
+                <form id="reactionForm">
+                    <div class="form-group">
+                        <label>리액션 이름</label>
+                        <input type="text" id="name" placeholder="예: 폭탄 리액션" required>
+                    </div>
+                    <div class="form-group">
+                        <label>특정 후원 금액 (원)</label>
+                        <input type="number" id="amount" placeholder="예: 9999" required>
+                    </div>
+                    <div class="form-group">
+                        <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
+                        <input type="file" id="imageFile" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>오디오 파일 선택 (MP3, WAV 등)</label>
+                        <input type="file" id="audioFile" accept="audio/*">
+                    </div>
+                    <button type="button" id="uploadBtn" class="btn btn-success">리액션 업로드 및 등록</button>
+                </form>
+
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                    <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
+                    <div>
+                        <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="latest">최신순</option>
+                            <option value="highPrice">높은가격순</option>
+                            <option value="lowPrice">낮은가격순</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
+
+                <br><br>
+                <a href="javascript:history.back();" class="btn btn-secondary" style="font-size:14px; padding:10px 15px;">대시보드로 돌아가기</a>
+            </div>
+
+            <!-- 리액션 수정 모달 팝업 -->
+            <div id="editModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeEditModal()">&times;</span>
+                    <h3>✏️ 리액션 수정</h3>
+                    <input type="hidden" id="edit-id">
+                    <div class="form-group">
+                        <label>리액션 이름</label>
+                        <input type="text" id="edit-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>후원 금액 (원)</label>
+                        <input type="number" id="edit-amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label>새 이미지 파일 변경 (선택)</label>
+                        <input type="file" id="edit-imageFile" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>새 오디오 파일 변경 (선택)</label>
+                        <input type="file" id="edit-audioFile" accept="audio/*">
+                    </div>
+                    <button type="button" class="btn btn-warning" style="width:100%; padding:10px; font-size:14px;" onclick="submitEditReaction()">수정 사항 저장하기</button>
+                </div>
+            </div>
+
+            <script>
+                const currentApiKey = "` + apiKey + `";
+                let allReactions = []; // 전체 리액션 데이터를 저장할 전역 변수
+
+                async function loadReactions() {
+                    try {
+                        const res = await fetch('/api/reactions/' + currentApiKey);
+                        allReactions = await res.json();
+                        renderReactions();
+                    } catch (e) { console.error(e); }
+                }
+
+                function renderReactions() {
+                    const container = document.getElementById('reactionList');
+                    container.innerHTML = '';
+                    
+                    if (!allReactions || allReactions.length === 0) {
+                        container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
+                        return;
+                    }
+
+                    const sortType = document.getElementById('sortSelect').value;
+                    const sortedReactions = [...allReactions];
+
+                    if (sortType === 'highPrice') {
+                        sortedReactions.sort((a, b) => b.amount - a.amount);
+                    } else if (sortType === 'lowPrice') {
+                        sortedReactions.sort((a, b) => a.amount - b.amount);
+                    } else if (sortType === 'latest') {
+                        sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
+                    }
+
+                    sortedReactions.forEach(r => {
+                        const card = document.createElement('div');
+                        card.className = 'reaction-card';
+                        
+                        const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
+                        const audioStatus = r.audioUrl ? '등록됨' : '없음';
+
+                        card.innerHTML = \`
+                            <div style="width: 100%;">
+                                <img src="\${imgSrc}" alt="리액션 사진">
+                                <div class="reaction-info">
+                                    <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
+                                    <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
+                                    <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('\${r._id}', '\${r.name || ''}', \${r.amount})">수정</button>
+                        \`;
+                        container.appendChild(card);
+                    });
+                }
+
+                // 신규 리액션 등록
+                document.getElementById('uploadBtn').addEventListener('click', async () => {
+                    const name = document.getElementById('name').value;
+                    const amount = document.getElementById('amount').value;
+                    const imageInput = document.getElementById('imageFile').files[0];
+                    const audioInput = document.getElementById('audioFile').files[0];
+
+                    if (!name || !amount) {
+                        alert('리액션 이름과 금액을 입력해주세요.');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    formData.append('amount', amount);
+                    if (imageInput) formData.append('image', imageInput);
+                    if (audioInput) formData.append('audio', audioInput);
+
+                    document.getElementById('uploadBtn').innerText = '업로드 중...';
+                    document.getElementById('uploadBtn').disabled = true;
+
+                    try {
+                        const res = await fetch('/api/reactions/' + currentApiKey, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await res.json();
+
+                        if (result.success) {
+                            alert('리액션이 성공적으로 등록되었습니다!');
+                            document.getElementById('reactionForm').reset();
+                            loadReactions();
+                        } else {
+                            alert('등록 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('업로드 중 오류가 발생했습니다.');
+                    } finally {
+                        document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
+                        document.getElementById('uploadBtn').disabled = false;
+                    }
+                });
+
+                // 모달 팝업 열기
+                function openEditModal(id, name, amount) {
+                    document.getElementById('edit-id').value = id;
+                    document.getElementById('edit-name').value = name;
+                    document.getElementById('edit-amount').value = amount;
+                    document.getElementById('edit-imageFile').value = '';
+                    document.getElementById('edit-audioFile').value = '';
+                    document.getElementById('editModal').style.display = 'flex';
+                }
+
+                // 모달 팝업 닫기
+                function closeEditModal() {
+                    document.getElementById('editModal').style.display = 'none';
+                }
+
+                // 리액션 수정 요청 전송
+                async function submitEditReaction() {
+                    const id = document.getElementById('edit-id').value;
+                    const name = document.getElementById('edit-name').value;
+                    const amount = document.getElementById('edit-amount').value;
+                    const imageInput = document.getElementById('edit-imageFile').files[0];
+                    const audioInput = document.getElementById('edit-audioFile').files[0];
+
+                    if (!name || !amount) {
+                        alert('이름과 금액을 입력해주세요.');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    formData.append('amount', amount);
+                    if (imageInput) formData.append('image', imageInput);
+                    if (audioInput) formData.append('audio', audioInput);
+
+                    try {
+                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, {
+                            method: 'PUT',
+                            body: formData
+                        });
+                        const result = await res.json();
+
+                        if (result.success) {
+                            alert('리액션이 성공적으로 수정되었습니다!');
+                            closeEditModal();
+                            loadReactions();
+                        } else {
+                            alert('수정 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('수정 중 오류가 발생했습니다.');
+                    }
+                }
+
+                loadReactions();
+            </script>
+        </body>
+        </html>
+    `);
 });
 
-// 14. 방송용 실시간 랭킹 OBS 오버레이 화면
+// 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -463,7 +1021,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 15. 랭킹판 세부 관리 및 설정 페이지
+// 랭킹판 세부 관리 및 설정 페이지
 app.get('/manage/ranking/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -502,7 +1060,7 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 16. 스트리머별 후원 로그 가져오기 API
+// 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -515,7 +1073,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 17. 스트리머별 오늘의 후원 랭킹 API
+// 스트리머별 오늘의 후원 랭킹 API
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -569,7 +1127,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 18. 리액션 목록 불러오기 API
+// 리액션 목록 불러오기 API
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -582,7 +1140,67 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
     }
 });
 
-// 19. 리액션 수정 API (PUT)
+// 리액션 등록 API
+app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const { name, amount } = req.body;
+        let imageUrl = "";
+        let audioUrl = "";
+
+        const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
+        const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
+        const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'reactions';
+
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        if (req.files && req.files['image']) {
+            const file = req.files['image'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: imgError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (imgError) throw imgError;
+            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
+            imageUrl = imgPublic.publicUrl;
+        }
+
+        if (req.files && req.files['audio']) {
+            const file = req.files['audio'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: audioError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (audioError) throw audioError;
+            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
+            audioUrl = audioPublic.publicUrl;
+        }
+
+        const newReaction = new Reaction({
+            streamerId: user._id,
+            name: name || "기본 리액션",
+            amount: Number(amount),
+            imageUrl,
+            audioUrl
+        });
+
+        await newReaction.save();
+        res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
+    }
+});
+
+// 기존 리액션 수정 API (PUT)
 app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -637,7 +1255,7 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
     }
 });
 
-// 20. 서버 구동
+// 서버 구동
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
