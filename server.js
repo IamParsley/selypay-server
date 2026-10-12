@@ -268,14 +268,12 @@ app.get('/login', (req, res) => {
                 .login-btn:active {
                     /* 사진의 색감을 붉은 계열로 바꾸고 밝기와 대비를 높여 자체 발광하는 느낌 부여 */
                     filter: sepia(1) hue-rotate(310deg) saturate(3) brightness(1.1);
-                    /* 사진 윤곽을 따라 은은한 붉은색 네온 광채 효과 추가 */
-                    box-shadow: 0 0 18px rgba(255, 71, 87, 0.8);
                     transform: scale(0.98); /* 살짝 눌리는 느낌 */
                 }
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 18px;
+                    margin-top: 15px;
                     text-align: center;
                     font-size: 11px;
                     font-weight: 900;
