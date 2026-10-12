@@ -800,6 +800,14 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         <label>메시지 폰트 크기</label>
                         <input type="text" name="fontSize" id="fontSize" value="7.5vh">
                     </div>
+
+                <!-- 🟢 [추가] 기본 설정 폼 안에 체크박스를 넣어줍니다 -->
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer;">
+                            <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용
+                        </label>
+                    </div>
+                    
                     <button type="submit" class="btn" style="font-size:14px; padding:10px 15px;">기본 설정 저장하기</button>
                 </form>
 
@@ -827,13 +835,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
-
-                    <!-- 리액션 기능 켜기/끄기 체크박스 -->
-                    <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용
-                    </label>
-                    </div>
 
                 <!-- 등록된 리액션 목록 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">                
@@ -882,6 +883,33 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 const currentApiKey = "` + apiKey + `";
                 let allReactions = []; // 전체 리액션 데이터를 저장할 전역 변수
 
+                // 🟢 [추가] 기본 설정 저장 버튼을 눌렀을 때 작동하는 코드
+            document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const duration = document.getElementById('duration').value;
+                const fontSize = document.getElementById('fontSize').value;
+                const useReaction = document.getElementById('useReaction').checked;
+
+                try {
+                    const res = await fetch('/api/settings/alert/' + currentApiKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ duration, fontSize, useReaction })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert('설정이 저장되었습니다.');
+                    } else {
+                        alert('설정 저장 실패');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('오류가 발생했습니다.');
+                }
+            });
+
+                // 리액션 로드?
+                
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + currentApiKey);
