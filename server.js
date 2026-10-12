@@ -270,7 +270,7 @@ app.get('/login', (req, res) => {
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 40px; /* 👈 링크들도 로그인 버튼 아래로 예쁘게 간격 조절 */
+                    margin-top: 35px; /* 👈 링크들도 로그인 버튼 아래로 예쁘게 간격 조절 */
                     text-align: center;
                     font-size: 14px;
                     font-weight: 900;
