@@ -585,107 +585,82 @@ app.get('/overlay/:apiKey', async (req, res) => {
             </div>
 
             <script>
-                const reactions = ${JSON.stringify(reactions)};
-                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
-                const defaultImage = "/alerticon.gif";
-                const useImageSetting = ${useImage};
+            const reactions = ${JSON.stringify(reactions)};
+            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+            const defaultImage = "/alerticon.gif";
+            const useImageSetting = ${useImage};
 
-                let lastCheckedTime = "";
-                
-                // 🌟 대기열 및 재생 상태 관리 변수
-                const alertQueue = [];
-                let isPlaying = false;
+            let lastCheckedTime = "";
+            
+            // 🌟 대기열 및 재생 상태 관리 변수
+            const alertQueue = [];
+            let isPlaying = false;
 
-                async function checkNewDonation() {
-                    try {
-                        const response = await fetch('/api/logs/' + '${apiKey}');
-                        const logs = await response.json();
-                        if (logs.length > 0) {
-                            const latest = logs[0];
-                            if (latest.datetime !== lastCheckedTime) {
-                                lastCheckedTime = latest.datetime;
-                                
-                                // 🌟 새 후원이 들어오면 바로 실행하지 않고 큐에 적재 후 처리 함수 호출
-                                alertQueue.push(latest);
-                                processQueue();
-                            }
-                        }
-                    } catch (e) { console.error(e); }
-                }
-
-                // 🌟 대기열 순차 처리 함수
-                function processQueue() {
-                    if (isPlaying || alertQueue.length === 0) return;
-
-                    isPlaying = true;
-                    const donation = alertQueue.shift();
-                    showAlert(donation);
-                }
-
-                function showAlert(donation) {
-                    const container = document.getElementById('alert-container');
-                    const imgElement = document.getElementById('alert-image');
-                    const line1 = document.getElementById('alert-line1');
-                    const line2 = document.getElementById('alert-line2');
-                    
-                    const message = donation.message;
-                    const amount = donation.amount || 0;
+            async function checkNewDonation() {
+                try {
+                    const response = await fetch('/api/logs/' + '${apiKey}');
+                    const logs = await response.json();
+                    if (logs.length > 0) {
+                        const latest = logs[0];
+                        if (latest.datetime !== lastCheckedTime) {
+                            lastCheckedTime = latest.datetime;
                             
-                    let firstText = message;
-                    let secondText = "";
-                    
-                    const newlineIdx = message.indexOf('\\n');
-                    if (newlineIdx !== -1) {
-                        firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 1);
-                    }
-
-                    line1.innerText = firstText;
-                    line2.innerText = secondText;
-
-                    const matchedReaction = reactions.find(r => r.amount === amount);
-
-                    if (useImageSetting) {
-                        if (matchedReaction && matchedReaction.imageUrl) {
-                            imgElement.src = matchedReaction.imageUrl;
-                            imgElement.style.display = 'block';
-                        } else {
-                            imgElement.src = defaultImage;
-                            imgElement.style.display = 'block';
-                        }
-                    } else {
-                        imgElement.style.display = 'none';
-                    }
-
-                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
-                    const sound = new Audio(audioSrc);
-
-                    container.style.display = 'flex';
-                    sound.currentTime = 0;
-                    
-                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
-                    sound.onended = () => {
-                        setTimeout(() => {
-                            container.style.display = 'none';
-                            isPlaying = false;
-                            processQueue(); // 다음 대기열 알림 실행
-                        }, 3500); // 3.5초 딜레이
-                    };
-
-                    // 오디오 오류 시 안전 장치 (3.5초 후 다음 진행)
-                    sound.onerror = () => {
-                        setTimeout(() => {
-                            container.style.display = 'none';
-                            isPlaying = false;
+                            alertQueue.push(latest);
                             processQueue();
-                        }, 3500);
-                    };
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // 🟢 [추가됨] 대시보드에서 재생 버튼을 눌렀을 때 호출되는 수동 재생 체크 함수
+            async function checkManualPlay() {
+                try {
+                    const response = await fetch('/api/manual-play/' + '${apiKey}');
+                    const items = await response.json();
+                    if (items && items.length > 0) {
+                        items.forEach(item => {
+                            alertQueue.push(item); // 대기열 맨 뒤로 추가
+                        });
+                        processQueue(); // 대기열 처리 시작
+                    }
+                } catch (e) {
+                    console.error(e);
                 }
+            }
+
+            // 🌟 대기열 순차 처리 함수
+            function processQueue() {
+                if (isPlaying || alertQueue.length === 0) return;
+
+                isPlaying = true;
+                const donation = alertQueue.shift();
+                showAlert(donation);
+            }
+
+            function showAlert(donation) {
+                // ... (이하 showAlert 함수 내용 기존과 동일하게 유지) ...
                 
-                setInterval(checkNewDonation, 1000);
-            </script>
+                sound.onended = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+
+                sound.onerror = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+            }
+            
+            setInterval(checkNewDonation, 1000);
+            setInterval(checkManualPlay, 1000); // 🟢 [추가됨] 1초마다 수동 재생 요청 체크 루프 실행
+        </script>
+```[cite: 1]
         </body>
         </html>
     `);
