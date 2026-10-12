@@ -367,7 +367,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     height: 100vh; // 알림창 박스의 세로 크기를 브라우저 전체 높이(100%)로 설정
                     display: none; // 평소에는 숨겨두었다가 후원이 들어올 때만 보이도록 설정
                     flex-direction: column; // 내부 요소(이미지, 글자들)를 위에서 아래로 세로 방향 배치
-                    justify-content: flex-start; // 세로 정렬 방식 (상단: flex-start, 중앙: center, 하단: flex-end)
+                    justify-content: center; // 세로 정렬 방식 (상단: flex-start, 중앙: center, 하단: flex-end)
                     align-items: center; // 가로(좌우) 방향으로 요소들을 한가운데로 정렬
                     text-align: center; // 박스 안의 텍스트 정렬을 가운데로 설정
                     box-sizing: border-box; // 테두리와 여백이 크기에 포함되도록 계산 방식 고정
