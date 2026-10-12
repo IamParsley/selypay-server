@@ -373,7 +373,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: ${settings.fontSize || '7.5vh'}; font-weight: 800; 
+                    color: #ffffff; font-size: 8vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1vh;
                 }
