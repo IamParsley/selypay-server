@@ -560,7 +560,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     flex-direction: column; justify-content: flex-start; align-items: center;
                     text-align: center; box-sizing: border-box; padding: 2vh 3vw;
                     background: transparent !important;
-                    animation: fadeIn 0.4s ease-in-out; /* 💡 부드러운 등장 애니메이션 적용 */
                 }
                 #alert-image { 
                     width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
@@ -575,10 +574,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     color: #ffffff; font-size: 6.5vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: break-word; line-height: 1.2;
-                }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
                 }
             </style>
         </head>
