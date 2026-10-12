@@ -702,7 +702,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
             setInterval(checkNewDonation, 1000);
             setInterval(checkManualPlay, 1000); // 🟢 [추가됨] 1초마다 수동 재생 요청 체크 루프 실행
         </script>
-```[cite: 1]
         </body>
         </html>
     `);
