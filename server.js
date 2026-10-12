@@ -267,7 +267,7 @@ app.get('/login', (req, res) => {
                 /* 🔴 누를 때: 사진 자체에 필터와 그림자를 주어 붉게 빛나게 연출 (버벅임 없음) */
                 .login-btn:active {
                     /* 사진의 색감을 붉은 계열로 바꾸고 밝기와 대비를 높여 자체 발광하는 느낌 부여 */
-                    filter: sepia(1) hue-rotate(300deg) saturate(5) brightness(1.25);
+                    filter: sepia(1) hue-rotate(120deg) saturate(8) brightness(0.95);
                     transform: scale(0.98); /* 살짝 눌리는 느낌 */
                 }
 
