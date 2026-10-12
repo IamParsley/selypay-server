@@ -1,43 +1,43 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 미들웨어 설정
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
+// Supabase 설정 (환경 변수 또는 직접 입력)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+const STORAGE_BUCKET = 'reactions'; // Supabase 스토리지 버킷 이름
 
-// 메모리에 파일을 일시 저장하여 Supabase로 전송하기 위한 multer 설정
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 1. MongoDB 연결
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
-.catch((err) => console.error('❌ MongoDB 연결 에러:', err));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static('public'));
 
-// 2. Mongoose 스키마 정의
+// MongoDB 연결
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/selypay', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('MongoDB Connected')).catch(err => console.log(err));
+
+// 유저 스키마
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     apiKey: { type: String, required: true, unique: true },
-    createdAt: { type: Date, default: Date.now },
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' },
-        bgColor: { type: String, default: 'transparent' },
         useImage: { type: Boolean, default: true }
     }
 });
 
+// 후원 스키마
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
@@ -48,29 +48,22 @@ const donationSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
-const Donation = mongoose.model('Donation', donationSchema);
-
-// 리액션 설정 스키마 및 모델
+// 리액션 설정 스키마 (이름 필드 추가)
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    name: { type: String, default: "" },
-    amount: { type: Number, default: 0 }, 
-    imageUrl: { type: String, default: "" },   
-    audioUrl: { type: String, default: "" }    
+    name: { type: String, default: "기본 리액션" },
+    amount: { type: Number, default: 0 },
+    imageUrl: { type: String, default: "" },
+    audioUrl: { type: String, default: "" }
 });
+
+const User = mongoose.model('User', userSchema);
+const Donation = mongoose.model('Donation', donationSchema);
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
-// 한국 시간 구하는 헬퍼 함수
+// 한국 시간 구하기 헬퍼 함수
 function getKSTDateTime() {
-    return new Date().toLocaleString('ko-KR', { 
-        timeZone: 'Asia/Seoul', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-    });
+    return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function getKSTDateKey() {
@@ -96,14 +89,12 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
         const { soundType, duration, fontSize, useImage } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
-            { 
-                $set: { 
-                    'alertSettings.soundType': soundType,
-                    'alertSettings.duration': Number(duration),
-                    'alertSettings.fontSize': fontSize,
-                    'alertSettings.useImage': useImage === true || useImage === 'true'
-                } 
-            },
+            { $set: { 
+                'alertSettings.soundType': soundType, 
+                'alertSettings.duration': Number(duration), 
+                'alertSettings.fontSize': fontSize, 
+                'alertSettings.useImage': useImage === true || useImage === 'true' 
+            }},
             { new: true }
         );
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
@@ -310,7 +301,7 @@ app.post('/api/login', async (req, res) => {
 // 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
-    
+
     if (!apiKey || !message) {
         return res.status(400).json({ success: false, error: 'API Key or Message is missing' });
     }
@@ -359,8 +350,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
     const settings = user.alertSettings || {};
     const useImage = settings.useImage !== false;
-
-    // 해당 스트리머의 리액션 목록 조회
     const reactions = await Reaction.find({ streamerId: user._id });
 
     res.send(`
@@ -441,7 +430,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     let firstText = message;
                     let secondText = "";
                     
-                    const newlineIdx = message.indexOf('\\\\n');
+                    const newlineIdx = message.indexOf('\\n');
                     if (newlineIdx !== -1) {
                         firstText = message.substring(0, newlineIdx);
                         secondText = message.substring(newlineIdx + 2);
@@ -450,10 +439,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     line1.innerText = firstText;
                     line2.innerText = secondText;
 
-                    // 후원 금액과 정확히 일치하는 리액션 찾기
                     const matchedReaction = reactions.find(r => r.amount === amount);
 
-                    // 이미지 설정
                     if (useImageSetting) {
                         if (matchedReaction && matchedReaction.imageUrl) {
                             imgElement.src = matchedReaction.imageUrl;
@@ -466,7 +453,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                         imgElement.style.display = 'none';
                     }
 
-                    // 오디오 설정
                     const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
                     const sound = new Audio(audioSrc);
 
@@ -475,22 +461,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
-                    // 💡 오디오 파일의 길이에 맞춰 알림창 유지 시간 동적 조절 (기본값 설정: 5초)
                     let hideTimeout = 5000;
                     
                     sound.onloadedmetadata = function() {
                         if (sound.duration && !isNaN(sound.duration)) {
                             hideTimeout = sound.duration * 1000;
                         }
-                        
-                        // 기존 타이머가 있다면 클리어하고 오디오 길이에 맞춤
                         clearTimeout(window.alertTimer);
                         window.alertTimer = setTimeout(() => { 
                             container.style.display = 'none'; 
                         }, hideTimeout);
                     };
 
-                    // 메타데이터 로드가 지연될 경우를 대비한 안전망 타이머
                     window.alertTimer = setTimeout(() => { 
                         container.style.display = 'none'; 
                     }, hideTimeout);
@@ -503,7 +485,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 
+// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (이름 설정 및 개별 수정 리스트 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -519,14 +501,15 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
                 .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .form-group { margin-bottom: 20px; }
-                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+                .form-group { margin-bottom: 15px; }
+                .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
                 .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
                 .btn { display: inline-block; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
                 .btn-success { background: #2ed573; }
-                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; font-size: 14px; }
+                .btn-warning { background: #f39c12; color: white; }
+                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
             </style>
         </head>
         <body>
@@ -573,7 +556,9 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     <button type="button" id="uploadBtn" class="btn btn-success">리액션 업로드 및 등록</button>
                 </form>
 
-                <h4 style="margin-top:30px;">📋 등록된 리액션 목록 및 수정</h4>
+                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
+
+                <h3 style="margin-top:30px;">📋 등록된 리액션 목록 및 수정</h3>
                 <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
 
                 <br>
@@ -613,15 +598,16 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                                     <label>새 오디오 변경 (선택)</label>
                                     <input type="file" id="edit-audio-\${r._id}" accept="audio/*">
                                 </div>
-                                <small style="color:#888; display:block; margin-bottom:10px;">기존 이미지: \${r.imageUrl ? 'O' : 'X'} / 기존 오디오: \${r.audioUrl ? 'O' : 'X'}</small>
-                                <button type="button" class="btn" onclick="updateReaction('\${r._id}')">수정 사항 저장</button>
+                                <div style="font-size:12px; color:#888; margin-bottom:10px;">
+                                    현재 파일 상태 — 이미지: \${r.imageUrl ? '등록됨' : '없음'} / 오디오: \${r.audioUrl ? '등록됨' : '없음'}
+                                </div>
+                                <button type="button" class="btn btn-warning" onclick="updateReaction('\${r._id}')">수정 사항 저장</button>
                             \`;
                             container.appendChild(div);
                         });
                     } catch (e) { console.error(e); }
                 }
 
-                // 신규 등록
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const name = document.getElementById('name').value;
                     const amount = document.getElementById('amount').value;
@@ -665,7 +651,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     }
                 });
 
-                // 기존 리액션 수정 함수
                 async function updateReaction(id) {
                     const name = document.getElementById('edit-name-' + id).value;
                     const amount = document.getElementById('edit-amount-' + id).value;
@@ -799,7 +784,7 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
                 
                 <h3>⚙️ 세부 설정 (준비 중)</h3>
-                <p style="color: #666; font-size: 14px;">여기에 랭킹 표시 명수 조절(Top 3 또는 Top 5), 배경 투명도, 글자 색상 테마 변경 등의 세부 설정을 추가할 예정입니다.</p>
+                <p style="color: #666; font-size: 14px;">여기에 랭킹 표시 명수 조절, 배경 투명도 등의 세부 설정을 추가할 예정입니다.</p>
 
                 <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
             </div>
@@ -809,7 +794,6 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
 });
 
 // 9. API 코드 모음
-
 // 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
@@ -829,60 +813,31 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json([]);
 
-        const todayKey = getKSTDateKey();
-
-        const todayDonations = await Donation.find(
-            { streamerId: user._id, dateKey: todayKey },
-            { nickname: 1, amount: 1, timestamp: 1 }
-        ).sort({ timestamp: 1 });
-
-        const rankingMap = {};
-        todayDonations.forEach(d => {
-            let cleanName = d.nickname.trim();
-            if (cleanName.endsWith("님")) {
-                cleanName = cleanName.slice(0, -1).trim();
-            }
-
-            if (!rankingMap[cleanName]) {
-                rankingMap[cleanName] = {
-                    totalamount: 0,
-                    count: 0,
-                    firstDonationTime: d.timestamp
-                };
-            }
-            rankingMap[cleanName].totalamount += d.amount;
-            rankingMap[cleanName].count += 1;
-        });
-
-        const rankingList = Object.keys(rankingMap).map(name => {
-            return {
-                _id: name,
-                totalamount: rankingMap[name].totalamount,
-                count: rankingMap[name].count,
-                firstDonationTime: rankingMap[name].firstDonationTime
-            };
-        });
-
-        rankingList.sort((a, b) => {
-            if (b.totalamount !== a.totalamount) {
-                return b.totalamount - a.totalamount;
-            }
-            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime);
-        });
-
-        res.json(rankingList.slice(0, 5));
+        const ranking = await Donation.aggregate([
+            { $match: { streamerId: user._id, dateKey: getKSTDateKey() } },
+            { $group: { _id: '$nickname', totalamount: {$sum: '$amount' }, count: {$sum: 1 } } },
+            { $sort: { totalamount: -1 } },             {$limit: 10 }
+        ]);
+        res.json(ranking);
     } catch (e) {
-        console.error(e);
         res.status(500).json([]);
     }
 });
 
-// 🛠️ 리액션 설정 및 파일 업로드 처리 API (multer 경유 방식)
-const { createClient } = require('@supabase/supabase-js');
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
-const STORAGE_BUCKET = process.env.STORAGE_BUCKET || '본인이만든버킷이름';
+// 🛠️ 리액션 목록 불러오기 API
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
 
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        res.json(reactions);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+// 🛠️ 리액션 등록 API (이름 포함)
 app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -899,16 +854,11 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
             const fileExt = file.originalname.split('.').pop();
             const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
 
-            // 파일 객체가 아닌 순수 buffer와 영문 파일명만 전달
             const { error: imgError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(imgName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
+                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
 
             if (imgError) throw imgError;
-
             const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
             imageUrl = imgPublic.publicUrl;
         }
@@ -920,13 +870,9 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
 
             const { error: audioError } = await supabaseClient.storage
                 .from(STORAGE_BUCKET)
-                .upload(audioName, file.buffer, { 
-                    contentType: file.mimetype,
-                    upsert: false 
-                });
+                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
 
             if (audioError) throw audioError;
-
             const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
             audioUrl = audioPublic.publicUrl;
         }
@@ -947,20 +893,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
     }
 });
 
-// 🛠️ 리액션 목록 불러오기 API
-app.get('/api/reactions/:apiKey', async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json([]);
-
-        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
-        res.json(reactions);
-    } catch (e) {
-        res.status(500).json([]);
-    }
-});
-
-// 🛠️ 기존 리액션 수정 API
+// 🛠️ 기존 리액션 수정 API (PUT)
 app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -975,7 +908,6 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
 
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        //새로운 이미지가 업로드된 경우에만 교체
         if (req.files && req.files['image']) {
             const file = req.files['image'][0];
             const fileExt = file.originalname.split('.').pop();
@@ -990,7 +922,6 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
             reaction.imageUrl = imgPublic.publicUrl;
         }
 
-        // 새로운 오디오가 업로드된 경우에만 교체
         if (req.files && req.files['audio']) {
             const file = req.files['audio'][0];
             const fileExt = file.originalname.split('.').pop();
