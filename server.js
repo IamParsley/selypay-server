@@ -637,8 +637,50 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 showAlert(donation);
             }
 
-            function showAlert(donation) {
-                // ... (이하 showAlert 함수 내용 기존과 동일하게 유지) ...
+           function showAlert(donation) {
+                    const container = document.getElementById('alert-container');
+                    const imgElement = document.getElementById('alert-image');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    
+                    const message = donation.message;
+                    const amount = donation.amount || 0;
+                            
+                    let firstText = message;
+                    let secondText = "";
+                    
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 1);
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
+
+                    const matchedReaction = reactions.find(r => r.amount === amount);
+
+                    if (useImageSetting) {
+                        if (matchedReaction && matchedReaction.imageUrl) {
+                            imgElement.src = matchedReaction.imageUrl;
+                            imgElement.style.display = 'block';
+                        } else {
+                            imgElement.src = defaultImage;
+                            imgElement.style.display = 'block';
+                        }
+                    } else {
+                        imgElement.style.display = 'none';
+                    }
+
+                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                    const sound = new Audio(audioSrc);
+
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+                    
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
                 
                 sound.onended = () => {
                     setTimeout(() => {
