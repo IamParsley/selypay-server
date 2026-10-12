@@ -199,10 +199,10 @@ app.get('/login', (req, res) => {
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 크기를 2배 정도 크게 확대 및 위치 조정 */
+                /* 3. 🐱 고양이 레이어 (2배 정도 큼직하게 윗 테두리에 매달림) */
                 .hanging-cat {
                     position: absolute;
-                    top: -65px; /* 팻말 상단에 큼직하게 걸쳐지도록 위로 올림 */
+                    top: -65px;
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
@@ -213,10 +213,10 @@ app.get('/login', (req, res) => {
                     filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (아이디/비밀번호 칸을 아래로 더 내림) */
+                /* 4. 🎯 입력 폼 영역 (아이디/비밀번호 칸과 투명 로그인 버튼 위치) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 395px; /* 입력칸 위치를 더 아래로 조정 */
+                    top: 415px; /* 입력칸 전체를 목판 빈 공간 아래쪽으로 맞춤 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
@@ -225,7 +225,7 @@ app.get('/login', (req, res) => {
                 }
 
                 .input-group {
-                    margin-bottom: 20px;
+                    margin-bottom: 16px;
                 }
 
                 .input-group input {
@@ -252,14 +252,14 @@ app.get('/login', (req, res) => {
                     color: rgba(46, 213, 115, 0.4);
                 }
 
-                /* 로그인 버튼 (클릭 시 붉게 빛나는 효과) */
+                /* 투명 로그인 버튼 (클릭 시 기존 팻말의 버튼 부위가 붉게 빛나는 효과) */
                 .login-btn {
                     width: 100%;
                     height: 54px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 2px;
+                    margin-top: 5px;
                     outline: none;
                     transition: all 0.1s ease;
                 }
@@ -273,19 +273,28 @@ app.get('/login', (req, res) => {
 
                 /* 5. 하단 링크 영역 (글씨 크기 키우고 굵게 + 검은 테두리/그림자로 가독성 극대화) */
                 .links {
-                    margin-top: 25px;
+                    margin-top: 18px;
                     text-align: center;
-                    font-size: 15px;
-                    font-weight: bold;
+                    font-size: 16px;
+                    font-weight: 900;
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
                 }
 
+                /* 클릭되지 않는 일반 안내 문구 스타일 */
+                .links span {
+                    color: #ffffff;
+                    text-shadow: 
+                        -2px -2px 0 #000,  2px -2px 0 #000, 
+                        -2px  2px 0 #000,  2px  2px 0 #000,
+                        0 3px 6px rgba(0,0,0,0.9);
+                }
+
+                /* 클릭 가능한 링크 스타일 (비밀번호 찾기, 회원가입) */
                 .links a {
-                    color: #ffffff; /* 하얀색 글씨 */
+                    color: #ffffff; /* 선명한 하얀색 글씨 */
                     text-decoration: none;
-                    /* 검은색 외곽선(그림자) 효과를 주어 나무 배경에서 확 띄게 함 */
                     text-shadow: 
                         -2px -2px 0 #000,  2px -2px 0 #000, 
                         -2px  2px 0 #000,  2px  2px 0 #000,
@@ -317,12 +326,13 @@ app.get('/login', (req, res) => {
                             <input type="password" id="password" name="password" placeholder="비밀번호" required>
                         </div>
 
+                        <!-- 투명 버튼 (클릭 시 팻말 본래의 버튼 위치에서 붉게 빛남) -->
                         <button type="submit" class="login-btn" title="로그인"></button>
                     </form>
 
                     <div class="links">
                         <a href="/forgot-password">비밀번호를 잊으셨나요?</a>
-                        <div><a href="/register">계정이 없으신가요? 회원가입</a></div>
+                        <div><span>계정이 없으신가요?</span> <a href="/register">회원가입</a></div>
                     </div>
                 </div>
             </div>
