@@ -371,24 +371,22 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center; // 가로(좌우) 방향으로 요소들을 한가운데로 정렬
                     text-align: center; // 박스 안의 텍스트 정렬을 가운데로 설정
                     box-sizing: border-box; // 테두리와 여백이 크기에 포함되도록 계산 방식 고정
-                    padding: 2vh; // 전체 기본 안쪽 여백 크기
-                    padding-left: 2vh; // 왼쪽 안쪽 여백(공간) 크기
-                    padding-right: 2vh; // 오른쪽 안쪽 여백(공간) 크기
+                    padding: 3vh 1vw;
                     background: transparent !important; // OBS 송출 시 배경이 투명하게 보이도록 설정
                 }
                 #alert-image { 
-                    max-height: 40vh; width: auto; max-width: 80%;
+                    max-height: 45vh; width: auto; max-width: 90%;
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 1.5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    color: #ffffff; font-size: 8vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1.5vh;
+                    width: 98vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 1.5vh;
                 }
                 #alert-line2 {
-                    color: #ffffff; font-size: 5.0vh; font-weight: 800; 
+                    color: #ffffff; font-size: 6vh; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    word-break: break-word; line-height: 1.2;
+                    width: 98vw; word-break: break-word; line-height: 1.2;
                 }
             </style>
         </head>
