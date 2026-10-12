@@ -506,157 +506,162 @@ app.get('/overlay/:apiKey', async (req, res) => {
     if (!user) return res.status(404).send('Streamer not found');
 
     const settings = user.alertSettings || {};
-    const useImage = settings.useImage !== false;
-    const reactions = await Reaction.find({ streamerId: user._id });
+    const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+    const useImage = settings.useImage !== undefined ? settings.useImage : true;
 
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>SelyPay Overlay</title>
+            <title>SelyPay Alert Overlay</title>
             <style>
-                html, body {
-                    width: 100%; height: 100%; margin: 0; padding: 0;
-                    background-color: transparent !important;
-                    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
-                    overflow: hidden;
-                }
+                body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
-                    width: 100vw; height: 100vh; display: none;
-                    flex-direction: column; justify-content: flex-start; align-items: center;
-                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
-                    background: transparent !important;
+                    display: none;
+                    position: fixed;
+                    bottom: 30px;
+                    left: 30px;
+                    flex-direction: column;
+                    align-items: center;
+                    background: rgba(0, 0, 0, 0.8);
+                    padding: 20px 30px;
+                    border-radius: 15px;
+                    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+                    color: white;
+                    text-align: center;
+                    max-width: 450px;
+                    animation: fadeIn 0.3s ease;
                 }
-                #alert-image { 
-                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
-                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
+                #alert-image {
+                    max-width: 180px;
+                    max-height: 180px;
+                    object-fit: contain;
+                    border-radius: 10px;
+                    margin-bottom: 12px;
+                    display: none;
                 }
-                #alert-line1 {
-                    color: #ffffff; font-size: 8vh; font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
+                .text-box {
+                    font-size: ${settings.fontSize || '7.5vh'};
+                    font-weight: bold;
+                    line-height: 1.2;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+                    word-break: break-all;
                 }
-                #alert-line2 {
-                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
-                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
-                    width: 90vw; word-break: break-word; line-height: 1.2;
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
             </style>
         </head>
         <body>
             <div id="alert-container">
-                <img id="alert-image" src="/alerticon.gif" alt="Alert GIF">
-                <div id="alert-line1"></div>
-                <div id="alert-line2"></div>
+                <img id="alert-image" src="" alt="리액션 이미지">
+                <div class="text-box" id="alert-line1"></div>
+                <div class="text-box" id="alert-line2" style="font-size: 0.8em; margin-top: 5px; color: #f1c40f;"></div>
             </div>
 
-            <audio id="alert-sound"></audio>
-
-            // 오버레이 스크립
-            
             <script>
                 const reactions = ${JSON.stringify(reactions)};
-            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
-            const defaultImage = "/alerticon.gif";
-            const useImageSetting = ${useImage};
-        
-            let lastCheckedTime = "";
-            
-            // 🌟 1. 대기열 배열 및 재생 상태 관리 변수 추가
-            const alertQueue = [];
-            let isPlaying = false;
-        
-            async function checkNewDonation() {
-                try {
-                    const response = await fetch('/api/logs/' + '${apiKey}');
-                    const logs = await response.json();
-                    if (logs.length > 0) {
-                        const latest = logs[0];
-                        if (latest.datetime !== lastCheckedTime) {
-                            lastCheckedTime = latest.datetime;
-                            
-                            // 🌟 2. 새 후원이 감지되면 바로 실행하지 않고 큐에 푸시한 뒤 처리 함수 호출
-                            alertQueue.push(latest);
-                            processQueue();
+                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+                const defaultImage = "/alerticon.gif";
+                const useImageSetting = ${useImage};
+
+                let lastCheckedTime = "";
+                
+                // 🌟 대기열 및 재생 상태 관리 변수
+                const alertQueue = [];
+                let isPlaying = false;
+
+                async function checkNewDonation() {
+                    try {
+                        const response = await fetch('/api/logs/' + '${apiKey}');
+                        const logs = await response.json();
+                        if (logs.length > 0) {
+                            const latest = logs[0];
+                            if (latest.datetime !== lastCheckedTime) {
+                                lastCheckedTime = latest.datetime;
+                                
+                                // 🌟 새 후원이 들어오면 바로 실행하지 않고 큐에 적재 후 처리 함수 호출
+                                alertQueue.push(latest);
+                                processQueue();
+                            }
                         }
-                    }
-                } catch (e) { console.error(e); }
-            }
-        
-            // 🌟 3. 대기열 순차 처리 함수
-            function processQueue() {
-                if (isPlaying || alertQueue.length === 0) return;
-        
-                isPlaying = true;
-                const donation = alertQueue.shift(); // 대기열에서 하나 꺼냄
-                
-                showAlert(donation);
-            }
-        
-            function showAlert(donation) {
-                const container = document.getElementById('alert-container');
-                const imgElement = document.getElementById('alert-image');
-                const line1 = document.getElementById('alert-line1');
-                const line2 = document.getElementById('alert-line2');
-                
-                const message = donation.message;
-                const amount = donation.amount || 0;
-                        
-                let firstText = message;
-                let secondText = "";
-                
-                const newlineIdx = message.indexOf('\\n');
-                if (newlineIdx !== -1) {
-                    firstText = message.substring(0, newlineIdx);
-                    secondText = message.substring(newlineIdx + 1);
+                    } catch (e) { console.error(e); }
                 }
-        
-                line1.innerText = firstText;
-                line2.innerText = secondText;
-        
-                const matchedReaction = reactions.find(r => r.amount === amount);
-        
-                if (useImageSetting) {
-                    if (matchedReaction && matchedReaction.imageUrl) {
-                        imgElement.src = matchedReaction.imageUrl;
-                        imgElement.style.display = 'block';
+
+                // 🌟 대기열 순차 처리 함수
+                function processQueue() {
+                    if (isPlaying || alertQueue.length === 0) return;
+
+                    isPlaying = true;
+                    const donation = alertQueue.shift();
+                    showAlert(donation);
+                }
+
+                function showAlert(donation) {
+                    const container = document.getElementById('alert-container');
+                    const imgElement = document.getElementById('alert-image');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    
+                    const message = donation.message;
+                    const amount = donation.amount || 0;
+                            
+                    let firstText = message;
+                    let secondText = "";
+                    
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 1);
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
+
+                    const matchedReaction = reactions.find(r => r.amount === amount);
+
+                    if (useImageSetting) {
+                        if (matchedReaction && matchedReaction.imageUrl) {
+                            imgElement.src = matchedReaction.imageUrl;
+                            imgElement.style.display = 'block';
+                        } else {
+                            imgElement.src = defaultImage;
+                            imgElement.style.display = 'block';
+                        }
                     } else {
-                        imgElement.src = defaultImage;
-                        imgElement.style.display = 'block';
+                        imgElement.style.display = 'none';
                     }
-                } else {
-                    imgElement.style.display = 'none';
+
+                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                    const sound = new Audio(audioSrc);
+
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+                    
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 2초(2000ms) 딜레이 부여
+                    sound.onended = () => {
+                        setTimeout(() => {
+                            container.style.display = 'none';
+                            isPlaying = false;
+                            processQueue(); // 다음 대기열 알림 실행
+                        }, 2000); // 2초 딜레이
+                    };
+
+                    // 오디오 오류 시 안전 장치 (2초 후 다음 진행)
+                    sound.onerror = () => {
+                        setTimeout(() => {
+                            container.style.display = 'none';
+                            isPlaying = false;
+                            processQueue();
+                        }, 2000);
+                    };
                 }
-        
-                const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
-                const sound = new Audio(audioSrc);
-        
-                container.style.display = 'flex';
-                sound.currentTime = 0;
                 
-                sound.play().catch(e => console.log("사운드 재생 실패:", e));
-        
-                // 🌟 4. 노래가 끝난 후(`ended`) 2초(2000ms) 딜레이 적용
-                sound.onended = () => {
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue(); // 다음 대기열 알림 실행
-                    }, 2000); // 2초 딜레이
-                };
-        
-                // 🌟  만약 오디오 파일에 문제가 생겨서 onended가 안 탈 경우를 대비한 안전 장치 (기본 5초 후 종료 및 딜레이)
-                sound.onerror = () => {
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue();
-                    }, 2000);
-                };
-            }
-            
-            setInterval(checkNewDonation, 1000);
+                setInterval(checkNewDonation, 1000);
             </script>
         </body>
         </html>
