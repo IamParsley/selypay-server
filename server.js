@@ -54,6 +54,7 @@ const Donation = mongoose.model('Donation', donationSchema);
 // 리액션 설정 스키마 및 모델
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, default: "" },
     amount: { type: Number, default: 0 }, 
     imageUrl: { type: String, default: "" },   
     audioUrl: { type: String, default: "" }    
@@ -824,7 +825,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
         const user = await User.findOne({ apiKey: req.params.apiKey });
         if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
-        const { amount } = req.body;
+        const { name, amount } = req.body;
         let imageUrl = "";
         let audioUrl = "";
 
@@ -869,6 +870,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
 
         const newReaction = new Reaction({
             streamerId: user._id,
+            name: name || "기본 리액션",
             amount: Number(amount),
             imageUrl,
             audioUrl
@@ -892,6 +894,59 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
         res.json(reactions);
     } catch (e) {
         res.status(500).json([]);
+    }
+});
+
+// 🛠️ 기존 리액션 수정 API
+app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const reaction = await Reaction.findOne({ _id: req.params.reactionId, streamerId: user._id });
+        if (!reaction) return res.status(404).json({ success: false, error: 'Reaction not found' });
+
+        const { name, amount } = req.body;
+        if (name) reaction.name = name;
+        if (amount) reaction.amount = Number(amount);
+
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        //새로운 이미지가 업로드된 경우에만 교체
+        if (req.files && req.files['image']) {
+            const file = req.files['image'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: imgError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (imgError) throw imgError;
+            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
+            reaction.imageUrl = imgPublic.publicUrl;
+        }
+
+        // 새로운 오디오가 업로드된 경우에만 교체
+        if (req.files && req.files['audio']) {
+            const file = req.files['audio'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+
+            const { error: audioError } = await supabaseClient.storage
+                .from(STORAGE_BUCKET)
+                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+
+            if (audioError) throw audioError;
+            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
+            reaction.audioUrl = audioPublic.publicUrl;
+        }
+
+        await reaction.save();
+        res.json({ success: true, message: '리액션이 성공적으로 수정되었습니다!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
     }
 });
 
