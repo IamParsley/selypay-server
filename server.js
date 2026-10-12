@@ -1137,6 +1137,21 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
 
         const rankingMap = {};
         todayDonations.forEach(d => {
+            // 🟢 [추가] '테스트후원알림' 닉네임은 랭킹 집계에서 제외
+            if (d.nickname === '테스트후원알림') return;
+
+            let cleanName = d.nickname.trim();
+            if (cleanName.endsWith("님")) {
+                cleanName = cleanName.slice(0, -1).trim();
+            }
+
+        const todayDonations = await Donation.find(
+            { streamerId: user._id, dateKey: todayKey },
+            { nickname: 1, amount: 1, timestamp: 1 }
+        ).sort({ timestamp: 1 });
+
+        const rankingMap = {};
+        todayDonations.forEach(d => {
             let cleanName = d.nickname.trim();
             if (cleanName.endsWith("님")) {
                 cleanName = cleanName.slice(0, -1).trim();
