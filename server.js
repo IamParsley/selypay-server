@@ -30,10 +30,8 @@ const userSchema = new mongoose.Schema({
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
-        fontSize1: { type: String, default: '8vh' },
-        fontSize2: { type: String, default: '6.5vh' },
-        useImage: { type: Boolean, default: true },
-        useReaction: { type: Boolean, default: true } // 🟢 [추가] 리액션 기능 켜기/끄기 설정
+        fontSize: { type: String, default: '7.5vh' },
+        useImage: { type: Boolean, default: true }
     }
 });
 
@@ -86,16 +84,14 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
 // 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
-        const { soundType, duration, fontSize1, fontSize2, useImage, useReaction } = req.body;
+        const { soundType, duration, fontSize, useImage } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
-                'alertSettings.soundType': soundType,
-                'alertSettings.duration': Number(duration) || 5,
-                'alertSettings.fontSize1': fontSize1 || '8vh',
-                'alertSettings.fontSize2': fontSize2 || '6.5vh',
-                'alertSettings.useImage': useImage === true || useImage === 'true',
-                'alertSettings.useReaction': useReaction === true || useReaction === 'true'
+                'alertSettings.soundType': soundType, 
+                'alertSettings.duration': Number(duration), 
+                'alertSettings.fontSize': fontSize, 
+                'alertSettings.useImage': useImage === true || useImage === 'true' 
             }},
             { new: true }
         );
@@ -543,6 +539,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
 
+    const settings = user.alertSettings || {};
+    const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+    const useImage = settings.useImage !== undefined ? settings.useImage : true;
+
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -551,120 +551,157 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <title>SelyPay Alert Overlay</title>
             <style>
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
-                #alert-box {
-                    display: none;
-                    text-align: center;
-                    position: absolute;
-                    bottom: 20px;
-                    left: 20px;
-                    color: white;
-                    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+                #alert-container {
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: flex-start; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    background: transparent !important;
                 }
-                #alert-image {
-                    max-width: 300px;
-                    max-height: 300px;
-                    display: block;
-                    margin: 0 auto 10px auto;
+                #alert-image { 
+                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
+                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
                 }
-                #alert-text1 { font-size: ${user.alertSettings.fontSize1}; font-weight: bold; }
-                #alert-text2 { font-size: ${user.alertSettings.fontSize2}; font-weight: bold; color: #f1c40f; }
+                #alert-line1 {
+                    color: #ffffff; font-size: 8vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
+                }
+                #alert-line2 {
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: break-word; line-height: 1.2;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
             </style>
         </head>
         <body>
-            <div id="alert-box">
-                <img id="alert-image" src="" style="display:none;" />
-                <div id="alert-text1"></div>
-                <div id="alert-text2"></div>
+            <div id="alert-container">
+                <img id="alert-image" src="" alt="리액션 이미지">
+                <div class="text-box" id="alert-line1"></div>
+                <div class="text-box" id="alert-line2"></div>
             </div>
 
             <script>
-                let reactions = [];
-                const useImage = ${user.alertSettings.useImage};
-                const useReaction = ${user.alertSettings.useReaction};
-                const defaultImage = "/alerticon.gif"; // 기본 이미지 경로
+            const reactions = ${JSON.stringify(reactions)};
+            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+            const defaultImage = "/alerticon.gif";
+            const useImageSetting = ${useImage};
 
-                async function loadReactions() {
-                    try {
-                        const res = await fetch('/api/reactions/${apiKey}');
-                        reactions = await res.json();
-                    } catch (e) {
-                        console.error("리액션 로드 실패", e);
-                    }
-                }
-                loadReactions();
+            let lastCheckedTime = "";
+            
+            // 🌟 대기열 및 재생 상태 관리 변수
+            const alertQueue = [];
+            let isPlaying = false;
 
-                let alertQueue = [];
-                let isPlaying = false;
-
-                function enqueueAlert(data) {
-                    alertQueue.push(data);
-                    if (!isPlaying) processQueue();
-                }
-
-                function processQueue() {
-                    if (alertQueue.length === 0) {
-                        isPlaying = false;
-                        return;
-                    }
-                    isPlaying = true;
-                    const donation = alertQueue.shift();
-                    showAlert(donation);
-                }
-
-                function showAlert(donation) {
-                    const box = document.getElementById('alert-box');
-                    const img = document.getElementById('alert-image');
-                    const text1 = document.getElementById('alert-text1');
-                    const text2 = document.getElementById('alert-text2');
-
-                    text1.innerText = donation.nickname + " 님 " + Number(donation.amount).toLocaleString() + "원 후원!";
-                    text2.innerText = donation.message || "";
-
-                    // 이미지 처리 로직
-                    if (useImage) {
-                        let targetImg = defaultImage;
-                        if (useReaction && reactions.length > 0) {
-                            const matched = reactions.find(r => Number(r.amount) === Number(donation.amount));
-                            if (matched && matched.imageUrl) {
-                                targetImg = matched.imageUrl;
-                            }
+            async function checkNewDonation() {
+                try {
+                    const response = await fetch('/api/logs/' + '${apiKey}');
+                    const logs = await response.json();
+                    if (logs.length > 0) {
+                        const latest = logs[0];
+                        if (latest.datetime !== lastCheckedTime) {
+                            lastCheckedTime = latest.datetime;
+                            
+                            alertQueue.push(latest);
+                            processQueue();
                         }
-                        img.src = targetImg;
-                        img.style.display = "block";
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // 🟢 [추가됨] 대시보드에서 재생 버튼을 눌렀을 때 호출되는 수동 재생 체크 함수
+            async function checkManualPlay() {
+                try {
+                    const response = await fetch('/api/manual-play/' + '${apiKey}');
+                    const items = await response.json();
+                    if (items && items.length > 0) {
+                        items.forEach(item => {
+                            alertQueue.push(item); // 대기열 맨 뒤로 추가
+                        });
+                        processQueue(); // 대기열 처리 시작
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            // 🌟 대기열 순차 처리 함수
+            function processQueue() {
+                if (isPlaying || alertQueue.length === 0) return;
+
+                isPlaying = true;
+                const donation = alertQueue.shift();
+                showAlert(donation);
+            }
+
+           function showAlert(donation) {
+                    const container = document.getElementById('alert-container');
+                    const imgElement = document.getElementById('alert-image');
+                    const line1 = document.getElementById('alert-line1');
+                    const line2 = document.getElementById('alert-line2');
+                    
+                    const message = donation.message;
+                    const amount = donation.amount || 0;
+                            
+                    let firstText = message;
+                    let secondText = "";
+                    
+                    const newlineIdx = message.indexOf('\\n');
+                    if (newlineIdx !== -1) {
+                        firstText = message.substring(0, newlineIdx);
+                        secondText = message.substring(newlineIdx + 1);
+                    }
+
+                    line1.innerText = firstText;
+                    line2.innerText = secondText;
+
+                    const matchedReaction = reactions.find(r => r.amount === amount);
+
+                    if (useImageSetting) {
+                        if (matchedReaction && matchedReaction.imageUrl) {
+                            imgElement.src = matchedReaction.imageUrl;
+                            imgElement.style.display = 'block';
+                        } else {
+                            imgElement.src = defaultImage;
+                            imgElement.style.display = 'block';
+                        }
                     } else {
-                        img.style.display = "none";
+                        imgElement.style.display = 'none';
                     }
 
-                    // 오디오 처리 (리액션 오디오 또는 기본 사운드)
-                    let audioSrc = "/${user.alertSettings.soundType}";
-                    if (useReaction && reactions.length > 0) {
-                        const matched = reactions.find(r => Number(r.amount) === Number(donation.amount));
-                        if (matched && matched.audioUrl) {
-                            audioSrc = matched.audioUrl;
-                        }
-                    }
-                    const audio = new Audio(audioSrc);
-                    audio.play().catch(e => console.log("오디오 재생 실패:", e));
+                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                    const sound = new Audio(audioSrc);
 
-                    box.style.display = "block";
+                    container.style.display = 'flex';
+                    sound.currentTime = 0;
+                    
+                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
+                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
+                
+                sound.onended = () => {
                     setTimeout(() => {
-                        box.style.display = "none";
-                        setTimeout(processQueue, 500);
-                    }, ${user.alertSettings.duration * 1000});
-                }
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
 
-                // 수동 재생 폴링
-                setInterval(async () => {
-                    try {
-                        const res = await fetch('/api/manual-play/${apiKey}');
-                        const items = await res.json();
-                        if (items && items.length > 0) {
-                            items.forEach(item => enqueueAlert(item));
-                        }
-                    } catch (e) {}
-                }, 2000);
-            </script>
+                sound.onerror = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+            }
+            
+            setInterval(checkNewDonation, 1000);
+            setInterval(checkManualPlay, 1000); // 🟢 [추가됨] 1초마다 수동 재생 요청 체크 루프 실행
+        </script>
         </body>
         </html>
     `);
@@ -675,9 +712,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
-
-    const settings = user.alertSettings || {};
-    const useReaction = settings.useReaction !== undefined ? settings.useReaction : true;
 
     res.send(`
         <!DOCTYPE html>
@@ -692,20 +726,57 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
                 .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-                .checkbox-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; cursor: pointer; margin-bottom: 15px; }
-                .checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
                 .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 12px; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
                 .btn-success { background: #2ed573; font-size: 14px; padding: 10px 15px; }
                 .btn-warning { background: #f39c12; margin-top: 6px; }
-                .reaction-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
-                .reaction-card { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
-                .reaction-card img { width: 70px; height: 70px; object-fit: contain; border-radius: 4px; background: #eee; margin-bottom: 8px; }
-                .reaction-info { font-size: 13px; width: 100%; word-break: break-all; margin-bottom: 8px; }
-                .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-                .modal-content { background: white; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%; position: relative; }
-                .close-btn { position: absolute; right: 15px; top: 15px; font-size: 20px; font-weight: bold; cursor: pointer; color: #888; }
+                
+                .reaction-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                .reaction-card {
+                    background: #fafafa;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 12px;
+                    text-align: center;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .reaction-card img {
+                    width: 70px;
+                    height: 70px;
+                    object-fit: contain;
+                    border-radius: 4px;
+                    background: #eee;
+                    margin-bottom: 8px;
+                }
+                .reaction-info {
+                    font-size: 13px;
+                    width: 100%;
+                    word-break: break-all;
+                    margin-bottom: 8px;
+                }
+
+                .modal {
+                    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+                    background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+                }
+                .modal-content {
+                    background: white; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;
+                }
+                .close-btn {
+                    position: absolute; right: 15px; top: 15px; font-size: 20px; font-weight: bold; cursor: pointer; color: #888;
+                }
+                .close-btn:hover { color: #000; }
             </style>
         </head>
         <body>
@@ -720,21 +791,12 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <form id="alertSettingsForm">
                     <div class="form-group">
                         <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="${settings.duration || 5}">
+                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
                     </div>
                     <div class="form-group">
-                        <label>첫 번째 줄 글씨 크기 (예: 8vh)</label>
-                        <input type="text" name="fontSize1" id="fontSize1" value="${settings.fontSize1 || '8vh'}">
+                        <label>메시지 폰트 크기</label>
+                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
                     </div>
-                    <div class="form-group">
-                        <label>두 번째 줄 글씨 크기 (예: 6.5vh)</label>
-                        <input type="text" name="fontSize2" id="fontSize2" value="${settings.fontSize2 || '6.5vh'}">
-                    </div>
-                    
-                    <label class="checkbox-group">
-                        <input type="checkbox" id="useReaction" name="useReaction" ${useReaction ? 'checked' : ''}> 후원 리액션 기능 사용 (특정 금액별 이미지/노래 재생)
-                    </label>
-
                     <button type="submit" class="btn" style="font-size:14px; padding:10px 15px;">기본 설정 저장하기</button>
                 </form>
 
@@ -742,22 +804,36 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <h3>🎨 신규 커스텀 리액션 등록</h3>
                 <form id="reactionForm">
-                    <div class="form-group"><label>리액션 이름</label><input type="text" id="name" placeholder="예: 폭탄 리액션" required></div>
-                    <div class="form-group"><label>특정 후원 금액 (원)</label><input type="number" id="amount" placeholder="예: 9999" required></div>
-                    <div class="form-group"><label>이미지 파일 선택 (PNG, JPG, GIF)</label><input type="file" id="imageFile" accept="image/*"></div>
-                    <div class="form-group"><label>오디오 파일 선택 (MP3, WAV 등)</label><input type="file" id="audioFile" accept="audio/*"></div>
+                    <div class="form-group">
+                        <label>리액션 이름</label>
+                        <input type="text" id="name" placeholder="예: 폭탄 리액션" required>
+                    </div>
+                    <div class="form-group">
+                        <label>특정 후원 금액 (원)</label>
+                        <input type="number" id="amount" placeholder="예: 9999" required>
+                    </div>
+                    <div class="form-group">
+                        <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
+                        <input type="file" id="imageFile" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>오디오 파일 선택 (MP3, WAV 등)</label>
+                        <input type="file" id="audioFile" accept="audio/*">
+                    </div>
                     <button type="button" id="uploadBtn" class="btn btn-success">리액션 업로드 및 등록</button>
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
                     <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
-                    <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
-                        <option value="latest">최신순</option>
-                        <option value="highPrice">높은가격순</option>
-                        <option value="lowPrice">낮은가격순</option>
-                    </select>
+                    <div>
+                        <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="latest">최신순</option>
+                            <option value="highPrice">높은가격순</option>
+                            <option value="lowPrice">낮은가격순</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
 
@@ -765,23 +841,35 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <a href="javascript:history.back();" class="btn btn-secondary" style="font-size:14px; padding:10px 15px;">대시보드로 돌아가기</a>
             </div>
 
-            <!-- 수정 모달 -->
+            <!-- 리액션 수정 모달 팝업 -->
             <div id="editModal" class="modal">
                 <div class="modal-content">
                     <span class="close-btn" onclick="closeEditModal()">&times;</span>
                     <h3>✏️ 리액션 수정</h3>
                     <input type="hidden" id="edit-id">
-                    <div class="form-group"><label>리액션 이름</label><input type="text" id="edit-name" required></div>
-                    <div class="form-group"><label>후원 금액 (원)</label><input type="number" id="edit-amount" required></div>
-                    <div class="form-group"><label>새 이미지 파일</label><input type="file" id="edit-imageFile" accept="image/*"></div>
-                    <div class="form-group"><label>새 오디오 파일</label><input type="file" id="edit-audioFile" accept="audio/*"></div>
-                    <button type="button" class="btn btn-warning" style="width:100%; padding:10px;" onclick="submitEditReaction()">수정 사항 저장하기</button>
+                    <div class="form-group">
+                        <label>리액션 이름</label>
+                        <input type="text" id="edit-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>후원 금액 (원)</label>
+                        <input type="number" id="edit-amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label>새 이미지 파일 변경 (선택)</label>
+                        <input type="file" id="edit-imageFile" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>새 오디오 파일 변경 (선택)</label>
+                        <input type="file" id="edit-audioFile" accept="audio/*">
+                    </div>
+                    <button type="button" class="btn btn-warning" style="width:100%; padding:10px; font-size:14px;" onclick="submitEditReaction()">수정 사항 저장하기</button>
                 </div>
             </div>
 
             <script>
                 const currentApiKey = "` + apiKey + `";
-                let allReactions = [];
+                let allReactions = []; // 전체 리액션 데이터를 저장할 전역 변수
 
                 async function loadReactions() {
                     try {
@@ -794,28 +882,37 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 function renderReactions() {
                     const container = document.getElementById('reactionList');
                     container.innerHTML = '';
+                    
                     if (!allReactions || allReactions.length === 0) {
                         container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
                         return;
                     }
+
                     const sortType = document.getElementById('sortSelect').value;
                     const sortedReactions = [...allReactions];
-                    if (sortType === 'highPrice') sortedReactions.sort((a, b) => b.amount - a.amount);
-                    else if (sortType === 'lowPrice') sortedReactions.sort((a, b) => a.amount - b.amount);
-                    else if (sortType === 'latest') sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
+
+                    if (sortType === 'highPrice') {
+                        sortedReactions.sort((a, b) => b.amount - a.amount);
+                    } else if (sortType === 'lowPrice') {
+                        sortedReactions.sort((a, b) => a.amount - b.amount);
+                    } else if (sortType === 'latest') {
+                        sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
+                    }
 
                     sortedReactions.forEach(r => {
                         const card = document.createElement('div');
                         card.className = 'reaction-card';
+                        
                         const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
                         const audioStatus = r.audioUrl ? '등록됨' : '없음';
+
                         card.innerHTML = \`
                             <div style="width: 100%;">
                                 <img src="\${imgSrc}" alt="리액션 사진">
                                 <div class="reaction-info">
                                     <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
                                     <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
-                                    <span style="color:#888; font-size:11px;">음악파일: \${audioStatus}</span>
+                                    <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
                                 </div>
                             </div>
                             <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('\${r._id}', '\${r.name || ''}', \${r.amount})">수정</button>
@@ -824,72 +921,102 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     });
                 }
 
-                // 여기에 이벤트 리스너가 포함되어 있습니다.
-                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const duration = document.getElementById('duration').value;
-                    const fontSize1 = document.getElementById('fontSize1').value;
-                    const fontSize2 = document.getElementById('fontSize2').value;
-                    const useReaction = document.getElementById('useReaction').checked;
-
-                    try {
-                        const res = await fetch('/api/settings/alert/' + currentApiKey, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ duration, fontSize1, fontSize2, useReaction })
-                        });
-                        const result = await res.json();
-                        if (result.success) alert('설정이 저장되었습니다.');
-                        else alert('설정 저장 실패');
-                    } catch (err) {
-                        console.error(err);
-                        alert('오류가 발생했습니다.');
-                    }
-                });
-
+                // 신규 리액션 등록
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const name = document.getElementById('name').value;
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
-                    if (!name || !amount) { alert('이름과 금액을 입력해주세요.'); return; }
+
+                    if (!name || !amount) {
+                        alert('리액션 이름과 금액을 입력해주세요.');
+                        return;
+                    }
+
                     const formData = new FormData();
                     formData.append('name', name);
                     formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
+
+                    document.getElementById('uploadBtn').innerText = '업로드 중...';
+                    document.getElementById('uploadBtn').disabled = true;
+
                     try {
-                        const res = await fetch('/api/reactions/' + currentApiKey, { method: 'POST', body: formData });
+                        const res = await fetch('/api/reactions/' + currentApiKey, {
+                            method: 'POST',
+                            body: formData
+                        });
                         const result = await res.json();
-                        if (result.success) { alert('등록되었습니다!'); document.getElementById('reactionForm').reset(); loadReactions(); }
-                        else alert('등록 실패: ' + result.error);
-                    } catch (err) { alert('오류 발생'); }
+
+                        if (result.success) {
+                            alert('리액션이 성공적으로 등록되었습니다!');
+                            document.getElementById('reactionForm').reset();
+                            loadReactions();
+                        } else {
+                            alert('등록 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('업로드 중 오류가 발생했습니다.');
+                    } finally {
+                        document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
+                        document.getElementById('uploadBtn').disabled = false;
+                    }
                 });
 
+                // 모달 팝업 열기
                 function openEditModal(id, name, amount) {
                     document.getElementById('edit-id').value = id;
                     document.getElementById('edit-name').value = name;
                     document.getElementById('edit-amount').value = amount;
+                    document.getElementById('edit-imageFile').value = '';
+                    document.getElementById('edit-audioFile').value = '';
                     document.getElementById('editModal').style.display = 'flex';
                 }
-                function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
+                // 모달 팝업 닫기
+                function closeEditModal() {
+                    document.getElementById('editModal').style.display = 'none';
+                }
+
+                // 리액션 수정 요청 전송
                 async function submitEditReaction() {
                     const id = document.getElementById('edit-id').value;
                     const name = document.getElementById('edit-name').value;
                     const amount = document.getElementById('edit-amount').value;
                     const imageInput = document.getElementById('edit-imageFile').files[0];
                     const audioInput = document.getElementById('edit-audioFile').files[0];
+
+                    if (!name || !amount) {
+                        alert('이름과 금액을 입력해주세요.');
+                        return;
+                    }
+
                     const formData = new FormData();
-                    formData.append('name', name); formData.append('amount', amount);
+                    formData.append('name', name);
+                    formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
+
                     try {
-                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, { method: 'PUT', body: formData });
+                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, {
+                            method: 'PUT',
+                            body: formData
+                        });
                         const result = await res.json();
-                        if (result.success) { alert('수정되었습니다!'); closeEditModal(); loadReactions(); }
-                        else alert('수정 실패');
-                    } catch (err) { alert('오류 발생'); }
+
+                        if (result.success) {
+                            alert('리액션이 성공적으로 수정되었습니다!');
+                            closeEditModal();
+                            loadReactions();
+                        } else {
+                            alert('수정 실패: ' + result.error);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('수정 중 오류가 발생했습니다.');
+                    }
                 }
 
                 loadReactions();
