@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Supabase 설정 (환경 변수 또는 직접 입력)
 const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
-const STORAGE_BUCKET = 'reactions'; // Supabase 스토리지 버킷 이름
+const STORAGE_BUCKET = 'reactions';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -51,7 +51,7 @@ const donationSchema = new mongoose.Schema({
 // 리액션 설정 스키마 (이름 필드 추가)
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    name: { type: String, default: "기본 리액션" },
+    name: { type: String, default: "기본 리액션" }, // 👈 리액션 이름
     amount: { type: Number, default: 0 },
     imageUrl: { type: String, default: "" },
     audioUrl: { type: String, default: "" }
@@ -104,7 +104,7 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 3. 홈 루트
+// 홈 루트
 app.get('/', (req, res) => {
     res.send(`
         <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
@@ -114,7 +114,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 4. 회원가입 페이지
+// 회원가입 페이지
 app.get('/register', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -160,7 +160,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 5. 로그인 페이지
+// 로그인 페이지
 app.get('/login', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -298,7 +298,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 6. 안드로이드 앱에서 알림을 받아오는 POST 엔드포인트
+// 안드로이드 앱 알림 수신 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
 
@@ -334,7 +334,6 @@ app.post('/api/notification', async (req, res) => {
         });
 
         await donationData.save();
-        console.log(`[${user.username}] 후원 수신 성공:`, donationData);
         res.status(200).json({ success: true, data: donationData });
     } catch (e) {
         console.error(e);
@@ -342,7 +341,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 7. 스트리머별 OBS 알림 오버레이 화면
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -485,7 +484,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 7-1. 알림창 전용 세부 관리 및 설정 페이지 (이름 설정 및 개별 수정 리스트 포함)
+// 알림창 관리 페이지 (1줄 4박스 그리드 레이아웃, 사진, 이름, 금액, 음악파일 순서)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -499,7 +498,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
             <title>알림창 관리 - ` + user.username + `</title>
             <style>
                 body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
@@ -508,8 +507,39 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
                 .btn-success { background: #2ed573; }
-                .btn-warning { background: #f39c12; color: white; }
-                .reaction-item { background: #fafafa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+                
+                /* 1줄에 4박스씩 배치하는 그리드 스타일 */
+                .reaction-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                .reaction-card {
+                    background: #fafafa;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 12px;
+                    text-align: center;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .reaction-card img {
+                    width: 70px;
+                    height: 70px;
+                    object-fit: contain;
+                    border-radius: 4px;
+                    background: #eee;
+                    margin-bottom: 8px;
+                }
+                .reaction-info {
+                    font-size: 13px;
+                    width: 100%;
+                    word-break: break-all;
+                }
             </style>
         </head>
         <body>
@@ -558,10 +588,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3 style="margin-top:30px;">📋 등록된 리액션 목록 및 수정</h3>
-                <div id="reactionList"><div style="color:#666;">불러오는 중...</div></div>
+                <h3 style="margin-top:30px;">📋 등록된 리액션 목록</h3>
+                <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
 
-                <br>
+                <br><br>
                 <a href="javascript:history.back();" class="btn btn-secondary">대시보드로 돌아가기</a>
             </div>
 
@@ -575,35 +605,27 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         const container = document.getElementById('reactionList');
                         container.innerHTML = '';
                         if (!data || data.length === 0) {
-                            container.innerHTML = '<div style="color:#666;">등록된 리액션이 없습니다.</div>';
+                            container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
                             return;
                         }
                         data.forEach(r => {
-                            const div = document.createElement('div');
-                            div.className = 'reaction-item';
-                            div.innerHTML = \`
-                                <div class="form-group">
-                                    <label>리액션 이름</label>
-                                    <input type="text" id="edit-name-\${r._id}" value="\${r.name || ''}">
+                            const card = document.createElement('div');
+                            card.className = 'reaction-card';
+                            
+                            const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
+                            const audioStatus = r.audioUrl ? '등록됨' : '없음';
+
+                            card.innerHTML = \`
+                                <div>
+                                    <img src="\${imgSrc}" alt="리액션 사진">
+                                    <div class="reaction-info">
+                                        <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
+                                        <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
+                                        <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>후원 금액 (원)</label>
-                                    <input type="number" id="edit-amount-\${r._id}" value="\${r.amount}">
-                                </div>
-                                <div class="form-group">
-                                    <label>새 이미지 변경 (선택)</label>
-                                    <input type="file" id="edit-image-\${r._id}" accept="image/*">
-                                </div>
-                                <div class="form-group">
-                                    <label>새 오디오 변경 (선택)</label>
-                                    <input type="file" id="edit-audio-\${r._id}" accept="audio/*">
-                                </div>
-                                <div style="font-size:12px; color:#888; margin-bottom:10px;">
-                                    현재 파일 상태 — 이미지: \${r.imageUrl ? '등록됨' : '없음'} / 오디오: \${r.audioUrl ? '등록됨' : '없음'}
-                                </div>
-                                <button type="button" class="btn btn-warning" onclick="updateReaction('\${r._id}')">수정 사항 저장</button>
                             \`;
-                            container.appendChild(div);
+                            container.appendChild(card);
                         });
                     } catch (e) { console.error(e); }
                 }
@@ -651,42 +673,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     }
                 });
 
-                async function updateReaction(id) {
-                    const name = document.getElementById('edit-name-' + id).value;
-                    const amount = document.getElementById('edit-amount-' + id).value;
-                    const imageInput = document.getElementById('edit-image-' + id).files[0];
-                    const audioInput = document.getElementById('edit-audio-' + id).files[0];
-
-                    if (!name || !amount) {
-                        alert('이름과 금액을 입력해주세요.');
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('name', name);
-                    formData.append('amount', amount);
-                    if (imageInput) formData.append('image', imageInput);
-                    if (audioInput) formData.append('audio', audioInput);
-
-                    try {
-                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, {
-                            method: 'PUT',
-                            body: formData
-                        });
-                        const result = await res.json();
-
-                        if (result.success) {
-                            alert('리액션이 성공적으로 수정되었습니다!');
-                            loadReactions();
-                        } else {
-                            alert('수정 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert('수정 중 오류가 발생했습니다.');
-                    }
-                }
-
                 loadReactions();
             </script>
         </body>
@@ -694,7 +680,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     `);
 });
 
-// 8. 방송용 실시간 랭킹 OBS 오버레이 화면
+// 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -754,7 +740,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 8-1. 랭킹판 전용 세부 관리 및 설정 페이지
+// 랭킹판 전용 세부 관리 및 설정 페이지
 app.get('/manage/ranking/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -793,7 +779,6 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 9. API 코드 모음
 // 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
@@ -824,7 +809,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 🛠️ 리액션 목록 불러오기 API
+// 리액션 목록 불러오기 API
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -837,7 +822,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
     }
 });
 
-// 🛠️ 리액션 등록 API (이름 포함)
+// 리액션 등록 API (이름 포함)
 app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -887,57 +872,6 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
 
         await newReaction.save();
         res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: e.message || 'Server Error' });
-    }
-});
-
-// 🛠️ 기존 리액션 수정 API (PUT)
-app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
-    try {
-        const user = await User.findOne({ apiKey: req.params.apiKey });
-        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
-
-        const reaction = await Reaction.findOne({ _id: req.params.reactionId, streamerId: user._id });
-        if (!reaction) return res.status(404).json({ success: false, error: 'Reaction not found' });
-
-        const { name, amount } = req.body;
-        if (name) reaction.name = name;
-        if (amount) reaction.amount = Number(amount);
-
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        if (req.files && req.files['image']) {
-            const file = req.files['image'][0];
-            const fileExt = file.originalname.split('.').pop();
-            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-
-            const { error: imgError } = await supabaseClient.storage
-                .from(STORAGE_BUCKET)
-                .upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
-
-            if (imgError) throw imgError;
-            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
-            reaction.imageUrl = imgPublic.publicUrl;
-        }
-
-        if (req.files && req.files['audio']) {
-            const file = req.files['audio'][0];
-            const fileExt = file.originalname.split('.').pop();
-            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
-
-            const { error: audioError } = await supabaseClient.storage
-                .from(STORAGE_BUCKET)
-                .upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
-
-            if (audioError) throw audioError;
-            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
-            reaction.audioUrl = audioPublic.publicUrl;
-        }
-
-        await reaction.save();
-        res.json({ success: true, message: '리액션이 성공적으로 수정되었습니다!' });
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, error: e.message || 'Server Error' });
