@@ -30,7 +30,8 @@ const userSchema = new mongoose.Schema({
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
-        fontSize: { type: String, default: '7.5vh' },
+        fontSize1: { type: String, default: '8vh' },
+        fontSize2: { type: String, default: '6.5vh' },
         useImage: { type: Boolean, default: true },
         useReaction: { type: Boolean, default: true } // 🟢 [추가] 리액션 기능 켜기/끄기 설정
     }
@@ -85,15 +86,16 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
 // 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
-        const { soundType, duration, fontSize, useImage } = req.body;
+        const { soundType, duration, fontSize1, fontSize2, useImage, useReaction } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
-                'alertSettings.soundType': soundType, 
-                'alertSettings.duration': Number(duration), 
-                'alertSettings.fontSize': fontSize, 
+                'alertSettings.soundType': soundType,
+                'alertSettings.duration': Number(duration) || 5,
+                'alertSettings.fontSize1': fontSize1 || '8vh',
+                'alertSettings.fontSize2': fontSize2 || '6.5vh',
                 'alertSettings.useImage': useImage === true || useImage === 'true',
-                'alertSettings.useReaction': useReaction === true || useReaction === 'true' // 🟢 [추가] 리액션 켜기 기
+                'alertSettings.useReaction': useReaction === true || useReaction === 'true'
             }},
             { new: true }
         );
@@ -545,7 +547,10 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
     const useImage = settings.useImage !== undefined ? settings.useImage : true;
     const useReaction = settings.useReaction !== undefined ? settings.useReaction : true; // 🟢 [추가] 리액션 기능 켜기/끄기 값 설정 (기본값 true)
-
+    const durationSec = settings.duration || 5; // 알림 지속 시간 (초)
+    const fontSize1 = settings.fontSize1 || '8vh';     // 첫 번째 줄 폰트 크기
+    const fontSize2 = settings.fontSize2 || '6.5vh';   // 두 번째 줄 폰트 크기
+    
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -565,12 +570,12 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
                 }
                 #alert-line1 {
-                    color: #ffffff; font-size: 8vh; font-weight: 800; 
+                    color: #ffffff; font-size: ${fontSize1}; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
                 }
                 #alert-line2 {
-                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    color: #ffffff; font-size: ${fontSize2}; font-weight: 800; 
                     text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
                     width: 90vw; word-break: break-word; line-height: 1.2;
                 }
@@ -716,6 +721,9 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     const user = await User.findOne({ apiKey });
     if (!user) return res.status(404).send('Streamer not found');
 
+    const settings = user.alertSettings || {};
+    const useReaction = settings.useReaction !== undefined ? settings.useReaction : true;
+
     res.send(`
         <!DOCTYPE html>
         <html>
@@ -729,57 +737,20 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .form-group { margin-bottom: 15px; }
                 .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
                 .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+                .checkbox-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; cursor: pointer; margin-bottom: 15px; }
+                .checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
                 .btn { display: inline-block; padding: 8px 12px; background: #3498db; color: white; text-decoration: none; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 12px; }
                 .btn:hover { background: #2980b9; }
                 .btn-secondary { background: #7f8c8d; }
                 .btn-success { background: #2ed573; font-size: 14px; padding: 10px 15px; }
                 .btn-warning { background: #f39c12; margin-top: 6px; }
-                
-                .reaction-grid {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 15px;
-                    margin-top: 15px;
-                }
-                .reaction-card {
-                    background: #fafafa;
-                    border: 1px solid #ddd;
-                    border-radius: 8px;
-                    padding: 12px;
-                    text-align: center;
-                    box-sizing: border-box;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: space-between;
-                }
-                .reaction-card img {
-                    width: 70px;
-                    height: 70px;
-                    object-fit: contain;
-                    border-radius: 4px;
-                    background: #eee;
-                    margin-bottom: 8px;
-                }
-                .reaction-info {
-                    font-size: 13px;
-                    width: 100%;
-                    word-break: break-all;
-                    margin-bottom: 8px;
-                }
-
-                .modal {
-                    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-                    background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center;
-                }
-                .modal-content {
-                    background: white; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;
-                }
-                .close-btn {
-                    position: absolute; right: 15px; top: 15px; font-size: 20px; font-weight: bold; cursor: pointer; color: #888;
-                }
-                .close-btn:hover { color: #000; }
+                .reaction-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
+                .reaction-card { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+                .reaction-card img { width: 70px; height: 70px; object-fit: contain; border-radius: 4px; background: #eee; margin-bottom: 8px; }
+                .reaction-info { font-size: 13px; width: 100%; word-break: break-all; margin-bottom: 8px; }
+                .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+                .modal-content { background: white; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%; position: relative; }
+                .close-btn { position: absolute; right: 15px; top: 15px; font-size: 20px; font-weight: bold; cursor: pointer; color: #888; }
             </style>
         </head>
         <body>
@@ -794,20 +765,21 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <form id="alertSettingsForm">
                     <div class="form-group">
                         <label>알림 지속 시간 (초)</label>
-                        <input type="number" name="duration" id="duration" min="1" max="15" value="5">
+                        <input type="number" name="duration" id="duration" min="1" max="15" value="${settings.duration || 5}">
                     </div>
                     <div class="form-group">
-                        <label>메시지 폰트 크기</label>
-                        <input type="text" name="fontSize" id="fontSize" value="7.5vh">
+                        <label>첫 번째 줄 글씨 크기 (예: 8vh)</label>
+                        <input type="text" name="fontSize1" id="fontSize1" value="${settings.fontSize1 || '8vh'}">
                     </div>
-
-                <!-- 🟢 [추가] 기본 설정 폼 안에 체크박스를 넣어줍니다 -->
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer;">
-                            <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용
-                        </label>
+                        <label>두 번째 줄 글씨 크기 (예: 6.5vh)</label>
+                        <input type="text" name="fontSize2" id="fontSize2" value="${settings.fontSize2 || '6.5vh'}">
                     </div>
                     
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="useReaction" name="useReaction" ${useReaction ? 'checked' : ''}> 후원 리액션 기능 사용 (특정 금액별 이미지/노래 재생)
+                    </label>
+
                     <button type="submit" class="btn" style="font-size:14px; padding:10px 15px;">기본 설정 저장하기</button>
                 </form>
 
@@ -815,37 +787,22 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <h3>🎨 신규 커스텀 리액션 등록</h3>
                 <form id="reactionForm">
-                    <div class="form-group">
-                        <label>리액션 이름</label>
-                        <input type="text" id="name" placeholder="예: 폭탄 리액션" required>
-                    </div>
-                    <div class="form-group">
-                        <label>특정 후원 금액 (원)</label>
-                        <input type="number" id="amount" placeholder="예: 9999" required>
-                    </div>
-                    <div class="form-group">
-                        <label>이미지 파일 선택 (PNG, JPG, GIF)</label>
-                        <input type="file" id="imageFile" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>오디오 파일 선택 (MP3, WAV 등)</label>
-                        <input type="file" id="audioFile" accept="audio/*">
-                    </div>
+                    <div class="form-group"><label>리액션 이름</label><input type="text" id="name" placeholder="예: 폭탄 리액션" required></div>
+                    <div class="form-group"><label>특정 후원 금액 (원)</label><input type="number" id="amount" placeholder="예: 9999" required></div>
+                    <div class="form-group"><label>이미지 파일 선택 (PNG, JPG, GIF)</label><input type="file" id="imageFile" accept="image/*"></div>
+                    <div class="form-group"><label>오디오 파일 선택 (MP3, WAV 등)</label><input type="file" id="audioFile" accept="audio/*"></div>
                     <button type="button" id="uploadBtn" class="btn btn-success">리액션 업로드 및 등록</button>
                 </form>
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <!-- 등록된 리액션 목록 -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;">
                     <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
-                    <div>
-                        <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
-                            <option value="latest">최신순</option>
-                            <option value="highPrice">높은가격순</option>
-                            <option value="lowPrice">낮은가격순</option>
-                        </select>
-                    </div>
+                    <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                        <option value="latest">최신순</option>
+                        <option value="highPrice">높은가격순</option>
+                        <option value="lowPrice">낮은가격순</option>
+                    </select>
                 </div>
                 <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
 
@@ -853,63 +810,24 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <a href="javascript:history.back();" class="btn btn-secondary" style="font-size:14px; padding:10px 15px;">대시보드로 돌아가기</a>
             </div>
 
-            <!-- 리액션 수정 모달 팝업 -->
+            <!-- 수정 모달 -->
             <div id="editModal" class="modal">
                 <div class="modal-content">
                     <span class="close-btn" onclick="closeEditModal()">&times;</span>
                     <h3>✏️ 리액션 수정</h3>
                     <input type="hidden" id="edit-id">
-                    <div class="form-group">
-                        <label>리액션 이름</label>
-                        <input type="text" id="edit-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>후원 금액 (원)</label>
-                        <input type="number" id="edit-amount" required>
-                    </div>
-                    <div class="form-group">
-                        <label>새 이미지 파일 변경 (선택)</label>
-                        <input type="file" id="edit-imageFile" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>새 오디오 파일 변경 (선택)</label>
-                        <input type="file" id="edit-audioFile" accept="audio/*">
-                    </div>
-                    <button type="button" class="btn btn-warning" style="width:100%; padding:10px; font-size:14px;" onclick="submitEditReaction()">수정 사항 저장하기</button>
+                    <div class="form-group"><label>리액션 이름</label><input type="text" id="edit-name" required></div>
+                    <div class="form-group"><label>후원 금액 (원)</label><input type="number" id="edit-amount" required></div>
+                    <div class="form-group"><label>새 이미지 파일</label><input type="file" id="edit-imageFile" accept="image/*"></div>
+                    <div class="form-group"><label>새 오디오 파일</label><input type="file" id="edit-audioFile" accept="audio/*"></div>
+                    <button type="button" class="btn btn-warning" style="width:100%; padding:10px;" onclick="submitEditReaction()">수정 사항 저장하기</button>
                 </div>
             </div>
 
             <script>
                 const currentApiKey = "` + apiKey + `";
-                let allReactions = []; // 전체 리액션 데이터를 저장할 전역 변수
+                let allReactions = [];
 
-                // 🟢 [추가] 기본 설정 저장 버튼을 눌렀을 때 작동하는 코드
-            document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const duration = document.getElementById('duration').value;
-                const fontSize = document.getElementById('fontSize').value;
-                const useReaction = document.getElementById('useReaction').checked;
-
-                try {
-                    const res = await fetch('/api/settings/alert/' + currentApiKey, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ duration, fontSize, useReaction })
-                    });
-                    const result = await res.json();
-                    if (result.success) {
-                        alert('설정이 저장되었습니다.');
-                    } else {
-                        alert('설정 저장 실패');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert('오류가 발생했습니다.');
-                }
-            });
-
-                // 리액션 로드?
-                
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + currentApiKey);
@@ -921,37 +839,28 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 function renderReactions() {
                     const container = document.getElementById('reactionList');
                     container.innerHTML = '';
-                    
                     if (!allReactions || allReactions.length === 0) {
                         container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
                         return;
                     }
-
                     const sortType = document.getElementById('sortSelect').value;
                     const sortedReactions = [...allReactions];
-
-                    if (sortType === 'highPrice') {
-                        sortedReactions.sort((a, b) => b.amount - a.amount);
-                    } else if (sortType === 'lowPrice') {
-                        sortedReactions.sort((a, b) => a.amount - b.amount);
-                    } else if (sortType === 'latest') {
-                        sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
-                    }
+                    if (sortType === 'highPrice') sortedReactions.sort((a, b) => b.amount - a.amount);
+                    else if (sortType === 'lowPrice') sortedReactions.sort((a, b) => a.amount - b.amount);
+                    else if (sortType === 'latest') sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
 
                     sortedReactions.forEach(r => {
                         const card = document.createElement('div');
                         card.className = 'reaction-card';
-                        
                         const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
                         const audioStatus = r.audioUrl ? '등록됨' : '없음';
-
                         card.innerHTML = \`
                             <div style="width: 100%;">
                                 <img src="\${imgSrc}" alt="리액션 사진">
                                 <div class="reaction-info">
                                     <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
                                     <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
-                                    <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
+                                    <span style="color:#888; font-size:11px;">음악파일: \${audioStatus}</span>
                                 </div>
                             </div>
                             <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('\${r._id}', '\${r.name || ''}', \${r.amount})">수정</button>
@@ -960,102 +869,72 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     });
                 }
 
-                // 신규 리액션 등록
+                // 여기에 이벤트 리스너가 포함되어 있습니다.
+                document.getElementById('alertSettingsForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const duration = document.getElementById('duration').value;
+                    const fontSize1 = document.getElementById('fontSize1').value;
+                    const fontSize2 = document.getElementById('fontSize2').value;
+                    const useReaction = document.getElementById('useReaction').checked;
+
+                    try {
+                        const res = await fetch('/api/settings/alert/' + currentApiKey, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ duration, fontSize1, fontSize2, useReaction })
+                        });
+                        const result = await res.json();
+                        if (result.success) alert('설정이 저장되었습니다.');
+                        else alert('설정 저장 실패');
+                    } catch (err) {
+                        console.error(err);
+                        alert('오류가 발생했습니다.');
+                    }
+                });
+
                 document.getElementById('uploadBtn').addEventListener('click', async () => {
                     const name = document.getElementById('name').value;
                     const amount = document.getElementById('amount').value;
                     const imageInput = document.getElementById('imageFile').files[0];
                     const audioInput = document.getElementById('audioFile').files[0];
-
-                    if (!name || !amount) {
-                        alert('리액션 이름과 금액을 입력해주세요.');
-                        return;
-                    }
-
+                    if (!name || !amount) { alert('이름과 금액을 입력해주세요.'); return; }
                     const formData = new FormData();
                     formData.append('name', name);
                     formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
-
-                    document.getElementById('uploadBtn').innerText = '업로드 중...';
-                    document.getElementById('uploadBtn').disabled = true;
-
                     try {
-                        const res = await fetch('/api/reactions/' + currentApiKey, {
-                            method: 'POST',
-                            body: formData
-                        });
+                        const res = await fetch('/api/reactions/' + currentApiKey, { method: 'POST', body: formData });
                         const result = await res.json();
-
-                        if (result.success) {
-                            alert('리액션이 성공적으로 등록되었습니다!');
-                            document.getElementById('reactionForm').reset();
-                            loadReactions();
-                        } else {
-                            alert('등록 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert('업로드 중 오류가 발생했습니다.');
-                    } finally {
-                        document.getElementById('uploadBtn').innerText = '리액션 업로드 및 등록';
-                        document.getElementById('uploadBtn').disabled = false;
-                    }
+                        if (result.success) { alert('등록되었습니다!'); document.getElementById('reactionForm').reset(); loadReactions(); }
+                        else alert('등록 실패: ' + result.error);
+                    } catch (err) { alert('오류 발생'); }
                 });
 
-                // 모달 팝업 열기
                 function openEditModal(id, name, amount) {
                     document.getElementById('edit-id').value = id;
                     document.getElementById('edit-name').value = name;
                     document.getElementById('edit-amount').value = amount;
-                    document.getElementById('edit-imageFile').value = '';
-                    document.getElementById('edit-audioFile').value = '';
                     document.getElementById('editModal').style.display = 'flex';
                 }
+                function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
-                // 모달 팝업 닫기
-                function closeEditModal() {
-                    document.getElementById('editModal').style.display = 'none';
-                }
-
-                // 리액션 수정 요청 전송
                 async function submitEditReaction() {
                     const id = document.getElementById('edit-id').value;
                     const name = document.getElementById('edit-name').value;
                     const amount = document.getElementById('edit-amount').value;
                     const imageInput = document.getElementById('edit-imageFile').files[0];
                     const audioInput = document.getElementById('edit-audioFile').files[0];
-
-                    if (!name || !amount) {
-                        alert('이름과 금액을 입력해주세요.');
-                        return;
-                    }
-
                     const formData = new FormData();
-                    formData.append('name', name);
-                    formData.append('amount', amount);
+                    formData.append('name', name); formData.append('amount', amount);
                     if (imageInput) formData.append('image', imageInput);
                     if (audioInput) formData.append('audio', audioInput);
-
                     try {
-                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, {
-                            method: 'PUT',
-                            body: formData
-                        });
+                        const res = await fetch('/api/reactions/' + currentApiKey + '/' + id, { method: 'PUT', body: formData });
                         const result = await res.json();
-
-                        if (result.success) {
-                            alert('리액션이 성공적으로 수정되었습니다!');
-                            closeEditModal();
-                            loadReactions();
-                        } else {
-                            alert('수정 실패: ' + result.error);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert('수정 중 오류가 발생했습니다.');
-                    }
+                        if (result.success) { alert('수정되었습니다!'); closeEditModal(); loadReactions(); }
+                        else alert('수정 실패');
+                    } catch (err) { alert('오류 발생'); }
                 }
 
                 loadReactions();
