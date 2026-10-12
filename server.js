@@ -201,7 +201,7 @@ app.get('/login', (req, res) => {
                 /* 3. 🐱 고양이 레이어 (크기 및 위치 80% 비례 축소) */
                 .hanging-cat {
                     position: absolute;
-                    top: -110px; /* 고양이가 팻말 상단에 자연스럽게 걸치는 위치 */
+                    top: -120px; /* 고양이가 팻말 상단에 자연스럽게 걸치는 위치 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 336px;  /* 420px * 0.8 */
