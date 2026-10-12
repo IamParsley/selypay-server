@@ -364,8 +364,14 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 #alert-container {
                     width: 100vw; height: 100vh; display: none;
-                    flex-direction: column; justify-content: center; align-items: center;
-                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    flex-direction: column; 
+                    justify-content: flex-start; // 위(flex-start), 중간(center), 아래
+                    align-items: center;
+                    text-align: center;
+                    box-sizing: border-box; 
+                    padding-top: 2vh;
+                    padding-left: 3vw;
+                    padding-right: 3vw;
                     background: transparent !important;
                 }
                 #alert-image { 
