@@ -547,7 +547,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <div id="alert-container">
                 <img id="alert-image" src="" alt="리액션 이미지">
                 <div class="text-box" id="alert-line1"></div>
-                <div class="text-box" id="alert-line2" style="font-size: 0.8em; margin-top: 5px; color: #f1c40f;"></div>
+                <div class="text-box" id="alert-line2"></div>
             </div>
 
             <script>
