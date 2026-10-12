@@ -252,7 +252,7 @@ app.get('/login', (req, res) => {
 
                 /* 5. 🟢/🔴 로그인 버튼 (가로 폭을 넓혀서 팻말 이미지 버튼과 일치시킴) */
                 .login-btn {
-                    width: 380px; /* 입력창보다 넓게 설정 */
+                    width: 500px; /* 입력창보다 넓게 설정 */
                     margin-left: -34px; /* 중앙 정렬을 위해 좌측으로 당김 */
                     height: 52px; /* 버튼 높이 확장 */
                     background: url('/button_inactive.png') no-repeat center center/contain;
@@ -265,13 +265,13 @@ app.get('/login', (req, res) => {
 
                 .login-btn:active {
                     background: url('/button_active.png') no-repeat center center/contain;
-                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9);
+                    box-shadow: none;
                     transform: scale(0.98);
                 }
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 20px;
+                    margin-top: 18px;
                     text-align: center;
                     font-size: 11px;
                     font-weight: 900;
