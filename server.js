@@ -180,63 +180,63 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 로그인 전체를 감싸는 부모 박스 (크기 대폭 확대) */
+                /* 로그인 전체를 감싸는 부모 박스 */
                 .login-container {
                     position: relative;
-                    width: 640px;
-                    height: 720px;
+                    width: 600px;
+                    height: 680px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
                 }
 
-                /* 2. 나무 팻말 박스 크기를 시원하게 키움 */
+                /* 나무 팻말 박스 이미지 */
                 .login-board {
                     position: absolute;
-                    width: 640px;
-                    height: 720px;
+                    width: 600px;
+                    height: 680px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 3. 팻말 크기에 맞춰 고양이 크기와 위치 조정 */
+                /* 팻말 상단에 매달린 고양이 이미지 */
                 .hanging-cat {
                     position: absolute;
-                    top: 25px;
+                    top: 15px;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 190px;
-                    height: 140px;
+                    width: 360px;
+                    height: 260px;
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
-                    filter: drop-shadow(0 10px 12px rgba(0,0,0,0.6));
+                    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.6));
                 }
 
-                /* 4. 넓어진 목판 내부 공간에 맞춘 입력 폼 영역 */
+                /* 🎯 [핵심 조절] 입력 폼 영역: 타이틀 아래의 빈 목판 공간으로 위치를 확실히 내림 */
                 .login-form-overlay {
                     position: absolute;
-                    top: 295px; /* 타이틀 아래쪽 빈 목판 공간으로 정확히 이동 */
+                    top: 335px; /* 이 숫자를 키우면 입력창이 더 아래로 내려갑니다 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 380px; /* 입력 폼 폭 확대 */
+                    width: 360px; /* 입력 폼 폭 */
                     z-index: 10;
                     text-align: center;
                 }
 
                 .input-group {
-                    margin-bottom: 22px;
+                    margin-bottom: 20px; /* 아이디와 비밀번호 창 사이 간격 */
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 52px;
-                    padding: 0 18px;
+                    height: 48px;
+                    padding: 0 16px;
                     background: rgba(10, 20, 15, 0.6);
                     border: 2px solid #1db954;
-                    border-radius: 12px;
+                    border-radius: 10px;
                     color: #2ed573;
-                    font-size: 17px;
+                    font-size: 16px;
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -244,7 +244,7 @@ app.get('/login', (req, res) => {
 
                 .input-group input:focus {
                     border-color: #2ed573;
-                    box-shadow: 0 0 16px rgba(46, 213, 115, 0.7);
+                    box-shadow: 0 0 14px rgba(46, 213, 115, 0.7);
                     background: rgba(10, 20, 15, 0.85);
                 }
 
@@ -255,30 +255,30 @@ app.get('/login', (req, res) => {
                 /* 로그인 버튼 (클릭 시 붉게 빛나는 효과) */
                 .login-btn {
                     width: 100%;
-                    height: 54px;
+                    height: 50px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 5px;
+                    margin-top: 2px;
                     outline: none;
                     transition: all 0.1s ease;
                 }
 
                 .login-btn:active {
                     background: rgba(255, 71, 87, 0.35);
-                    border-radius: 12px;
-                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.5);
+                    border-radius: 10px;
+                    box-shadow: 0 0 22px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.5);
                     transform: scale(0.98);
                 }
 
                 /* 하단 링크 영역 */
                 .links {
-                    margin-top: 28px;
+                    margin-top: 22px;
                     text-align: center;
                     font-size: 13px;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
                 .links a {
