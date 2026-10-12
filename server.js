@@ -553,89 +553,110 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
             <audio id="alert-sound"></audio>
 
+            // 오버레이 스크립
+            
             <script>
                 const reactions = ${JSON.stringify(reactions)};
-                const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
-                const defaultImage = "/alerticon.gif";
-                const useImageSetting = ${useImage};
-
-                let lastCheckedTime = "";
-                
-                async function checkNewDonation() {
-                    try {
-                        const response = await fetch('/api/logs/' + '${apiKey}');
-                        const logs = await response.json();
-                        if (logs.length > 0) {
-                            const latest = logs[0];
-                            if (latest.datetime !== lastCheckedTime) {
-                                lastCheckedTime = latest.datetime;
-                                showAlert(latest);
-                            }
-                        }
-                    } catch (e) { console.error(e); }
-                }
-
-                function showAlert(donation) {
-                    const container = document.getElementById('alert-container');
-                    const imgElement = document.getElementById('alert-image');
-                    const line1 = document.getElementById('alert-line1');
-                    const line2 = document.getElementById('alert-line2');
-                    
-                    const message = donation.message;
-                    const amount = donation.amount || 0;
+            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+            const defaultImage = "/alerticon.gif";
+            const useImageSetting = ${useImage};
+        
+            let lastCheckedTime = "";
+            
+            // 🌟 1. 대기열 배열 및 재생 상태 관리 변수 추가
+            const alertQueue = [];
+            let isPlaying = false;
+        
+            async function checkNewDonation() {
+                try {
+                    const response = await fetch('/api/logs/' + '${apiKey}');
+                    const logs = await response.json();
+                    if (logs.length > 0) {
+                        const latest = logs[0];
+                        if (latest.datetime !== lastCheckedTime) {
+                            lastCheckedTime = latest.datetime;
                             
-                    let firstText = message;
-                    let secondText = "";
-                    
-                    const newlineIdx = message.indexOf('\\n');
-                    if (newlineIdx !== -1) {
-                        firstText = message.substring(0, newlineIdx);
-                        secondText = message.substring(newlineIdx + 1); // 줄바꿈 다음 글자 자를때 건너뛰는 글자수
-                    }
-
-                    line1.innerText = firstText;
-                    line2.innerText = secondText;
-
-                    const matchedReaction = reactions.find(r => r.amount === amount);
-
-                    if (useImageSetting) {
-                        if (matchedReaction && matchedReaction.imageUrl) {
-                            imgElement.src = matchedReaction.imageUrl;
-                            imgElement.style.display = 'block';
-                        } else {
-                            imgElement.src = defaultImage;
-                            imgElement.style.display = 'block';
+                            // 🌟 2. 새 후원이 감지되면 바로 실행하지 않고 큐에 푸시한 뒤 처리 함수 호출
+                            alertQueue.push(latest);
+                            processQueue();
                         }
-                    } else {
-                        imgElement.style.display = 'none';
                     }
-
-                    const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
-                    const sound = new Audio(audioSrc);
-
-                    container.style.display = 'flex';
-                    sound.currentTime = 0;
-                    
-                    sound.play().catch(e => console.log("사운드 재생 실패:", e));
-
-                    let hideTimeout = 5000;
-                    
-                    sound.onloadedmetadata = function() {
-                        if (sound.duration && !isNaN(sound.duration)) {
-                            hideTimeout = sound.duration * 1000;
-                        }
-                        clearTimeout(window.alertTimer);
-                        window.alertTimer = setTimeout(() => { 
-                            container.style.display = 'none'; 
-                        }, hideTimeout);
-                    };
-
-                    window.alertTimer = setTimeout(() => { 
-                        container.style.display = 'none'; 
-                    }, hideTimeout);
-                }
+                } catch (e) { console.error(e); }
+            }
+        
+            // 🌟 3. 대기열 순차 처리 함수
+            function processQueue() {
+                if (isPlaying || alertQueue.length === 0) return;
+        
+                isPlaying = true;
+                const donation = alertQueue.shift(); // 대기열에서 하나 꺼냄
                 
-                setInterval(checkNewDonation, 1000);
+                showAlert(donation);
+            }
+        
+            function showAlert(donation) {
+                const container = document.getElementById('alert-container');
+                const imgElement = document.getElementById('alert-image');
+                const line1 = document.getElementById('alert-line1');
+                const line2 = document.getElementById('alert-line2');
+                
+                const message = donation.message;
+                const amount = donation.amount || 0;
+                        
+                let firstText = message;
+                let secondText = "";
+                
+                const newlineIdx = message.indexOf('\\n');
+                if (newlineIdx !== -1) {
+                    firstText = message.substring(0, newlineIdx);
+                    secondText = message.substring(newlineIdx + 1);
+                }
+        
+                line1.innerText = firstText;
+                line2.innerText = secondText;
+        
+                const matchedReaction = reactions.find(r => r.amount === amount);
+        
+                if (useImageSetting) {
+                    if (matchedReaction && matchedReaction.imageUrl) {
+                        imgElement.src = matchedReaction.imageUrl;
+                        imgElement.style.display = 'block';
+                    } else {
+                        imgElement.src = defaultImage;
+                        imgElement.style.display = 'block';
+                    }
+                } else {
+                    imgElement.style.display = 'none';
+                }
+        
+                const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                const sound = new Audio(audioSrc);
+        
+                container.style.display = 'flex';
+                sound.currentTime = 0;
+                
+                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+        
+                // 🌟 4. 노래가 끝난 후(`ended`) 2초(2000ms) 딜레이 적용
+                sound.onended = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue(); // 다음 대기열 알림 실행
+                    }, 2000); // 2초 딜레이
+                };
+        
+                // 🌟  만약 오디오 파일에 문제가 생겨서 onended가 안 탈 경우를 대비한 안전 장치 (기본 5초 후 종료 및 딜레이)
+                sound.onerror = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 2000);
+                };
+            }
+            
+            setInterval(checkNewDonation, 1000);
             </script>
         </body>
         </html>
