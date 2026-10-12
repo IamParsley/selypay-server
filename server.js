@@ -1319,7 +1319,9 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
     }
 });
 
-// 🔄 후원 수동 재생 API (기존 후원의 datetime을 현재 시간으로 갱신하여 최신 후원으로 재발생)
+// 🔄 후원 수동 재생 메모리 큐 시스템
+const manualPlayStore = {};
+
 app.post('/api/play/:apiKey/:donationId', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -1328,15 +1330,28 @@ app.post('/api/play/:apiKey/:donationId', async (req, res) => {
         const donation = await Donation.findOne({ _id: req.params.donationId, streamerId: user._id });
         if (!donation) return res.status(404).json({ success: false, error: 'Donation not found' });
 
-        // 한국 현재 시간을 구해 기존 후원 데이터의 datetime을 갱신 (오버레이가 새 후원으로 감지하도록 함)
-        donation.datetime = getKSTDateTime();
-        donation.timestamp = new Date();
-        await donation.save();
+        if (!manualPlayStore[user.apiKey]) {
+            manualPlayStore[user.apiKey] = [];
+        }
+        
+        // DB 수정 없이 메모리 대기열에만 추가
+        manualPlayStore[user.apiKey].push(donation.toObject());
 
-        res.json({ success: true, message: '알림 대기열에 추가되었습니다.' });
+        res.json({ success: true });
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+app.get('/api/manual-play/:apiKey', async (req, res) => {
+    const apiKey = req.params.apiKey;
+    if (manualPlayStore[apiKey] && manualPlayStore[apiKey].length > 0) {
+        const items = [...manualPlayStore[apiKey]];
+        manualPlayStore[apiKey] = [];
+        res.json(items);
+    } else {
+        res.json([]);
     }
 });
 
