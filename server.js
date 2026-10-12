@@ -371,7 +371,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     align-items: center;
                     text-align: center; 
                     box-sizing: border-box; 
-                    padding: 2vh 3vw;
+                    padding: 0vh;
+                    padding-left: 0vh;
+                    padding-right: 0vh;
                     background: transparent !important;
                 }
                 #alert-image { 
