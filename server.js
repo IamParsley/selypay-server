@@ -560,6 +560,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     flex-direction: column; justify-content: flex-start; align-items: center;
                     text-align: center; box-sizing: border-box; padding: 2vh 3vw;
                     background: transparent !important;
+                    animation: fadeIn 0.4s ease-in-out; /* 💡 부드러운 등장 애니메이션 적용 */
                 }
                 #alert-image { 
                     width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
