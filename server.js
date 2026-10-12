@@ -256,6 +256,7 @@ app.get('/login', (req, res) => {
                     margin-left: -34px;
                     height: 52px;
                     background: url('/button_inactive.png') no-repeat center center/contain;
+                    background-size: 100% 100%;
                     border: none;
                     cursor: pointer;
                     margin-top: 20px;
@@ -272,7 +273,7 @@ app.get('/login', (req, res) => {
                 /* 🔴 마우스로 누를 때(Active): 사진 자체가 시뻘건 핏빛/불꽃 색상으로 확 변하면서 발광 */
                 .login-btn:active {
                     /* 초록색 사진 픽셀을 붉은색 계열로 강하게 전환하고 채도와 명도를 조절 */
-                    filter: hue-rotate(120deg) saturate(7) brightness(0.95) contrast(1.4);
+                    filter: brightness(1.7) saturate(1.2);
                     transform: scale(0.98); /* 살짝 눌리는 느낌 */
                 }
 
