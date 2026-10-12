@@ -156,8 +156,9 @@ app.post('/api/register', async (req, res) => {
 });
 
 // ==========================================
-// 10. 🌲 3가지 분리된 이미지 레이어(배경, 팻말, 고양이) 적용 로그인 페이지
+// 10. 🌲 3가지 분리된 이미지 레이어(배경, 팻말, 고양이) 적용 로그인 페이지 (80% 축소 버전)
 // ==========================================
+
 app.get('/login', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -179,11 +180,11 @@ app.get('/login', (req, res) => {
                     overflow: hidden;
                 }
 
-                /* 1. 로그인 전체 컨테이너 */
+                /* 1. 로그인 전체 컨테이너 (750px -> 600px로 80% 축소) */
                 .login-container {
                     position: relative;
-                    width: 750px;
-                    height: 750px;
+                    width: 600px;
+                    height: 600px;
                 }
 
                 /* 2. 나무 팻말 박스 이미지 */
@@ -191,49 +192,49 @@ app.get('/login', (req, res) => {
                     position: absolute;
                     top: 0;
                     left: 0;
-                    width: 750px;
-                    height: 750px;
+                    width: 600px;
+                    height: 600px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 (값을 더 마이너스로 주어 위로 높게 올림) */
+                /* 3. 🐱 고양이 레이어 (크기 및 위치 80% 비례 축소) */
                 .hanging-cat {
                     position: absolute;
-                    top: -170px; /* 👈 이 숫자를 더 마이너스로 주어 고양이를 위로 높이 올림 */
+                    top: -110px; /* 고양이가 팻말 상단에 자연스럽게 걸치는 위치 */
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 420px;
-                    height: 280px;
+                    width: 336px;  /* 420px * 0.8 */
+                    height: 224px; /* 280px * 0.8 */
                     background: url('/login_cat.png') no-repeat center center/contain;
                     z-index: 5;
                     pointer-events: none;
-                    filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
+                    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (타이틀 아래 목판 빈 공간에 정확히 안착하도록 조정) */
+                /* 4. 🎯 입력 폼 영역 (600px 크기에 맞춰 좌표 및 너비 비례 조정) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 365px; /* 👈 아이디/비밀번호 칸을 타이틀 아래 빈 공간으로 적당히 내림 */
-                    left: 180px; 
-                    width: 390px;
+                    top: 290px; /* 365px * 0.8 근처 값으로 맞춤 */
+                    left: 144px; /* 180px * 0.8 */
+                    width: 312px; /* 390px * 0.8 */
                     z-index: 10;
                     text-align: center;
                 }
 
                 .input-group {
-                    margin-bottom: 12px;
+                    margin-bottom: 10px;
                 }
 
                 .input-group input {
                     width: 100%;
-                    height: 48px;
-                    padding: 0 18px;
+                    height: 38px; /* 48px * 0.8 */
+                    padding: 0 14px;
                     background: rgba(10, 20, 15, 0.4);
                     border: 2px solid transparent;
-                    border-radius: 10px;
+                    border-radius: 8px;
                     color: #ffd32a;
-                    font-size: 16px;
+                    font-size: 13px; /* 16px * 0.8 */
                     font-weight: bold;
                     outline: none;
                     transition: all 0.3s ease;
@@ -241,7 +242,7 @@ app.get('/login', (req, res) => {
 
                 .input-group input:focus {
                     border-color: #2ed573;
-                    box-shadow: 0 0 14px rgba(46, 213, 115, 0.7);
+                    box-shadow: 0 0 12px rgba(46, 213, 115, 0.7);
                     background: rgba(10, 20, 15, 0.75);
                 }
 
@@ -249,51 +250,51 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢 로그인 버튼 (이미지 속 로그인 버튼 위치와 일치) */
+                /* 5. 🟢 로그인 버튼 */
                 .login-btn {
                     width: 100%;
-                    height: 50px;
+                    height: 40px; /* 50px * 0.8 */
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    margin-top: 35px;
+                    margin-top: 28px; /* 35px * 0.8 */
                     outline: none;
-                    border-radius: 10px;
+                    border-radius: 8px;
                     transition: all 0.1s ease;
                 }
 
                 .login-btn:active {
                     background: rgba(255, 71, 87, 0.4);
-                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.6);
+                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.6);
                     transform: scale(0.98);
                 }
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 35px; /* 👈 링크들도 로그인 버튼 아래로 예쁘게 간격 조절 */
+                    margin-top: 28px; /* 35px * 0.8 */
                     text-align: center;
-                    font-size: 14px;
+                    font-size: 11px; /* 14px * 0.8 */
                     font-weight: 900;
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 3px;
                 }
 
                 .links span {
                     color: #ffd32a;
                     text-shadow: 
-                        -2px -2px 0 #000,  2px -2px 0 #000, 
-                        -2px  2px 0 #000,  2px  2px 0 #000,
-                        0 3px 6px rgba(0,0,0,0.9);
+                        -1.5px -1.5px 0 #000,  1.5px -1.5px 0 #000, 
+                        -1.5px  1.5px 0 #000,  1.5px  1.5px 0 #000,
+                        0 2px 4px rgba(0,0,0,0.9);
                 }
 
                 .links a {
                     color: #ffd32a;
                     text-decoration: none;
                     text-shadow: 
-                        -2px -2px 0 #000,  2px -2px 0 #000, 
-                        -2px  2px 0 #000,  2px  2px 0 #000,
-                        0 3px 6px rgba(0,0,0,0.9);
+                        -1.5px -1.5px 0 #000,  1.5px -1.5px 0 #000, 
+                        -1.5px  1.5px 0 #000,  1.5px  1.5px 0 #000,
+                        0 2px 4px rgba(0,0,0,0.9);
                     transition: color 0.2s, transform 0.2s;
                 }
 
