@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname)); // 현재 폴더의 이미지 파일(image_43fa16.jpg 등)을 웹에서 바로 읽을 수 있게 설정
+app.use(express.static(__dirname)); // 현재 폴더의 이미지 파일(login_background.png, login_board.png, login_cat.png 등)을 웹에서 바로 읽을 수 있게 설정
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -19,7 +19,7 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
     .then(() => console.log('✅ MongoDB Atlas 연결 성공!'))
     .catch((err) => console.error('❌ MongoDB 연결 에러:', err));
 
-// 유저 스키마
+// 2. 유저 스키마 정의
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// 후원 스키마
+// 3. 후원 스키마 정의
 const donationSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nickname: { type: String, default: "익명" },
@@ -43,7 +43,7 @@ const donationSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 
-// 리액션 설정 스키마
+// 4. 리액션 설정 스키마 정의
 const reactionSchema = new mongoose.Schema({
     streamerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, default: "기본 리액션" },
@@ -56,7 +56,7 @@ const User = mongoose.model('User', userSchema);
 const Donation = mongoose.model('Donation', donationSchema);
 const Reaction = mongoose.model('Reaction', reactionSchema);
 
-// 한국 시간 구하는 헬퍼 함수
+// 5. 한국 시간 구하는 헬퍼 함수
 function getKSTDateTime() {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -67,7 +67,7 @@ function getKSTDateKey() {
     return kstDate.toISOString().split('T')[0];
 }
 
-// 🔔 알림 설정 불러오기 API
+// 6. 🔔 알림 설정 불러오기 API
 app.get('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -78,7 +78,7 @@ app.get('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 🔔 알림 설정 저장하기 API
+// 7. 🔔 알림 설정 저장하기 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
         const { soundType, duration, fontSize, useImage } = req.body;
@@ -99,7 +99,7 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
     }
 });
 
-// 홈 루트
+// 8. 홈 루트
 app.get('/', (req, res) => {
     res.send(`
         <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
@@ -109,7 +109,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 회원가입 페이지
+// 9. 회원가입 페이지
 app.get('/register', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -156,7 +156,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // ==========================================
-// 🌲 로그인 페이지 (통 이미지 배경 + 투명 오버레이 폼 적용)[cite: 1]
+// 10. 🌲 3가지 분리된 이미지 레이어(배경, 팻말, 고양이) 적용 로그인 페이지
 // ==========================================
 app.get('/login', (req, res) => {
     res.send(`
@@ -171,56 +171,108 @@ app.get('/login', (req, res) => {
                     margin: 0;
                     padding: 0;
                     height: 100vh;
-                    /* 업로드하신 통 이미지를 전체 배경으로 설정 */
-                    background: url('/image_43fa16.jpg') no-repeat center center/cover;
+                    /* 1. 배경 숲 이미지 */
+                    background: url('/login_background.png') no-repeat center center/cover;
                     display: flex;
                     justify-content: center;
                     align-items: center;
                     font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+                    overflow: hidden;
                 }
 
-                /* 이미지 속 나무 팻말의 입력창 칸에 정확히 겹쳐지도록 조절하는 박스 */
-                .login-form-overlay {
+                /* 전체 로그인 컨테이너 (정중앙 배치) */
+                .login-container {
                     position: relative;
-                    width: 310px;  /* 이미지 속 입력칸 가로 폭에 맞춤 */
-                    margin-top: 55px; /* 고양이와 타이틀 아래 실제 입력칸 위치로 오프셋 */
-                    margin-left: 2px;
+                    width: 420px;
+                    height: 480px;
+                    margin-top: 40px;
+                }
+
+                /* 2. 나무 팻말 박스 이미지 (중앙에 고정) */
+                .login-board {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: url('/login_board.png') no-repeat center center/contain;
+                    z-index: 2;
+                }
+
+                /* 3. 팻말 상단에 매달린 고양이 이미지 (자연스럽게 걸쳐지도록 위치 조정) */
+                .hanging-cat {
+                    position: absolute;
+                    top: -65px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 140px;
+                    height: 100px;
+                    background: url('/login_cat.png') no-repeat center center/contain;
+                    z-index: 5;
+                    pointer-events: none;
+                    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.5));
+                }
+
+                /* 4. 나무 팻말 안쪽 빈 공간에 맞춘 실제 입력 폼 오버레이 */
+                .login-form-overlay {
+                    position: absolute;
+                    top: 155px; /* 나무 팻말 내부 빈 공간 위치에 맞춤 */
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 270px; /* 팻말 내부 너비에 맞춤 */
+                    z-index: 10;
                 }
 
                 .input-group {
-                    margin-bottom: 22px; /* 아이디와 비밀번호 입력창 간격 */
+                    margin-bottom: 22px;
                 }
 
-                /* 실제 입력되는 투명 입력창 */
                 .input-group input {
                     width: 100%;
-                    height: 40px;
-                    padding: 0 12px;
-                    background: transparent;
-                    border: none;
-                    color: #2ed573; /* 입력 글씨 색상 (네온 그린) */
-                    font-size: 16px;
+                    height: 42px;
+                    padding: 0 14px;
+                    background: rgba(0, 0, 0, 0.4);
+                    border: 2px solid #1db954;
+                    border-radius: 8px;
+                    color: #2ed573;
+                    font-size: 15px;
                     font-weight: bold;
                     outline: none;
+                    transition: all 0.3s ease;
+                }
+
+                .input-group input:focus {
+                    border-color: #2ed573;
+                    box-shadow: 0 0 12px rgba(46, 213, 115, 0.6);
+                    background: rgba(0, 0, 0, 0.6);
                 }
 
                 .input-group input::placeholder {
-                    color: rgba(46, 213, 115, 0.3);
+                    color: rgba(46, 213, 115, 0.4);
                 }
 
-                /* 로그인 버튼 (이미지 속 '로그인' 버튼 그래픽 영역을 덮음) */
+                /* 로그인 버튼 (클릭 시 악마 얼굴/버튼 영역이 붉게 빛나는 효과 적용) */
                 .login-btn {
                     width: 100%;
-                    height: 44px;
+                    height: 45px;
                     background: transparent;
                     border: none;
                     cursor: pointer;
                     margin-top: 5px;
+                    outline: none;
+                    transition: all 0.1s ease;
                 }
 
-                /* 하단 링크 영역 ('비밀번호를 잊으셨나요?', '회원가입') */
+                .login-btn:active {
+                    background: rgba(255, 71, 87, 0.3);
+                    border-radius: 8px;
+                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.5);
+                    transform: scale(0.98);
+                }
+
+                /* 하단 링크 영역 */
                 .links {
-                    margin-top: 25px;
+                    margin-top: 20px;
                     text-align: center;
                     font-size: 12px;
                     display: flex;
@@ -241,26 +293,31 @@ app.get('/login', (req, res) => {
             </style>
         </head>
         <body>
-            <div class="login-form-overlay">
-                <form action="/api/login" method="POST">
-                    <!-- 아이디 입력칸 -->
-                    <div class="input-group">
-                        <input type="text" id="username" name="username" required>
+            <div class="login-container">
+                <!-- 레이어 1: 팻말 위에 매달린 고양이 -->
+                <div class="hanging-cat"></div>
+
+                <!-- 레이어 2: 나무 팻말 박스 -->
+                <div class="login-board"></div>
+
+                <!-- 레이어 3: 실제 작동하는 입력 폼 오버레이 -->
+                <div class="login-form-overlay">
+                    <form action="/api/login" method="POST">
+                        <div class="input-group">
+                            <input type="text" id="username" name="username" placeholder="아이디" required>
+                        </div>
+
+                        <div class="input-group">
+                            <input type="password" id="password" name="password" placeholder="비밀번호" required>
+                        </div>
+
+                        <button type="submit" class="login-btn" title="로그인"></button>
+                    </form>
+
+                    <div class="links">
+                        <a href="/forgot-password">비밀번호를 잊으셨나요?</a>
+                        <div>계정이 없으신가요? <a href="/register">회원가입</a></div>
                     </div>
-
-                    <!-- 비밀번호 입력칸 -->
-                    <div class="input-group">
-                        <input type="password" id="password" name="password" required>
-                    </div>
-
-                    <!-- 로그인 버튼 -->
-                    <button type="submit" class="login-btn"></button>
-                </form>
-
-                <!-- 하단 링크 -->
-                <div class="links">
-                    <a href="/forgot-password">비밀번호를 잊으셨나요?</a>
-                    <div>계정이 없으신가요? <a href="/register">회원가입</a></div>
                 </div>
             </div>
         </body>
@@ -379,7 +436,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 안드로이드 앱 알림 수신 엔드포인트
+// 11. 안드로이드 앱 알림 수신 엔드포인트
 app.post('/api/notification', async (req, res) => {
     const { apiKey, message } = req.body;
 
@@ -422,7 +479,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 스트리머별 OBS 알림 오버레이 화면
+// 12. 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -430,7 +487,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     // 오버레이 관련 로직...
 });
 
-// 알림창 세부 관리 및 설정 페이지
+// 13. 알림창 세부 관리 및 설정 페이지
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -438,7 +495,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     // 관리 페이지 로직...
 });
 
-// 방송용 실시간 랭킹 OBS 오버레이 화면
+// 14. 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -498,7 +555,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 랭킹판 세부 관리 및 설정 페이지
+// 15. 랭킹판 세부 관리 및 설정 페이지
 app.get('/manage/ranking/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -537,7 +594,7 @@ app.get('/manage/ranking/:apiKey', async (req, res) => {
     `);
 });
 
-// 스트리머별 후원 로그 가져오기 API
+// 16. 스트리머별 후원 로그 가져오기 API
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -550,7 +607,7 @@ app.get('/api/logs/:apiKey', async (req, res) => {
     }
 });
 
-// 스트리머별 오늘의 후원 랭킹 API
+// 17. 스트리머별 오늘의 후원 랭킹 API
 app.get('/api/ranking/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -604,7 +661,7 @@ app.get('/api/ranking/:apiKey', async (req, res) => {
     }
 });
 
-// 리액션 목록 불러오기 API
+// 18. 리액션 목록 불러오기 API
 app.get('/api/reactions/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -617,7 +674,7 @@ app.get('/api/reactions/:apiKey', async (req, res) => {
     }
 });
 
-// 리액션 수정 API (PUT)
+// 19. 리액션 수정 API (PUT)
 app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -672,7 +729,7 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
     }
 });
 
-// 서버 구동
+// 20. 서버 구동
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
