@@ -405,52 +405,71 @@ app.post('/api/login', async (req, res) => {
                 </div>
 
                 <script>
-                    async function fetchDonationLogs() {
-                        try {
-                            const response = await fetch('/api/logs/` + user.apiKey + `');
-                            const logs = await response.json();
-                            const logContainer = document.getElementById('donationLogList');
-                            logContainer.innerHTML = '';
-                            if (!logs || logs.length === 0) {
-                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
-                                return;
-                            }
-                            logs.slice(0, 20).forEach(log => {
-                                const div = document.createElement('div');
-                                div.className = 'log-item';
-                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
-                                logContainer.appendChild(div);
-                            });
-                        } catch (e) { console.error(e); }
-                    }
-
-                    async function fetchRanking() {
-                        try {
-                            const response = await fetch('/api/ranking/` + user.apiKey + `');
-                            const ranking = await response.json();
-                            const rankContainer = document.getElementById('rankingList');
-                            rankContainer.innerHTML = '';
-                            if (!ranking || ranking.length === 0) {
-                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
-                                return;
-                            }
-                            ranking.forEach((item, index) => {
-                                const div = document.createElement('div');
-                                div.className = 'log-item';
-                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalamount.toLocaleString() + '원 (' + item.count + '회)';
-                                rankContainer.appendChild(div);
-                            });
-                        } catch (e) { console.error(e); }
-                    }
-
-                    fetchDonationLogs();
-                    fetchRanking();
-                    setInterval(fetchDonationLogs, 3000);
-                    setInterval(fetchRanking, 5000);
-                </script>
+                async function fetchDonationLogs() {
+                    try {
+                        const response = await fetch('/api/logs/` + user.apiKey + `');
+                        const logs = await response.json();
+                        const logContainer = document.getElementById('donationLogList');
+                        logContainer.innerHTML = '';
+                        if (!logs || logs.length === 0) {
+                            logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
+                            return;
+                        }
+                        logs.slice(0, 20).forEach(log => {
+                            const div = document.createElement('div');
+                            div.className = 'log-item';
+                            div.style.display = 'flex';
+                            div.style.justifyContent = 'space-between';
+                            div.style.alignItems = 'center';
+            
+                            // 후원 텍스트 영역
+                            const textSpan = document.createElement('span');
+                            textSpan.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
+            
+                            // 🟢 재생 버튼 생성
+                            const playBtn = document.createElement('button');
+                            playBtn.innerText = '재생';
+                            playBtn.className = 'btn';
+                            playBtn.style.padding = '4px 8px';
+                            playBtn.style.fontSize = '12px';
+                            playBtn.style.flex = 'none';
+                            playBtn.style.marginLeft = '10px';
+                            
+                            // 재생 버튼 클릭 시 이벤트
+                            playBtn.onclick = async () => {
+                                try {
+                                    const res = await fetch('/api/play/` + user.apiKey + `/' + log._id, { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        alert('알림창 대기열에 추가되었습니다!');
+                                    } else {
+                                        alert('재생 요청 실패');
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                    alert('서버 통신 오류');
+                                }
+                            };
+            
+                            div.appendChild(textSpan);
+                            div.appendChild(playBtn);
+                            logContainer.appendChild(div);
+                        });
+                    } catch (e) { console.error(e); }
+                }
+            
+                async function fetchRanking() {
+                    // ... (기존 랭킹 코드 그대로 유지) ...
+                }
+            
+                fetchDonationLogs();
+                fetchRanking();
+                setInterval(fetchDonationLogs, 3000);
+                setInterval(fetchRanking, 5000);
+            </script>
             </body>
             </html>
-        `);
+             `);
     } catch (e) {
         res.status(500).send('Server Error');
     }
@@ -1269,6 +1288,28 @@ app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, 
         res.status(500).json({ success: false, error: e.message || 'Server Error' });
     }
 });
+
+// 🔄 후원 수동 재생 API (기존 후원의 datetime을 현재 시간으로 갱신하여 최신 후원으로 재발생)
+app.post('/api/play/:apiKey/:donationId', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const donation = await Donation.findOne({ _id: req.params.donationId, streamerId: user._id });
+        if (!donation) return res.status(404).json({ success: false, error: 'Donation not found' });
+
+        // 한국 현재 시간을 구해 기존 후원 데이터의 datetime을 갱신 (오버레이가 새 후원으로 감지하도록 함)
+        donation.datetime = getKSTDateTime();
+        donation.timestamp = new Date();
+        await donation.save();
+
+        res.json({ success: true, message: '알림 대기열에 추가되었습니다.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
 
 // 서버 구동
 app.listen(PORT, () => {
