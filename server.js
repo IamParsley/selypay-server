@@ -31,7 +31,8 @@ const userSchema = new mongoose.Schema({
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' },
-        useImage: { type: Boolean, default: true }
+        useImage: { type: Boolean, default: true },
+        useReaction: { type: Boolean, default: true } // 🟢 [추가] 리액션 기능 켜기/끄기 설정
     }
 });
 
@@ -91,7 +92,8 @@ app.post('/api/settings/alert/:apiKey', async (req, res) => {
                 'alertSettings.soundType': soundType, 
                 'alertSettings.duration': Number(duration), 
                 'alertSettings.fontSize': fontSize, 
-                'alertSettings.useImage': useImage === true || useImage === 'true' 
+                'alertSettings.useImage': useImage === true || useImage === 'true',
+                'alertSettings.useReaction': useReaction === true || useReaction === 'true' // 🟢 [추가] 리액션 켜기 기
             }},
             { new: true }
         );
@@ -826,6 +828,13 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+
+                    <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useReaction" name="useReaction" checked> 후원 리액션 기능 사용 (특정 금액별 이미지/노래 재생)
+                    </label>
+                    </div>
+                
                     <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
                     <div>
                         <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
