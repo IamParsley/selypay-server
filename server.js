@@ -202,7 +202,7 @@ app.get('/login', (req, res) => {
                 /* 3) 🐱 고양이 레이어 (상단 테두리에 큼직하게 매달림) */
                 .hanging-cat {
                     position: absolute;
-                    top: -65px;
+                    top: -200px;
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
