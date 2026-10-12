@@ -183,8 +183,8 @@ app.get('/login', (req, res) => {
                 /* 1. 로그인 전체 컨테이너 */
                 .login-container {
                     position: relative;
-                    width: 720px;
-                    height: 800px;
+                    width: 1000px;
+                    height: 1000px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
@@ -193,8 +193,8 @@ app.get('/login', (req, res) => {
                 /* 2. 나무 팻말 박스 이미지 */
                 .login-board {
                     position: absolute;
-                    width: 720px;
-                    height: 800px;
+                    width: 1000px;
+                    height: 1000px;
                     background: url('/login_board.png') no-repeat center center/contain;
                     z-index: 2;
                 }
