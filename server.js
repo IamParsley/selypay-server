@@ -158,41 +158,116 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 로그인 페이지
 app.get('/login', (req, res) => {
     res.send(`
         <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>스트리머 로그인</title></head>
-        <body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
-            <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;">
-                <h2>스트리머 로그인</h2>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <title>슬네이션 - 스트리머 로그인</title>
+            <style>
+                * { box-sizing: border-box; }
+                body {
+                    margin: 0;
+                    padding: 0;
+                    height: 100vh;
+                    /* 1. 완성된 통 이미지를 전체 화면 배경으로 설정 */
+                    background: url('/images/login_master.jpg') no-repeat center center/cover;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+                }
+
+                /* 2. 이미지 속 나무 팻말의 입력창/버튼 위치에 정확히 겹쳐지도록 잡는 컨테이너 */
+                .login-form-overlay {
+                    position: relative;
+                    width: 310px; /* 이미지 속 입력박스 가로 크기에 맞춤 조절 */
+                    /* 고양이가 매달린 팻말 디자인 기준 중앙에서 아래쪽 입력칸 위치로 오프셋 조정 */
+                    margin-top: 55px; 
+                    margin-left: 5px;
+                }
+
+                .input-group {
+                    margin-bottom: 15px; /* 입력창 간격 */
+                }
+
+                /* 3. 실제 작동하는 투명 입력창 (이미지 안의 라인 위에 정확히 겹침) */
+                .input-group input {
+                    width: 100%;
+                    height: 42px;
+                    padding: 0 12px;
+                    background: transparent; /* 배경을 투명하게 하여 이미지 속 입력칸과 조화시킴 */
+                    border: none;
+                    color: #2ed573; /* 입력되는 글씨 색상 (네온 그린) */
+                    font-size: 16px;
+                    font-weight: bold;
+                    outline: none;
+                }
+
+                .input-group input::placeholder {
+                    color: rgba(46, 213, 115, 0.4);
+                }
+
+                /* 4. 로그인 버튼 (이미지 속 '로그인' 초록색 버튼 위치와 일치시킴) */
+                .login-btn {
+                    width: 100%;
+                    height: 46px;
+                    background: transparent; /* 투명하게 처리하여 이미지 버튼 클릭 유도 */
+                    border: none;
+                    cursor: pointer;
+                    margin-top: 5px;
+                }
+
+                /* 5. 하단 링크 영역 ('비밀번호를 잊으셨나요?', '회원가입' 위치) */
+                .links {
+                    margin-top: 25px;
+                    text-align: center;
+                    font-size: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .links a {
+                    color: #a4b0be;
+                    text-decoration: none;
+                    transition: color 0.2s;
+                }
+
+                .links a:hover {
+                    color: #2ed573;
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-form-overlay">
                 <form action="/api/login" method="POST">
-                    <div style="margin-bottom:15px;">
-                        <label>아이디</label><br>
-                        <input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required>
+                    <!-- 아이디 입력칸 -->
+                    <div class="input-group">
+                        <input type="text" id="username" name="username" required>
                     </div>
-                    <div style="margin-bottom:15px;">
-                        <label>비밀번호</label><br>
-                        <input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required>
+
+                    <!-- 비밀번호 입력칸 -->
+                    <div class="input-group">
+                        <input type="password" id="password" name="password" required>
                     </div>
-                    <button type="submit" style="width:100%; padding:10px; background:#2ed573; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">로그인</button>
+
+                    <!-- 로그인 버튼 (이미지 안의 로그인 버튼 영역을 덮음) -->
+                    <button type="submit" class="login-btn"></button>
                 </form>
-                <p style="text-align:center; margin-top:15px;"><a href="/register" style="color:#ff4757; text-decoration:none;">계정이 없으신가요? 회원가입</a></p>
+
+                <!-- 하단 링크 (이미지 하단 텍스트와 매칭) -->
+                <div class="links">
+                    <a href="/forgot-password">비밀번호를 잊으셨나요?</a>
+                    <div>계정이 없으신가요? <a href="/register">회원가입</a></div>
+                </div>
             </div>
         </body>
         </html>
     `);
 });
-
-app.post('/api/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username, password });
-
-        if (!user) {
-            return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
-        }
 
         res.send(`
             <!DOCTYPE html>
