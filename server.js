@@ -254,7 +254,7 @@ app.get('/login', (req, res) => {
                 .login-btn {
                     width: 380px;
                     margin-left: -34px;
-                    height: 52px;
+                    height: 60px;
                     background: url('/button_inactive.png') no-repeat center center/contain;
                     background-size: 100% 100%;
                     border: none;
