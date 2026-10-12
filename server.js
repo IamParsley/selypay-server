@@ -676,7 +676,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 } else {
                     imgElement.style.display = 'none';
                 }
-
+                // 리액션이 꺼져 있으면 matchedReaction이 null이 되므로 기본 사운드가 재생됨
                 const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
                 const sound = new Audio(audioSrc);
 
