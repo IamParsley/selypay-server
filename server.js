@@ -518,35 +518,24 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <style>
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
                 #alert-container {
-                    display: none;
-                    position: fixed;
-                    bottom: 30px;
-                    left: 30px;
-                    flex-direction: column;
-                    align-items: center;
-                    background: rgba(0, 0, 0, 0.8);
-                    padding: 20px 30px;
-                    border-radius: 15px;
-                    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-                    color: white;
-                    text-align: center;
-                    max-width: 450px;
-                    animation: fadeIn 0.3s ease;
+                    width: 100vw; height: 100vh; display: none;
+                    flex-direction: column; justify-content: flex-start; align-items: center;
+                    text-align: center; box-sizing: border-box; padding: 2vh 3vw;
+                    background: transparent !important;
                 }
-                #alert-image {
-                    max-width: 180px;
-                    max-height: 180px;
-                    object-fit: contain;
-                    border-radius: 10px;
-                    margin-bottom: 12px;
-                    display: none;
+                #alert-image { 
+                    width: 70vw; height: auto; max-width: 80%;  max-height: 50vh; 
+                    object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh;
                 }
-                .text-box {
-                    font-size: ${settings.fontSize || '7.5vh'};
-                    font-weight: bold;
-                    line-height: 1.2;
-                    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-                    word-break: break-all;
+                #alert-line1 {
+                    color: #ffffff; font-size: 8vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh;
+                }
+                #alert-line2 {
+                    color: #ffffff; font-size: 6.5vh; font-weight: 800; 
+                    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9);
+                    width: 90vw; word-break: break-word; line-height: 1.2;
                 }
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(20px); }
@@ -642,22 +631,22 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     
                     sound.play().catch(e => console.log("사운드 재생 실패:", e));
 
-                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 2초(2000ms) 딜레이 부여
+                    // 🌟 노래가 완전히 끝난 시점(ended) 감지 후 3.5초(3500ms) 딜레이 부여
                     sound.onended = () => {
                         setTimeout(() => {
                             container.style.display = 'none';
                             isPlaying = false;
                             processQueue(); // 다음 대기열 알림 실행
-                        }, 2000); // 2초 딜레이
+                        }, 3500); // 3.5초 딜레이
                     };
 
-                    // 오디오 오류 시 안전 장치 (2초 후 다음 진행)
+                    // 오디오 오류 시 안전 장치 (3.5초 후 다음 진행)
                     sound.onerror = () => {
                         setTimeout(() => {
                             container.style.display = 'none';
                             isPlaying = false;
                             processQueue();
-                        }, 2000);
+                        }, 3500);
                     };
                 }
                 
