@@ -250,28 +250,27 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢 로그인 버튼 */
+                /* 5. 🟢/🔴 로그인 버튼 (평소: 초록 버튼 이미지 / 누를 때: 붉은 악마 버튼 이미지) */
                 .login-btn {
                     width: 100%;
-                    height: 40px; /* 50px * 0.8 */
-                    background: transparent;
+                    height: 46px; /* 버튼 이미지 비율에 맞춘 높이 */
+                    background: url('/button_inactive.png') no-repeat center center/contain; /* 👈 평소 모습 */
                     border: none;
                     cursor: pointer;
-                    margin-top: 28px; /* 35px * 0.8 */
+                    margin-top: 22px;
                     outline: none;
-                    border-radius: 8px;
-                    transition: all 0.1s ease;
+                    transition: transform 0.1s ease;
                 }
 
                 .login-btn:active {
-                    background: rgba(255, 71, 87, 0.4);
-                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9), inset 0 0 10px rgba(255, 71, 87, 0.6);
+                    background: url('/button_active.png') no-repeat center center/contain; /* 👈 누를 때 모습 */
+                    box-shadow: 0 0 20px rgba(255, 71, 87, 0.9);
                     transform: scale(0.98);
                 }
 
                 /* 6. 하단 링크 영역 */
                 .links {
-                    margin-top: 28px; /* 35px * 0.8 */
+                    margin-top: 22px; /* 35px * 0.8 */
                     text-align: center;
                     font-size: 11px; /* 14px * 0.8 */
                     font-weight: 900;
@@ -334,117 +333,6 @@ app.get('/login', (req, res) => {
         </body>
         </html>
     `);
-});
-
-app.post('/api/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username, password });
-
-        if (!user) {
-            return res.send(`<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>`);
-        }
-
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>` + user.username + ` 대시보드</title>
-                <style>
-                    body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                    .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                    .log-box { background: #fafafa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; max-height: 250px; overflow-y: auto; margin-top: 10px; }
-                    .log-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-                    .log-item:last-child { border-bottom: none; }
-                    .btn-group { display: flex; gap: 10px; margin-top: 8px; }
-                    .btn { flex: 1; padding: 8px 12px; background: #3498db; color: white; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 13px; }
-                    .btn:hover { background: #2980b9; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h2>환영합니다, ` + user.username + `님! 🎉</h2>
-                    
-                    <p><b>고유 API Key (안드로이드 앱에 입력):</b></p>
-                    <div class="box">` + user.apiKey + `</div>
-                    
-                    <p style="margin-top:20px;"><b>내 알림창 오버레이 주소:</b></p>
-                    <div class="box">https://` + req.get('host') + `/overlay/` + user.apiKey + `</div>
-                    <div class="btn-group">
-                        <a href="/manage/alert/` + user.apiKey + `" class="btn" target="_blank">⚙ 알림창 세부 설정/관리 사이트 가기</a>
-                    </div>
-
-                    <p style="margin-top:20px;"><b>내 방송용 랭킹판 오버레이 주소:</b></p>
-                    <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
-                    <div class="btn-group">
-                        <a href="/manage/ranking/` + user.apiKey + `" class="btn" target="_blank" style="background:#e67e22;">⚙️ 랭킹판 세부 설정/관리 사이트 가기</a>
-                    </div>
-
-                    <p style="margin-top:30px;"><b>🏆 계좌후원 랭킹 (KST 자정 기준)</b></p>
-                    <div class="log-box" id="rankingList">
-                        <div class="log-item">랭킹을 불러오는 중...</div>
-                    </div>
-                    
-                    <p style="margin-top:30px;"><b>📋 최근 후원 내역 (최대 20개)</b></p>
-                    <div class="log-box" id="donationLogList">
-                        <div class="log-item">후원 내역을 불러오는 중...</div>
-                    </div>
-
-                    <p style="margin-top:30px; text-align:right;"><a href="/login">로그아웃</a></p>
-                </div>
-
-                <script>
-                    async function fetchDonationLogs() {
-                        try {
-                            const response = await fetch('/api/logs/` + user.apiKey + `');
-                            const logs = await response.json();
-                            const logContainer = document.getElementById('donationLogList');
-                            logContainer.innerHTML = '';
-                            if (!logs || logs.length === 0) {
-                                logContainer.innerHTML = '<div class="log-item">아직 후원 내역이 없습니다.</div>';
-                                return;
-                            }
-                            logs.slice(0, 20).forEach(log => {
-                                const div = document.createElement('div');
-                                div.className = 'log-item';
-                                div.innerHTML = '<b>[' + log.datetime + ']</b> ' + log.nickname + '님 (' + log.amount.toLocaleString() + '원): ' + log.message;
-                                logContainer.appendChild(div);
-                            });
-                        } catch (e) { console.error(e); }
-                    }
-
-                    async function fetchRanking() {
-                        try {
-                            const response = await fetch('/api/ranking/` + user.apiKey + `');
-                            const ranking = await response.json();
-                            const rankContainer = document.getElementById('rankingList');
-                            rankContainer.innerHTML = '';
-                            if (!ranking || ranking.length === 0) {
-                                rankContainer.innerHTML = '<div class="log-item">오늘 아직 후원 내역이 없습니다.</div>';
-                                return;
-                            }
-                            ranking.forEach((item, index) => {
-                                const div = document.createElement('div');
-                                div.className = 'log-item';
-                                div.innerHTML = '<b>' + (index + 1) + '위</b> ' + item._id + '님 - ' + item.totalamount.toLocaleString() + '원 (' + item.count + '회)';
-                                rankContainer.appendChild(div);
-                            });
-                        } catch (e) { console.error(e); }
-                    }
-
-                    fetchDonationLogs();
-                    fetchRanking();
-                    setInterval(fetchDonationLogs, 3000);
-                    setInterval(fetchRanking, 5000);
-                </script>
-            </body>
-            </html>
-        `);
-    } catch (e) {
-        res.status(500).send('Server Error');
-    }
 });
 
 // 11. 안드로이드 앱 알림 수신 엔드포인트
