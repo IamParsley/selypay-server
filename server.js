@@ -482,7 +482,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 알림창 세부 관리 및 설정 페이지 (1줄 4박스 그리드, 각 박스 수정 버튼 및 모달 팝업 포함)
+// 알림창 세부 관리 및 설정 페이지 (정렬 드롭다운 및 수정 모달 포함)
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -507,7 +507,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                 .btn-success { background: #2ed573; font-size: 14px; padding: 10px 15px; }
                 .btn-warning { background: #f39c12; margin-top: 6px; }
                 
-                /* 1줄에 4박스씩 배치하는 그리드 스타일 */
                 .reaction-grid {
                     display: grid;
                     grid-template-columns: repeat(4, 1fr);
@@ -541,7 +540,6 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                     margin-bottom: 8px;
                 }
 
-                /* 모달 팝업 스타일 */
                 .modal {
                     display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
                     background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center;
@@ -602,10 +600,10 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
                     <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
                     <div>
-                        <select id="sortSelect" onchange="loadReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                        <select id="sortSelect" onchange="renderReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
                             <option value="latest">최신순</option>
                             <option value="highPrice">높은가격순</option>
                             <option value="lowPrice">낮은가격순</option>
@@ -646,13 +644,12 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
             <script>
                 const currentApiKey = "` + apiKey + `";
-                
-                let allReactions = []; // 전체 리액션 데이터를 보관할 변수
+                let allReactions = []; // 전체 리액션 데이터를 저장할 전역 변수
 
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + currentApiKey);
-                        allReactions = await res.json(); // 데이터를 전역 변수에 저장
+                        allReactions = await res.json();
                         renderReactions();
                     } catch (e) { console.error(e); }
                 }
@@ -666,11 +663,9 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         return;
                     }
 
-                    // 드롭다운에서 선택된 정렬 값 가져오기
                     const sortType = document.getElementById('sortSelect').value;
                     const sortedReactions = [...allReactions];
 
-                    // 정렬 로직 적용
                     if (sortType === 'highPrice') {
                         sortedReactions.sort((a, b) => b.amount - a.amount);
                     } else if (sortType === 'lowPrice') {
@@ -686,17 +681,17 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
                         const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
                         const audioStatus = r.audioUrl ? '등록됨' : '없음';
 
-                        card.innerHTML = `
+                        card.innerHTML = \`
                             <div style="width: 100%;">
-                                <img src="${imgSrc}" alt="리액션 사진">
+                                <img src="\${imgSrc}" alt="리액션 사진">
                                 <div class="reaction-info">
-                                    <b style="font-size:14px; display:block; margin-bottom:4px;">${r.name || '기본 리액션'}</b>
-                                    <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">${r.amount.toLocaleString()}원</span>
-                                    <span style="color:#888; font-size:11px; display:block;">음악파일: ${audioStatus}</span>
+                                    <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
+                                    <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
+                                    <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('${r._id}', '${r.name || ''}', ${r.amount})">수정</button>
-                        `;
+                            <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('\${r._id}', '\${r.name || ''}', \${r.amount})">수정</button>
+                        \`;
                         container.appendChild(card);
                     });
                 }
@@ -1045,7 +1040,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
     }
 });
 
-// 🛠️ 기존 리액션 수정 API (PUT)
+// 기존 리액션 수정 API (PUT)
 app.put('/api/reactions/:apiKey/:reactionId', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
