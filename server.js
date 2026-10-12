@@ -250,31 +250,31 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-               /* 5. 🟢 로그인 버튼 기본 스타일 (투명하게 처리하여 아래의 1번 사진 버튼이 보임) */
+               /* 5. 🟢 로그인 버튼 (1번 사진 기본 장착) */
                 .login-btn {
-                    width: 100%;
-                    height: 54px;
-                    background: transparent;
+                    width: 380px;
+                    margin-left: -34px;
+                    height: 52px;
+                    background: url('/button_inactive.png') no-repeat center center/contain;
                     border: none;
                     cursor: pointer;
-                    margin-top: 2px;
+                    margin-top: 20px;
                     outline: none;
-                    transition: all 0.15s ease;
+                    /* 색상과 그림자가 부드럽고 자연스럽게 전환되도록 설정 */
+                    transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
                 }
 
-                /* 🖱️ 마우스를 갖다 댈 때(Hover): 초록색 버튼 위에 은은한 초록빛 광채 부여 */
+                /* 🖱️ 마우스를 올릴 때(Hover): 초록색 사진 자체가 은은하게 달아오르는 느낌 */
                 .login-btn:hover {
-                    background: rgba(46, 213, 115, 0.2);
-                    border-radius: 12px;
-                    box-shadow: 0 0 15px rgba(46, 213, 115, 0.5);
+                    filter: brightness(1.1) saturate(1.2);
+                    box-shadow: 0 0 12px rgba(46, 213, 115, 0.5);
                 }
 
-                /* 🔴 마우스로 꾹 누를 때(Active): 시뻘겁고 강렬한 붉은빛으로 반짝임 */
+                /* 🔴 마우스로 누를 때(Active): 사진 자체가 시뻘건 핏빛/불꽃 색상으로 확 변하면서 발광 */
                 .login-btn:active {
-                    background: rgba(255, 71, 87, 0.35);
-                    border-radius: 12px;
-                    box-shadow: 0 0 25px rgba(255, 71, 87, 0.9), inset 0 0 12px rgba(255, 71, 87, 0.5);
-                    transform: scale(0.98);
+                    /* 초록색 사진 픽셀을 붉은색 계열로 강하게 전환하고 채도와 명도를 조절 */
+                    filter: hue-rotate(120deg) saturate(7) brightness(0.95) contrast(1.4);
+                    transform: scale(0.98); /* 살짝 눌리는 느낌 */
                 }
 
                 /* 6. 하단 링크 영역 */
