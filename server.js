@@ -172,7 +172,7 @@ app.get('/login', (req, res) => {
                     padding: 0;
                     height: 100vh;
                     /* 1. 완성된 통 이미지를 전체 화면 배경으로 설정 */
-                    background: url('/images/login_master.jpg') no-repeat center center/cover;
+                    background: url('/images/login_sample.png') no-repeat center center/cover;
                     display: flex;
                     justify-content: center;
                     align-items: center;
