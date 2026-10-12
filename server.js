@@ -197,10 +197,10 @@ app.get('/login', (req, res) => {
                     z-index: 2;
                 }
 
-                /* 3. 🐱 고양이 레이어 */
+                /* 3. 🐱 고양이 레이어 (값을 더 마이너스로 주어 위로 높게 올림) */
                 .hanging-cat {
                     position: absolute;
-                    top: -65px;
+                    top: -120px; /* 👈 이 숫자를 더 마이너스로 주어 고양이를 위로 높이 올림 */
                     left: 50%;
                     transform: translateX(-50%);
                     width: 420px;
@@ -211,10 +211,10 @@ app.get('/login', (req, res) => {
                     filter: drop-shadow(0 12px 16px rgba(0,0,0,0.7));
                 }
 
-                /* 4. 🎯 입력 폼 영역 (아래로 쏠려있던 것을 위로 훅 끌어올림) */
+                /* 4. 🎯 입력 폼 영역 (타이틀 아래 목판 빈 공간에 정확히 안착하도록 조정) */
                 .login-form-overlay {
                     position: absolute;
-                    top: 280px; /* 👈 숫자를 확 줄여서 위쪽 목판 빈 공간으로 이동시킴 */
+                    top: 365px; /* 👈 아이디/비밀번호 칸을 타이틀 아래 빈 공간으로 적당히 내림 */
                     left: 180px; 
                     width: 390px;
                     z-index: 10;
@@ -249,7 +249,7 @@ app.get('/login', (req, res) => {
                     color: rgba(255, 255, 255, 0.45);
                 }
 
-                /* 5. 🟢 로그인 버튼 */
+                /* 5. 🟢 로그인 버튼 (이미지 속 로그인 버튼 위치와 일치) */
                 .login-btn {
                     width: 100%;
                     height: 50px;
