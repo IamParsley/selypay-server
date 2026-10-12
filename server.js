@@ -602,7 +602,16 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
                 <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
 
-                <h3 style="margin-top:30px;">📋 등록된 리액션 목록</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                    <h3 style="margin: 0;">📋 등록된 리액션 목록</h3>
+                    <div>
+                        <select id="sortSelect" onchange="loadReactions()" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="latest">최신순</option>
+                            <option value="highPrice">높은가격순</option>
+                            <option value="lowPrice">낮은가격순</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="reactionList" class="reaction-grid"><div style="color:#666; grid-column: span 4;">불러오는 중...</div></div>
 
                 <br><br>
@@ -637,39 +646,59 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
 
             <script>
                 const currentApiKey = "` + apiKey + `";
+                
+                let allReactions = []; // 전체 리액션 데이터를 보관할 변수
 
                 async function loadReactions() {
                     try {
                         const res = await fetch('/api/reactions/' + currentApiKey);
-                        const data = await res.json();
-                        const container = document.getElementById('reactionList');
-                        container.innerHTML = '';
-                        if (!data || data.length === 0) {
-                            container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
-                            return;
-                        }
-                        data.forEach(r => {
-                            const card = document.createElement('div');
-                            card.className = 'reaction-card';
-                            
-                            const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
-                            const audioStatus = r.audioUrl ? '등록됨' : '없음';
-
-                            // 📦 순서: 사진 -> 이름 -> 금액 -> 음악파일 + 수정 버튼
-                            card.innerHTML = \`
-                                <div style="width: 100%;">
-                                    <img src="\${imgSrc}" alt="리액션 사진">
-                                    <div class="reaction-info">
-                                        <b style="font-size:14px; display:block; margin-bottom:4px;">\${r.name || '기본 리액션'}</b>
-                                        <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">\${r.amount.toLocaleString()}원</span>
-                                        <span style="color:#888; font-size:11px; display:block;">음악파일: \${audioStatus}</span>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('\${r._id}', '\${r.name || ''}', \${r.amount})">수정</button>
-                            \`;
-                            container.appendChild(card);
-                        });
+                        allReactions = await res.json(); // 데이터를 전역 변수에 저장
+                        renderReactions();
                     } catch (e) { console.error(e); }
+                }
+
+                function renderReactions() {
+                    const container = document.getElementById('reactionList');
+                    container.innerHTML = '';
+                    
+                    if (!allReactions || allReactions.length === 0) {
+                        container.innerHTML = '<div style="color:#666; grid-column: span 4; text-align:center;">등록된 리액션이 없습니다.</div>';
+                        return;
+                    }
+
+                    // 드롭다운에서 선택된 정렬 값 가져오기
+                    const sortType = document.getElementById('sortSelect').value;
+                    const sortedReactions = [...allReactions];
+
+                    // 정렬 로직 적용
+                    if (sortType === 'highPrice') {
+                        sortedReactions.sort((a, b) => b.amount - a.amount);
+                    } else if (sortType === 'lowPrice') {
+                        sortedReactions.sort((a, b) => a.amount - b.amount);
+                    } else if (sortType === 'latest') {
+                        sortedReactions.sort((a, b) => b._id.localeCompare(a._id));
+                    }
+
+                    sortedReactions.forEach(r => {
+                        const card = document.createElement('div');
+                        card.className = 'reaction-card';
+                        
+                        const imgSrc = r.imageUrl ? r.imageUrl : '/alerticon.gif';
+                        const audioStatus = r.audioUrl ? '등록됨' : '없음';
+
+                        card.innerHTML = `
+                            <div style="width: 100%;">
+                                <img src="${imgSrc}" alt="리액션 사진">
+                                <div class="reaction-info">
+                                    <b style="font-size:14px; display:block; margin-bottom:4px;">${r.name || '기본 리액션'}</b>
+                                    <span style="color:#e67e22; font-weight:bold; display:block; margin-bottom:4px;">${r.amount.toLocaleString()}원</span>
+                                    <span style="color:#888; font-size:11px; display:block;">음악파일: ${audioStatus}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-warning" style="width:100%;" onclick="openEditModal('${r._id}', '${r.name || ''}', ${r.amount})">수정</button>
+                        `;
+                        container.appendChild(card);
+                    });
                 }
 
                 // 신규 리액션 등록
