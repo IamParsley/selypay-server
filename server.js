@@ -8,8 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Supabase 및 DB 설정 (환경에 맞게 수정하여 사용하세요)
-const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xknlqyjyxdjuupfzzrgg.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable__dUo38dpMaBTXZYQ-7Y6dQ_NFzMslhn';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'reactions';
 
 // Multer 메모리 스토리지 설정
