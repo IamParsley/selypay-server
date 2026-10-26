@@ -40,12 +40,12 @@ const userSchema = new mongoose.Schema({
         useImage: { type: Boolean, default: true }
     },
     menuSettings: {
-        textColor: { type: String, default: '#ffffff' },
+        textColor: { type: String, default: '#ff2a85' },
         fontSize: { type: String, default: '24px' },
         fontFamily: { type: String, default: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif' },
-        effect: { type: String, default: 'shadow' },
+        effect: { type: String, default: 'modern-glow' },
         borderColor: { type: String, default: '#000000' },
-        borderWidth: { type: String, default: '1.5px' },
+        borderWidth: { type: String, default: '0px' },
         scrollMode: { type: String, default: 'page' },
         scrollInterval: { type: Number, default: 3 }
     }
@@ -143,12 +143,12 @@ app.post('/api/login', async (req, res) => {
         }
 
         const menuSettings = user.menuSettings || {
-            textColor: '#ffffff',
+            textColor: '#ff2a85',
             fontSize: '24px',
             fontFamily: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif',
-            effect: 'shadow',
+            effect: 'modern-glow',
             borderColor: '#000000',
-            borderWidth: '1.5px',
+            borderWidth: '0px',
             scrollMode: 'page',
             scrollInterval: 3
         };
@@ -305,7 +305,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">세련된 폰트와 입체감 있는 효과를 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">색상 맞춤형 세련된 자막 스타일을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -314,16 +314,16 @@ app.post('/api/login', async (req, res) => {
 
                             <form id="menuSettingsForm" style="margin-top:20px;">
                                 <div class="form-group">
-                                    <label>글씨 색상 (기본: 하얀색)</label>
+                                    <label>글씨 색상 (원하는 컬러 선택)</label>
                                     <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
                                 </div>
                                 <div class="form-group">
-                                    <label>테두리(외곽선) 색상</label>
+                                    <label>테두리(외곽선) 색상 (필요시)</label>
                                     <input type="color" id="menuBorderColor" value="${menuSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
                                 </div>
                                 <div class="form-group">
-                                    <label>테두리(외곽선) 두께 (예: 1px, 1.5px, 2px)</label>
-                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '1.5px'}">
+                                    <label>테두리(외곽선) 두께 (기본: 0px로 깔끔하게)</label>
+                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '0px'}">
                                 </div>
                                 <div class="form-group">
                                     <label>글씨 크기</label>
@@ -339,16 +339,13 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>고품질 시각 효과 선택</label>
+                                    <label>세련된 컬러 맞춤 효과 선택</label>
                                     <select id="menuEffect">
-                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
-                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 쨍하게 빛나는 네온 글로우</option>
+                                        <option value="modern-glow" ${menuSettings.effect === 'modern-glow' ? 'selected' : ''}>🌟 [추천] 글씨 색상 맞춤 은은한 빛(Glow) 효과</option>
+                                        <option value="soft-shadow" ${menuSettings.effect === 'soft-shadow' ? 'selected' : ''}>✨ 부드러운 입체 음영 그림자</option>
+                                        <option value="clean-flat" ${menuSettings.effect === 'clean-flat' ? 'selected' : ''}>🎨 외곽선 없이 깔끔한 플랫 디자인</option>
                                         <option value="rainbow" ${menuSettings.effect === 'rainbow' ? 'selected' : ''}>🌈 화려한 무지개 다채광 네온</option>
                                         <option value="gold" ${menuSettings.effect === 'gold' ? 'selected' : ''}>🏆 고급 골드 메탈릭 입체감</option>
-                                        <option value="cyber" ${menuSettings.effect === 'cyber' ? 'selected' : ''}>🧊 사이버틱 네온 블루</option>
-                                        <option value="sunset" ${menuSettings.effect === 'sunset' ? 'selected' : ''}>🔥 강렬한 썬셋 불꽃 그라데이션</option>
-                                        <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록</option>
-                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -535,17 +532,17 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
 
         const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
         const menuSettings = user.menuSettings || {
-            textColor: '#ffffff',
+            textColor: '#ff2a85',
             fontSize: '24px',
             fontFamily: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif',
-            effect: 'shadow',
+            effect: 'modern-glow',
             borderColor: '#000000',
-            borderWidth: '1.5px',
+            borderWidth: '0px',
             scrollMode: 'page',
             scrollInterval: 3
         };
 
-        const bw = menuSettings.borderWidth || '1.5px';
+        const bw = menuSettings.borderWidth || '0px';
         const bc = menuSettings.borderColor || '#000000';
         const tc = menuSettings.textColor;
         const effect = menuSettings.effect;
@@ -553,25 +550,24 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const intervalSec = menuSettings.scrollInterval || 3;
         
         let extraStyle = `
-            -webkit-text-stroke: ${bw} ${bc};
-            paint-order: fill stroke;
             -webkit-font-smoothing: antialiased;
         `;
 
-        if (effect === 'shadow') {
-            extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 3px 3px 8px rgba(0, 0, 0, 0.6);`;
-        } else if (effect === 'neon') {
-            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 10px ${tc}, 0 0 20px ${tc};`;
+        if (bw !== '0px' && bw !== '0') {
+            extraStyle += ` -webkit-text-stroke: ${bw} ${bc}; paint-order: fill stroke;`;
+        }
+
+        // 사용자가 선택한 색상(tc)에 자연스럽게 어우러지는 세련된 빛 효과
+        if (effect === 'modern-glow') {
+            extraStyle += ` text-shadow: 0 0 2px #ffffff, 0 0 8px ${tc}, 0 0 16px ${tc};`;
+        } else if (effect === 'soft-shadow') {
+            extraStyle += ` text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px ${tc};`;
+        } else if (effect === 'clean-flat') {
+            extraStyle += ` text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);`;
         } else if (effect === 'rainbow') {
             extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
         } else if (effect === 'gold') {
-            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9), 5px 5px 12px rgba(184,134,11,0.7);`;
-        } else if (effect === 'cyber') {
-            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #00ffff, 0 0 25px #0088ff, 2px 2px 4px rgba(0,0,0,0.9);`;
-        } else if (effect === 'sunset') {
-            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #ff4500, 0 0 25px #ff1493, 2px 2px 4px rgba(0,0,0,0.9);`;
-        } else if (effect === '3d') {
-            extraStyle += ` text-shadow: 2px 2px 0px #111111, 4px 4px 6px rgba(0,0,0,0.8);`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9);`;
         }
 
         res.send(`
@@ -600,10 +596,10 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                     const app = document.getElementById('app');
 
                     if (reactions.length === 0) {
-                        app.innerHTML = '<div style="padding:10px;" class="menu-row" style="-webkit-text-stroke:0px; color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>';
+                        app.innerHTML = '<div style="padding:10px;" class="menu-row" style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>';
                     } else {
                         const rowsHTML = reactions.map(r => 
-                            '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                            '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em;"></span>' + r.amount.toLocaleString() + '원</div>'
                         ).join('');
 
                         if (mode === 'ticker') {
@@ -657,7 +653,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                                 if (pages.length === 0) return;
                                 const items = pages[pageIndex];
                                 container.innerHTML = items.map(r => 
-                                    '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                                    '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em;"></span>' + r.amount.toLocaleString() + '원</div>'
                                 ).join('');
                                 pageIndex = (pageIndex + 1) % pages.length;
                             }
@@ -750,7 +746,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (음악 길이 연동 또는 기본 10초 뒤 자동 닫힘 완벽 적용)
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -770,8 +766,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
-                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
-                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: break-word; line-height: 1.2; }
+                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: 0 0 10px rgba(255,42,133,0.8), 2px 2px 5px rgba(0,0,0,0.8); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: 0 0 10px rgba(255,42,133,0.8), 2px 2px 5px rgba(0,0,0,0.8); width: 90vw; word-break: break-word; line-height: 1.2; }
             </style>
         </head>
         <body>
@@ -870,7 +866,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     processQueue();
                 }
 
-                // 리액션 오디오가 있으면 음악 길이만큼 떠 있다가 종료, 기본 사운드나 없으면 10초 뒤 무조건 닫힘
                 const hasCustomAudio = (matchedReaction && matchedReaction.audioUrl);
 
                 sound.onloadedmetadata = () => {
@@ -889,7 +884,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     closeAlert();
                 };
 
-                // 메타데이터 로드 실패 대비 안전장치 (10초 후 또는 오디오 길이 초과 시 무조건 종료)
                 setTimeout(() => {
                     if (!timerCleared && (!hasCustomAudio || isNaN(sound.duration))) {
                         hideTimer = setTimeout(closeAlert, 10000);
@@ -898,7 +892,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
 
                 sound.play().catch(e => {
                     console.log("사운드 재생 실패:", e);
-                    // 브라우저 정책 등으로 소리가 안 나도 10초 후엔 반드시 꺼지도록 보장
                     hideTimer = setTimeout(closeAlert, 10000);
                 });
             }
