@@ -43,7 +43,7 @@ const userSchema = new mongoose.Schema({
         textColor: { type: String, default: '#ffffff' },
         fontSize: { type: String, default: '24px' },
         fontFamily: { type: String, default: 'Malgun Gothic' },
-        effect: { type: String, default: 'shadow' }, // shadow, neon, 3d, gradient, none
+        effect: { type: String, default: 'shadow' }, // shadow, neon, 3d, none
         borderColor: { type: String, default: '#000000' },
         borderWidth: { type: String, default: '2px' }
     }
@@ -297,7 +297,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 고품질 시각 효과와 함께 나열되는 OBS 브라우저 소스 주소입니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 부드러운 테두리와 함께 나열되는 OBS 브라우저 소스 주소입니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -333,10 +333,10 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>고품질 시각 효과 선택</label>
                                     <select id="menuEffect">
-                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 모던 드롭 그림자 (추천: 입체감 있고 깔끔함)</option>
-                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 네온 글로우 발광 (화려하고 영롱한 효과)</option>
-                                        <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록 (묵직하고 돋보이는 효과)</option>
-                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>기본 테두리만 적용</option>
+                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
+                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 네온 글로우 발광 효과</option>
+                                        <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록</option>
+                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
                                     </select>
                                 </div>
                                 <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
@@ -408,7 +408,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 배경 없는 투명 메뉴판 오버레이 엔드포인트 (고품질 효과 반영)
+// 📋 배경 없는 투명 메뉴판 오더레이 엔드포인트 (부드러운 표준 테두리 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -429,25 +429,18 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const bc = menuSettings.borderColor || '#000000';
         const tc = menuSettings.textColor;
         
-        // 기본 독립 테두리 스트로크
-        let textShadowStyle = `
-            -${bw} -${bw} 0 ${bc},
-             ${bw} -${bw} 0 ${bc},
-            -${bw}  ${bw} 0 ${bc},
-             ${bw}  ${bw} 0 ${bc},
-             0 ${bw} 0 ${bc},
-             0 -${bw} 0 ${bc},
-            -${bw} 0 0 ${bc},
-             ${bw} 0 0 ${bc}
+        // 표준 웹킷 외곽선(webkit-text-stroke)을 사용하여 모서리가 깨지지 않고 부드럽게 렌더링
+        let extraStyle = `
+            -webkit-text-stroke: ${bw} ${bc};
+            paint-order: stroke fill;
         `;
 
-        // 선택한 고품질 효과에 따른 추가 그림자 및 발광 스타일 조합
         if (menuSettings.effect === 'shadow') {
-            textShadowStyle += `, 3px 3px 6px rgba(0, 0, 0, 0.9)`;
+            extraStyle += ` text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);`;
         } else if (menuSettings.effect === 'neon') {
-            textShadowStyle += `, 0 0 8px ${tc}, 0 0 16px ${tc}, 0 0 24px ${tc}`;
+            extraStyle += ` text-shadow: 0 0 8px ${tc}, 0 0 16px ${tc};`;
         } else if (menuSettings.effect === '3d') {
-            textShadowStyle += `, 2px 2px 0px #333333, 4px 4px 0px #111111, 6px 6px 10px rgba(0,0,0,0.8)`;
+            extraStyle += ` text-shadow: 2px 2px 0px #222222, 4px 4px 8px rgba(0,0,0,0.8);`;
         }
 
         res.send(`
@@ -473,7 +466,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                         color: ${tc};
                         font-size: ${menuSettings.fontSize};
                         font-weight: 800;
-                        text-shadow: ${textShadowStyle};
+                        ${extraStyle}
                         white-space: nowrap;
                     }
                 </style>
@@ -482,7 +475,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                 <div class="menu-container">
                     ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>' : ''}
                     ${reactions.map(r => `
-                        <div class="menu-row">${r.name}<span style="display:inline-block; width: 1.5em;"></span>${r.amount.toLocaleString()}원</div>
+                        <div class="menu-row">${r.name}<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>${r.amount.toLocaleString()}원</div>
                     `).join('')}
                 </div>
             </body>
