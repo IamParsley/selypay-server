@@ -263,4 +263,324 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-logs" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">모든 후원 내역 아카이브</div>
-                            <div style="color
+                            <div style="color:#94a3b8; font-size:14px; text-align:center; padding:80px 0;">수신된 후원 내역이 없습니다.</div>
+                        </div>
+                    </div>
+
+                    <div id="tab-settings" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">🔔 기본 알림 세부 설정</div>
+                            <button type="button" class="btn-green" onclick="alert('설정이 저장되었습니다.')">저장하기</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-reactions" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">
+                                📋 등록된 리액션 목록 (총 ${reactions.length}개)
+                                <a href="/manage/alert/${user.apiKey}" class="btn-green" target="_blank" style="text-decoration:none; font-size:13px;">+ 리액션 관리 페이지</a>
+                            </div>
+                            <div class="reaction-cards-grid">
+                                ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:span 3; text-align:center; padding:40px;">등록된 리액션이 없습니다.</div>' : ''}
+                                ${reactions.map(r => `
+                                    <div class="reaction-item-card">
+                                        <img src="${r.imageUrl && r.imageUrl.startsWith('http') ? r.imageUrl : '/alerticon.gif'}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
+                                        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px;">${r.name}</div>
+                                        <div style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:4px;">${r.amount.toLocaleString()}원 일치</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 📋 깔끔 투명 메뉴판 설정 탭 -->
+                    <div id="tab-menu" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 고품질 시각 효과와 함께 나열되는 OBS 브라우저 소스 주소입니다.</p>
+                            
+                            <div class="overlay-box">
+                                <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/menu-overlay/${user.apiKey}')">주소 복사</button>
+                            </div>
+
+                            <form id="menuSettingsForm" style="margin-top:20px;">
+                                <div class="form-group">
+                                    <label>글씨 색상</label>
+                                    <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 색상</label>
+                                    <input type="color" id="menuBorderColor" value="${menuSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 두께 (예: 1px, 2px, 3px)</label>
+                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '2px'}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 크기</label>
+                                    <input type="text" id="menuFontSize" value="${menuSettings.fontSize}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨체 (폰트)</label>
+                                    <select id="menuFontFamily">
+                                        <option value="Malgun Gothic" ${menuSettings.fontFamily === 'Malgun Gothic' ? 'selected' : ''}>맑은 고딕</option>
+                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial)</option>
+                                        <option value="Apple SD Gothic Neo, sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>애플 SD 산돌고딕</option>
+                                        <option value="Courier New, monospace" ${menuSettings.fontFamily.includes('Courier New') ? 'selected' : ''}>고정폭 폰트 (Courier)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>고품질 시각 효과 선택</label>
+                                    <select id="menuEffect">
+                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 모던 드롭 그림자 (추천: 입체감 있고 깔끔함)</option>
+                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 네온 글로우 발광 (화려하고 영롱한 효과)</option>
+                                        <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록 (묵직하고 돋보이는 효과)</option>
+                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>기본 테두리만 적용</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="tab-account" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
+                            <div class="overlay-box">
+                                <span>${user.apiKey}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${user.apiKey}')">키 복사</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDropdown() { document.getElementById('profileDropdown').classList.toggle('active'); }
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(btn) btn.classList.add('active');
+        }
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('클립보드에 복사되었습니다!');
+        }
+        async function saveMenuSettings() {
+            const data = {
+                textColor: document.getElementById('menuTextColor').value,
+                borderColor: document.getElementById('menuBorderColor').value,
+                borderWidth: document.getElementById('menuBorderWidth').value,
+                fontSize: document.getElementById('menuFontSize').value,
+                fontFamily: document.getElementById('menuFontFamily').value,
+                effect: document.getElementById('menuEffect').value
+            };
+            try {
+                const res = await fetch('/api/settings/menu/${user.apiKey}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if(result.success) alert('메뉴판 설정이 성공적으로 저장되었습니다!');
+                else alert('저장 실패');
+            } catch(e) {
+                console.error(e);
+                alert('서버 통신 오류');
+            }
+        }
+        window.onclick = function(e) {
+            if (!e.target.closest('.user-profile-menu')) {
+                document.getElementById('profileDropdown').classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
+        `);
+    } catch (e) {
+        console.error("로그인 에러 발생:", e);
+        res.status(500).send('Server Error: ' + e.message);
+    }
+});
+
+// 📋 배경 없는 투명 메뉴판 오버레이 엔드포인트 (고품질 효과 반영)
+app.get('/menu-overlay/:apiKey', async (req, res) => {
+    try {
+        const { apiKey } = req.params;
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(404).send('Streamer not found');
+
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        const menuSettings = user.menuSettings || {
+            textColor: '#ffffff',
+            fontSize: '24px',
+            fontFamily: 'Malgun Gothic',
+            effect: 'shadow',
+            borderColor: '#000000',
+            borderWidth: '2px'
+        };
+
+        const bw = menuSettings.borderWidth || '2px';
+        const bc = menuSettings.borderColor || '#000000';
+        const tc = menuSettings.textColor;
+        
+        // 기본 독립 테두리 스트로크
+        let textShadowStyle = `
+            -${bw} -${bw} 0 ${bc},
+             ${bw} -${bw} 0 ${bc},
+            -${bw}  ${bw} 0 ${bc},
+             ${bw}  ${bw} 0 ${bc},
+             0 ${bw} 0 ${bc},
+             0 -${bw} 0 ${bc},
+            -${bw} 0 0 ${bc},
+             ${bw} 0 0 ${bc}
+        `;
+
+        // 선택한 고품질 효과에 따른 추가 그림자 및 발광 스타일 조합
+        if (menuSettings.effect === 'shadow') {
+            textShadowStyle += `, 3px 3px 6px rgba(0, 0, 0, 0.9)`;
+        } else if (menuSettings.effect === 'neon') {
+            textShadowStyle += `, 0 0 8px ${tc}, 0 0 16px ${tc}, 0 0 24px ${tc}`;
+        } else if (menuSettings.effect === '3d') {
+            textShadowStyle += `, 2px 2px 0px #333333, 4px 4px 0px #111111, 6px 6px 10px rgba(0,0,0,0.8)`;
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>SelyPay Clean Menu Overlay</title>
+                <style>
+                    body {
+                        background: transparent !important;
+                        margin: 0;
+                        padding: 10px;
+                        font-family: ${menuSettings.fontFamily};
+                    }
+                    .menu-container {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        width: fit-content;
+                    }
+                    .menu-row {
+                        color: ${tc};
+                        font-size: ${menuSettings.fontSize};
+                        font-weight: 800;
+                        text-shadow: ${textShadowStyle};
+                        white-space: nowrap;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="menu-container">
+                    ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>' : ''}
+                    ${reactions.map(r => `
+                        <div class="menu-row">${r.name}<span style="display:inline-block; width: 1.5em;"></span>${r.amount.toLocaleString()}원</div>
+                    `).join('')}
+                </div>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Menu Overlay Error');
+    }
+});
+
+// 기타 기본 API들
+app.post('/api/notification', async (req, res) => {
+    const { apiKey, message } = req.body;
+    if (!apiKey || !message) return res.status(400).json({ success: false });
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(401).json({ success: false });
+
+        let amount = 0;
+        const amountMatch = message.match(/([0-9,]+)\s*원/);
+        if (amountMatch) amount = parseInt(amountMatch[1].replace(/,/g, ''), 10) || 0;
+
+        let nickname = message.includes("님") ? message.split("님")[0].trim() : "익명";
+
+        const donationData = new Donation({
+            streamerId: user._id, nickname, amount, message,
+            datetime: getKSTDateTime(), dateKey: getKSTDateKey()
+        });
+        await donationData.save();
+        res.status(200).json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+app.get('/overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+    const settings = user.alertSettings || {};
+    const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+    const useImage = settings.useImage !== undefined ? settings.useImage : true;
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><style>body{background:transparent;margin:0;}</style></head>
+        <body>
+            <div id="alert-container" style="display:none; color:white; font-size:50px; font-weight:bold; text-shadow:2px 2px 4px #000;">알림 테스트</div>
+            <script>
+                const reactions = ${JSON.stringify(reactions)};
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        res.json([]);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        res.json(reactions);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false });
+        const { name, amount } = req.body;
+        const newReaction = new Reaction({ streamerId: user._id, name: name || "기본 리액션", amount: Number(amount) });
+        await newReaction.save();
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+const manualPlayStore = {};
+app.post('/api/play/:apiKey/:donationId', async (req, res) => { res.json({ success: true }); });
+app.get('/api/manual-play/:apiKey', async (req, res) => { res.json([]); });
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
