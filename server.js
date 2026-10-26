@@ -305,7 +305,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">이쁜 효과들과 전환 방식(페이지 전환 또는 스크롤 순환)을 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">가시성이 대폭 개선된 이펙트들과 전환 방식을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -339,14 +339,14 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>고품질 시각 효과 선택 (신규 효과 추가됨!)</label>
+                                    <label>고품질 시각 효과 선택 (가시성 대폭 강화)</label>
                                     <select id="menuEffect">
                                         <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
-                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 기본 네온 글로우 발광 효과</option>
-                                        <option value="rainbow" ${menuSettings.effect === 'rainbow' ? 'selected' : ''}>🌈 화려한 무지개 네온 효과</option>
-                                        <option value="gold" ${menuSettings.effect === 'gold' ? 'selected' : ''}>🏆 고급 골드 메탈릭 효과</option>
-                                        <option value="cyber" ${menuSettings.effect === 'cyber' ? 'selected' : ''}>🧊 사이버틱 네온 블루 효과</option>
-                                        <option value="sunset" ${menuSettings.effect === 'sunset' ? 'selected' : ''}>🔥 불타는 썬셋 그라데이션 효과</option>
+                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 쨍하게 빛나는 네온 글로우</option>
+                                        <option value="rainbow" ${menuSettings.effect === 'rainbow' ? 'selected' : ''}>🌈 화려한 무지개 다채광 네온</option>
+                                        <option value="gold" ${menuSettings.effect === 'gold' ? 'selected' : ''}>🏆 고급 골드 메탈릭 입체감</option>
+                                        <option value="cyber" ${menuSettings.effect === 'cyber' ? 'selected' : ''}>🧊 사이버틱 네온 블루</option>
+                                        <option value="sunset" ${menuSettings.effect === 'sunset' ? 'selected' : ''}>🔥 강렬한 썬셋 불꽃 그라데이션</option>
                                         <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록</option>
                                         <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
                                     </select>
@@ -526,7 +526,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 메뉴판 오버레이 엔드포인트 (신규 이쁜 효과 적용)
+// 📋 메뉴판 오버레이 엔드포인트 (가시성이 확실하게 보이도록 개선된 효과 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -552,25 +552,27 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const scrollMode = menuSettings.scrollMode || 'page';
         const intervalSec = menuSettings.scrollInterval || 3;
         
+        // paint-order를 fill stroke로 설정하여 텍스트 안쪽 색상이 먼저 채워지고 외곽선이 바깥에 그려지도록 개선
         let extraStyle = `
             -webkit-text-stroke: ${bw} ${bc};
-            paint-order: stroke fill;
+            paint-order: fill stroke;
         `;
 
         if (effect === 'shadow') {
-            extraStyle += ` text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);`;
+            extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.95), 4px 4px 10px rgba(0, 0, 0, 0.8);`;
         } else if (effect === 'neon') {
-            extraStyle += ` text-shadow: 0 0 8px ${tc}, 0 0 16px ${tc};`;
+            // 네온 발광을 쨍하고 선명하게 확대
+            extraStyle += ` text-shadow: 0 0 5px #fff, 0 0 10px ${tc}, 0 0 20px ${tc}, 0 0 35px ${tc};`;
         } else if (effect === 'rainbow') {
-            extraStyle += ` text-shadow: 0 0 6px #ff0055, 0 0 12px #ff9900, 0 0 18px #33ccff;`;
+            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
         } else if (effect === 'gold') {
-            extraStyle += ` text-shadow: 0 0 5px #ffd700, 2px 2px 4px rgba(0,0,0,0.9), 4px 4px 10px rgba(184,134,11,0.6);`;
+            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.95), 5px 5px 12px rgba(184,134,11,0.8);`;
         } else if (effect === 'cyber') {
-            extraStyle += ` text-shadow: 0 0 8px #00ffff, 0 0 20px #0088ff, 2px 2px 4px rgba(0,0,0,0.9);`;
+            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #00ffff, 0 0 25px #0088ff, 2px 2px 5px rgba(0,0,0,0.95);`;
         } else if (effect === 'sunset') {
-            extraStyle += ` text-shadow: 0 0 8px #ff4500, 0 0 18px #ff1493, 2px 2px 5px rgba(0,0,0,0.9);`;
+            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #ff4500, 0 0 25px #ff1493, 2px 2px 5px rgba(0,0,0,0.95);`;
         } else if (effect === '3d') {
-            extraStyle += ` text-shadow: 2px 2px 0px #222222, 4px 4px 8px rgba(0,0,0,0.8);`;
+            extraStyle += ` text-shadow: 2px 2px 0px #111, 4px 4px 0px #000, 6px 6px 12px rgba(0,0,0,0.9);`;
         }
 
         res.send(`
