@@ -43,7 +43,9 @@ const userSchema = new mongoose.Schema({
         textColor: { type: String, default: '#ffffff' },
         fontSize: { type: String, default: '24px' },
         fontFamily: { type: String, default: 'Malgun Gothic' },
-        effect: { type: String, default: 'shadow' } // shadow, glow, none
+        effect: { type: String, default: 'none' }, // glow, none
+        borderColor: { type: String, default: '#000000' }, // 독립된 테두리 색상
+        borderWidth: { type: String, default: '2px' } // 독립된 테두리 두께
     }
 });
 
@@ -100,14 +102,16 @@ app.post('/api/register', async (req, res) => {
 // 메뉴판 설정 저장 API
 app.post('/api/settings/menu/:apiKey', async (req, res) => {
     try {
-        const { textColor, fontSize, fontFamily, effect } = req.body;
+        const { textColor, fontSize, fontFamily, effect, borderColor, borderWidth } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
                 'menuSettings.textColor': textColor,
                 'menuSettings.fontSize': fontSize,
                 'menuSettings.fontFamily': fontFamily,
-                'menuSettings.effect': effect
+                'menuSettings.effect': effect,
+                'menuSettings.borderColor': borderColor,
+                'menuSettings.borderWidth': borderWidth
             }},
             { new: true }
         );
@@ -138,7 +142,9 @@ app.post('/api/login', async (req, res) => {
             textColor: '#ffffff',
             fontSize: '24px',
             fontFamily: 'Malgun Gothic',
-            effect: 'shadow'
+            effect: 'none',
+            borderColor: '#000000',
+            borderWidth: '2px'
         };
 
         res.send(`
@@ -287,11 +293,11 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
-                    <!-- 📋 투명 깔끔 메뉴판 설정 탭 -->
+                    <!-- 📋 깔끔 투명 메뉴판 설정 탭 -->
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 [리액션명 가격] 형태로 깔끔하게 나열되는 OBS 브라우저 소스 주소입니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 [리액션명 금액] 형태로 나열되는 OBS 브라우저 소스 주소입니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -302,6 +308,14 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>글씨 색상</label>
                                     <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 색상</label>
+                                    <input type="color" id="menuBorderColor" value="${menuSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 두께 (예: 1px, 2px, 3px)</label>
+                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '2px'}">
                                 </div>
                                 <div class="form-group">
                                     <label>글씨 크기</label>
@@ -317,11 +331,10 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>외곽선 / 테두리 효과</label>
+                                    <label>추가 효과</label>
                                     <select id="menuEffect">
-                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>검은색 테두리 (가장 잘 보임)</option>
+                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>효과 없음 (테두리만 적용)</option>
                                         <option value="glow" ${menuSettings.effect === 'glow' ? 'selected' : ''}>네온 발광 효과</option>
-                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>효과 없음</option>
                                     </select>
                                 </div>
                                 <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
@@ -358,6 +371,8 @@ app.post('/api/login', async (req, res) => {
         async function saveMenuSettings() {
             const data = {
                 textColor: document.getElementById('menuTextColor').value,
+                borderColor: document.getElementById('menuBorderColor').value,
+                borderWidth: document.getElementById('menuBorderWidth').value,
                 fontSize: document.getElementById('menuFontSize').value,
                 fontFamily: document.getElementById('menuFontFamily').value,
                 effect: document.getElementById('menuEffect').value
@@ -391,7 +406,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 배경 없는 투명 깔끔 메뉴판 오버레이 엔드포인트
+// 📋 배경 없는 투명 메뉴판 오버레이 엔드포인트 (독립된 테두리 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -403,14 +418,28 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             textColor: '#ffffff',
             fontSize: '24px',
             fontFamily: 'Malgun Gothic',
-            effect: 'shadow'
+            effect: 'none',
+            borderColor: '#000000',
+            borderWidth: '2px'
         };
 
-        let textShadowStyle = 'none';
-        if (menuSettings.effect === 'shadow') {
-            textShadowStyle = '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 2px 4px rgba(0,0,0,0.8)';
-        } else if (menuSettings.effect === 'glow') {
-            textShadowStyle = `0 0 10px ${menuSettings.textColor}, 0 0 20px ${menuSettings.textColor}`;
+        const bw = menuSettings.borderWidth || '2px';
+        const bc = menuSettings.borderColor || '#000000';
+        
+        // 사방으로 테두리 픽셀을 뿌려 깔끔한 스트로크 효과 생성
+        let textShadowStyle = `
+            -${bw} -${bw} 0 ${bc},
+             ${bw} -${bw} 0 ${bc},
+            -${bw}  ${bw} 0 ${bc},
+             ${bw}  ${bw} 0 ${bc},
+             0 ${bw} 0 ${bc},
+             0 -${bw} 0 ${bc},
+            -${bw} 0 0 ${bc},
+             ${bw} 0 0 ${bc}
+        `;
+
+        if (menuSettings.effect === 'glow') {
+            textShadowStyle += `, 0 0 10px ${menuSettings.textColor}, 0 0 20px ${menuSettings.textColor}`;
         }
 
         res.send(`
@@ -443,9 +472,9 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             </head>
             <body>
                 <div class="menu-container">
-                    ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px; text-shadow:2px 2px 2px #000;">등록된 리액션이 없습니다.</div>' : ''}
+                    ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>' : ''}
                     ${reactions.map(r => `
-                        <div class="menu-row">${r.name} ${r.amount.toLocaleString()}원</div>
+                        <div class="menu-row">${r.name}&nbsp;${r.amount.toLocaleString()}원</div>
                     `).join('')}
                 </div>
             </body>
@@ -497,7 +526,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <div id="alert-container" style="display:none; color:white; font-size:50px; font-weight:bold; text-shadow:2px 2px 4px #000;">알림 테스트</div>
             <script>
                 const reactions = ${JSON.stringify(reactions)};
-                // ... 기존 오버레이 로직 유지 ...
             </script>
         </body>
         </html>
