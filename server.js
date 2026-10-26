@@ -35,17 +35,17 @@ const userSchema = new mongoose.Schema({
     apiKey: { type: String, required: true, unique: true },
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
-        duration: { type: Number, default: 5 },
+        duration: { type: Number, default: 10 },
         fontSize: { type: String, default: '7.5vh' },
         useImage: { type: Boolean, default: true }
     },
     menuSettings: {
         textColor: { type: String, default: '#ffffff' },
         fontSize: { type: String, default: '24px' },
-        fontFamily: { type: String, default: 'Malgun Gothic' },
+        fontFamily: { type: String, default: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif' },
         effect: { type: String, default: 'shadow' },
         borderColor: { type: String, default: '#000000' },
-        borderWidth: { type: String, default: '2px' },
+        borderWidth: { type: String, default: '1.5px' },
         scrollMode: { type: String, default: 'page' },
         scrollInterval: { type: Number, default: 3 }
     }
@@ -145,10 +145,10 @@ app.post('/api/login', async (req, res) => {
         const menuSettings = user.menuSettings || {
             textColor: '#ffffff',
             fontSize: '24px',
-            fontFamily: 'Malgun Gothic',
+            fontFamily: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif',
             effect: 'shadow',
             borderColor: '#000000',
-            borderWidth: '2px',
+            borderWidth: '1.5px',
             scrollMode: 'page',
             scrollInterval: 3
         };
@@ -305,7 +305,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">이쁜 효과들과 전환 방식을 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">세련된 폰트와 입체감 있는 효과를 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -322,8 +322,8 @@ app.post('/api/login', async (req, res) => {
                                     <input type="color" id="menuBorderColor" value="${menuSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
                                 </div>
                                 <div class="form-group">
-                                    <label>테두리(외곽선) 두께 (예: 1px, 2px, 3px)</label>
-                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '2px'}">
+                                    <label>테두리(외곽선) 두께 (예: 1px, 1.5px, 2px)</label>
+                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '1.5px'}">
                                 </div>
                                 <div class="form-group">
                                     <label>글씨 크기</label>
@@ -332,10 +332,10 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>글씨체 (폰트)</label>
                                     <select id="menuFontFamily">
-                                        <option value="Malgun Gothic" ${menuSettings.fontFamily === 'Malgun Gothic' ? 'selected' : ''}>맑은 고딕 (추천 굵은체)</option>
-                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial Black)</option>
-                                        <option value="Apple SD Gothic Neo, sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>애플 SD 산돌고딕</option>
-                                        <option value="Courier New, monospace" ${menuSettings.fontFamily.includes('Courier New') ? 'selected' : ''}>고정폭 폰트 (Courier)</option>
+                                        <option value="Apple SD Gothic Neo, 'Malgun Gothic', sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>✨ 애플 SD 산돌고딕 (세련된 모던)</option>
+                                        <option value="'Pretendard', sans-serif" ${menuSettings.fontFamily.includes('Pretendard') ? 'selected' : ''}>🌟 프리텐다드 (깔끔한 프리미엄)</option>
+                                        <option value="'Black Han Sans', sans-serif" ${menuSettings.fontFamily.includes('Black Han Sans') ? 'selected' : ''}>🔥 블랙한산스 (초특급 볼드)</option>
+                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial)</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -526,7 +526,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 메뉴판 오버레이 엔드포인트 (글씨 굵기를 900으로 대폭 강화하여 통통하고 묵직한 느낌 부여)
+// 📋 메뉴판 오버레이 엔드포인트
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -537,41 +537,41 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const menuSettings = user.menuSettings || {
             textColor: '#ffffff',
             fontSize: '24px',
-            fontFamily: 'Malgun Gothic',
+            fontFamily: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif',
             effect: 'shadow',
             borderColor: '#000000',
-            borderWidth: '2px',
+            borderWidth: '1.5px',
             scrollMode: 'page',
             scrollInterval: 3
         };
 
-        const bw = menuSettings.borderWidth || '2px';
+        const bw = menuSettings.borderWidth || '1.5px';
         const bc = menuSettings.borderColor || '#000000';
         const tc = menuSettings.textColor;
         const effect = menuSettings.effect;
         const scrollMode = menuSettings.scrollMode || 'page';
         const intervalSec = menuSettings.scrollInterval || 3;
         
-        // 텍스트 속은 깔끔하게 본래 색상(tc)으로 채우고, 외곽선과 그림자로 볼륨감/통통함 강화
         let extraStyle = `
             -webkit-text-stroke: ${bw} ${bc};
             paint-order: fill stroke;
+            -webkit-font-smoothing: antialiased;
         `;
 
         if (effect === 'shadow') {
-            extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.95), 4px 4px 10px rgba(0, 0, 0, 0.8);`;
+            extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 3px 3px 8px rgba(0, 0, 0, 0.6);`;
         } else if (effect === 'neon') {
-            extraStyle += ` text-shadow: 0 0 6px #ffffff, 0 0 14px ${tc}, 0 0 28px ${tc};`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 10px ${tc}, 0 0 20px ${tc};`;
         } else if (effect === 'rainbow') {
-            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 12px #ff0055, 0 0 24px #ff9900, 0 0 35px #33ccff;`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
         } else if (effect === 'gold') {
-            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #ffd700, 3px 3px 6px rgba(0,0,0,0.95), 6px 6px 15px rgba(184,134,11,0.8);`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9), 5px 5px 12px rgba(184,134,11,0.7);`;
         } else if (effect === 'cyber') {
-            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #00ffff, 0 0 30px #0088ff, 3px 3px 6px rgba(0,0,0,0.95);`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #00ffff, 0 0 25px #0088ff, 2px 2px 4px rgba(0,0,0,0.9);`;
         } else if (effect === 'sunset') {
-            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #ff4500, 0 0 30px #ff1493, 3px 3px 6px rgba(0,0,0,0.95);`;
+            extraStyle += ` text-shadow: 0 0 4px #ffffff, 0 0 12px #ff4500, 0 0 25px #ff1493, 2px 2px 4px rgba(0,0,0,0.9);`;
         } else if (effect === '3d') {
-            extraStyle += ` text-shadow: 2px 2px 0px #111111, 4px 4px 0px #000000, 6px 6px 12px rgba(0,0,0,0.9);`;
+            extraStyle += ` text-shadow: 2px 2px 0px #111111, 4px 4px 6px rgba(0,0,0,0.8);`;
         }
 
         res.send(`
@@ -580,48 +580,15 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             <head>
                 <meta charset="UTF-8">
                 <title>SelyPay Menu Overlay</title>
+                <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
                 <style>
-                    body {
-                        background: transparent !important;
-                        margin: 0;
-                        padding: 0;
-                        overflow: hidden;
-                        font-family: ${menuSettings.fontFamily};
-                        height: 100vh;
-                        width: 100vw;
-                    }
-                    #menu-container {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 10px;
-                        width: fit-content;
-                        padding: 10px;
-                    }
-                    .menu-row {
-                        color: ${tc};
-                        font-size: ${menuSettings.fontSize};
-                        font-weight: 900;
-                        ${extraStyle}
-                        white-space: nowrap;
-                    }
-                    @keyframes scrollTicker {
-                        0% { transform: translateY(0); }
-                        100% { transform: translateY(-50%); }
-                    }
-                    .ticker-wrapper {
-                        overflow: hidden;
-                        height: 100vh;
-                        width: 100vw;
-                        position: relative;
-                    }
-                    .ticker-content {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 10px;
-                        position: absolute;
-                        width: fit-content;
-                        padding: 10px;
-                    }
+                    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+                    body { background: transparent !important; margin: 0; padding: 0; overflow: hidden; font-family: ${menuSettings.fontFamily}; height: 100vh; width: 100vw; }
+                    #menu-container { display: flex; flex-direction: column; gap: 10px; width: fit-content; padding: 10px; }
+                    .menu-row { color: ${tc}; font-size: ${menuSettings.fontSize}; font-weight: 800; letter-spacing: -0.5px; ${extraStyle} white-space: nowrap; }
+                    @keyframes scrollTicker { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+                    .ticker-wrapper { overflow: hidden; height: 100vh; width: 100vw; position: relative; }
+                    .ticker-content { display: flex; flex-direction: column; gap: 10px; position: absolute; width: fit-content; padding: 10px; }
                 </style>
             </head>
             <body>
@@ -642,7 +609,6 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                         if (mode === 'ticker') {
                             app.className = 'ticker-wrapper';
                             app.innerHTML = '<div class="ticker-content">' + rowsHTML + rowsHTML + '</div>';
-                            
                             setTimeout(() => {
                                 const content = app.querySelector('.ticker-content');
                                 const totalHeight = content.scrollHeight / 2;
@@ -656,7 +622,6 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                             const container = document.getElementById('menu-container');
                             let pages = [];
                             let currentPageItems = [];
-
                             const measureDiv = document.createElement('div');
                             measureDiv.className = 'menu-row';
                             measureDiv.style.visibility = 'hidden';
@@ -669,11 +634,9 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                                 const maxH = window.innerHeight - 20;
                                 let currentH = 0;
                                 const gap = 10;
-
                                 reactions.forEach((r) => {
                                     measureDiv.innerHTML = r.name + '<span style="display:inline-block; width: 1.5em;"></span>' + r.amount.toLocaleString() + '원';
                                     const itemH = measureDiv.getBoundingClientRect().height;
-
                                     if (currentPageItems.length > 0 && (currentH + gap + itemH > maxH)) {
                                         pages.push(currentPageItems);
                                         currentPageItems = [r];
@@ -683,15 +646,11 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                                         currentH += (currentPageItems.length === 1 ? itemH : gap + itemH);
                                     }
                                 });
-                                if (currentPageItems.length > 0) {
-                                    pages.push(currentPageItems);
-                                }
+                                if (currentPageItems.length > 0) pages.push(currentPageItems);
                             }
 
                             buildPages();
-                            if (document.body.contains(measureDiv)) {
-                                document.body.removeChild(measureDiv);
-                            }
+                            if (document.body.contains(measureDiv)) document.body.removeChild(measureDiv);
 
                             let pageIndex = 0;
                             function renderPage() {
@@ -700,24 +659,19 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                                 container.innerHTML = items.map(r => 
                                     '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
                                 ).join('');
-
                                 pageIndex = (pageIndex + 1) % pages.length;
                             }
 
                             renderPage();
                             let timer = null;
-                            if (pages.length > 1) {
-                                timer = setInterval(renderPage, intervalTime);
-                            }
+                            if (pages.length > 1) timer = setInterval(renderPage, intervalTime);
 
                             window.addEventListener('resize', () => {
                                 if (timer) clearInterval(timer);
                                 buildPages();
                                 pageIndex = 0;
                                 renderPage();
-                                if (pages.length > 1) {
-                                    timer = setInterval(renderPage, intervalTime);
-                                }
+                                if (pages.length > 1) timer = setInterval(renderPage, intervalTime);
                             });
                         }
                     }
@@ -796,7 +750,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면
+// 스트리머별 OBS 알림 오버레이 화면 (음악 길이 연동 또는 기본 10초 뒤 자동 닫힘 완벽 적용)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -813,11 +767,11 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Alert Overlay</title>
             <style>
-                body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
+                body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
-                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
-                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: break-word; line-height: 1.2; }
+                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: break-word; line-height: 1.2; }
             </style>
         </head>
         <body>
@@ -884,6 +838,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }
                 line1.innerText = firstText;
                 line2.innerText = secondText;
+                
                 const matchedReaction = reactions.find(r => r.amount === amount);
                 if (useImageSetting) {
                     if (matchedReaction && matchedReaction.imageUrl) {
@@ -896,27 +851,58 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 } else {
                     imgElement.style.display = 'none';
                 }
+                
                 const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
                 const sound = new Audio(audioSrc);
                 container.style.display = 'flex';
                 sound.currentTime = 0;
-                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+                
+                let timerCleared = false;
+                let hideTimer = null;
+
+                function closeAlert() {
+                    if (timerCleared) return;
+                    timerCleared = true;
+                    if (hideTimer) clearTimeout(hideTimer);
+                    try { sound.pause(); } catch(e){}
+                    container.style.display = 'none';
+                    isPlaying = false;
+                    processQueue();
+                }
+
+                // 리액션 오디오가 있으면 음악 길이만큼 떠 있다가 종료, 기본 사운드나 없으면 10초 뒤 무조건 닫힘
+                const hasCustomAudio = (matchedReaction && matchedReaction.audioUrl);
+
+                sound.onloadedmetadata = () => {
+                    if (hasCustomAudio && sound.duration && !isNaN(sound.duration) && sound.duration > 0) {
+                        hideTimer = setTimeout(closeAlert, sound.duration * 1000);
+                    } else {
+                        hideTimer = setTimeout(closeAlert, 10000); // 기본 10초
+                    }
+                };
 
                 sound.onended = () => {
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue();
-                    }, 3500);
+                    closeAlert();
                 };
+
                 sound.onerror = () => {
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                        isPlaying = false;
-                        processQueue();
-                    }, 3500);
+                    closeAlert();
                 };
+
+                // 메타데이터 로드 실패 대비 안전장치 (10초 후 또는 오디오 길이 초과 시 무조건 종료)
+                setTimeout(() => {
+                    if (!timerCleared && (!hasCustomAudio || isNaN(sound.duration))) {
+                        hideTimer = setTimeout(closeAlert, 10000);
+                    }
+                }, 200);
+
+                sound.play().catch(e => {
+                    console.log("사운드 재생 실패:", e);
+                    // 브라우저 정책 등으로 소리가 안 나도 10초 후엔 반드시 꺼지도록 보장
+                    hideTimer = setTimeout(closeAlert, 10000);
+                });
             }
+
             setInterval(checkNewDonation, 1000);
             setInterval(checkManualPlay, 1000);
             </script>
