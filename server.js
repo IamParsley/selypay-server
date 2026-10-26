@@ -172,4 +172,972 @@ app.post('/api/login', async (req, res) => {
         .avatar-btn { width: 36px; height: 36px; border-radius: 50%; background-color: #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 2px solid #52b735; }
         .profile-dropdown { display: none; position: absolute; top: 48px; right: 0; width: 220px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 100; overflow: hidden; }
         .profile-dropdown.active { display: block; }
-        .dropdown-header { padding: 14px 18px; border-bottom: 1px solid #f1f5
+        .dropdown-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; background-color: #f8fafc; }
+        .dropdown-header .label { font-size: 11px; color: #94a3b8; font-weight: 700; margin-bottom: 2px; }
+        .dropdown-header .username { font-size: 15px; font-weight: 800; color: #0f172a; }
+        .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 12px 18px; text-decoration: none; color: #334155; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .dropdown-item:hover { background-color: #f8fafc; }
+        .dropdown-item.logout { color: #ef4444; border-top: 1px solid #f1f5f9; }
+        .dashboard-container { max-width: 1280px; margin: 30px auto; padding: 0 20px; }
+        .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; padding: 30px; }
+        .dashboard-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 30px; }
+        .layout-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; min-height: 600px; }
+        .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        .menu-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; border: none; background: transparent; border-radius: 12px; font-size: 14px; font-weight: 700; color: #475569; cursor: pointer; text-align: left; }
+        .menu-btn.active { background-color: #e8f7ec; color: #16a34a; }
+        .sidebar-footer { background: #f8fafc; padding: 16px; border-radius: 12px; margin-top: auto; text-align: center; }
+        .sidebar-footer .status { font-size: 11px; color: #16a34a; font-weight: 700; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; }
+        .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .reaction-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+        .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; background: #fafafa; }
+        .reaction-thumb { width: 80px; height: 80px; border-radius: 12px; object-fit: contain; margin-bottom: 12px; background: #eee; }
+        .btn-green { background-color: #52b735; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+        
+        /* 팝업 모달 스타일 */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 16px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
+        .close-btn { position: absolute; right: 20px; top: 20px; font-size: 24px; font-weight: bold; cursor: pointer; color: #888; }
+        .close-btn:hover { color: #000; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo"><span class="logo-icon"></span>Slenation</a>
+        <ul class="nav-links">
+            <li><a href="#about">서비스 소개</a></li>
+            <li><a href="#guide">사용 방법</a></li>
+            <li><a href="#patch">패치 노트</a></li>
+            <li><a href="#support">고객센터</a></li>
+        </ul>
+        <div class="user-profile-menu" onclick="toggleDropdown()">
+            <div class="avatar-btn">🤖</div>
+            <div class="profile-dropdown" id="profileDropdown">
+                <div class="dropdown-header">
+                    <div class="label">접속 계정</div>
+                    <div class="username">${user.username}</div>
+                </div>
+                <a href="#" class="dropdown-item" onclick="openReactionModal()">🐱 리액션 추가 및 관리</a>
+                <a href="#" class="dropdown-item" onclick="showTab('tab-menu')">📋 메뉴판 오버레이 설정</a>
+                <a href="/login" class="dropdown-item logout">🚪 로그아웃</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="dashboard-card">
+            <div class="dashboard-title"><span class="logo-icon" style="width:22px; height:22px;"></span> Slenation Dashboard</div>
+            
+            <div class="layout-grid">
+                <div class="sidebar">
+                    <ul class="sidebar-menu">
+                        <li><button class="menu-btn active" onclick="showTab('tab-ranking', this)">📊 실시간 후원 랭킹</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-logs', this)">💰 후원 내역</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-reactions', this)">🐱 리액션 설정</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-menu', this)">📋 메뉴판 오버레이</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-account', this)">⚙️ 계정 설정</button></li>
+                    </ul>
+                    <div class="sidebar-footer">
+                        <strong style="font-size:14px; color:#0f172a;">Slenation <span style="font-size:11px; color:#94a3b8;">v1.0</span></strong>
+                        <div class="status">● 정상 이용 중 (앱 연동 수신)</div>
+                    </div>
+                </div>
+
+                <div class="main-content">
+                    <!-- 1. 랭킹 탭 -->
+                    <div id="tab-ranking" class="tab-content active">
+                        <div class="content-grid">
+                            <div class="card-panel">
+                                <div class="card-panel-title">실시간 후원 알림 오버레이</div>
+                                <div class="overlay-box">
+                                    <span>https://${req.get('host')}/overlay/${user.apiKey}</span>
+                                    <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/overlay/${user.apiKey}')">복사</button>
+                                </div>
+                            </div>
+                            <div class="card-panel">
+                                <div class="card-panel-title">실시간 후원 랭킹 오버레이</div>
+                                <div class="overlay-box">
+                                    <span>https://${req.get('host')}/ranking-overlay/${user.apiKey}</span>
+                                    <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/ranking-overlay/${user.apiKey}')">복사</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 후원 내역 탭 -->
+                    <div id="tab-logs" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">모든 후원 내역 아카이브</div>
+                            <div style="color:#94a3b8; font-size:14px; text-align:center; padding:80px 0;">수신된 후원 내역이 없습니다.</div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 리액션 설정 탭 -->
+                    <div id="tab-reactions" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">
+                                📋 등록된 리액션 목록 (총 <span id="reactionCount">${reactions.length}</span>개)
+                                <button type="button" class="btn-green" onclick="openReactionModal()" style="font-size:13px;">+ 새 리액션 추가 / 관리하기</button>
+                            </div>
+                            <div class="reaction-cards-grid" id="reactionGridContainer">
+                                ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:span 3; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>' : ''}
+                                ${reactions.map(r => `
+                                    <div class="reaction-item-card">
+                                        <img src="${r.imageUrl && r.imageUrl.startsWith('http') ? r.imageUrl : '/alerticon.gif'}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
+                                        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px;">${r.name}</div>
+                                        <div style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:4px;">${r.amount.toLocaleString()}원 일치</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 메뉴판 오버레이 설정 탭 -->
+                    <div id="tab-menu" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">전환 방식(페이지 전환 또는 스크롤 순환)과 노출 시간을 설정할 수 있습니다.</p>
+                            
+                            <div class="overlay-box">
+                                <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/menu-overlay/${user.apiKey}')">주소 복사</button>
+                            </div>
+
+                            <form id="menuSettingsForm" style="margin-top:20px;">
+                                <div class="form-group">
+                                    <label>글씨 색상</label>
+                                    <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 색상</label>
+                                    <input type="color" id="menuBorderColor" value="${menuSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>테두리(외곽선) 두께 (예: 1px, 2px, 3px)</label>
+                                    <input type="text" id="menuBorderWidth" value="${menuSettings.borderWidth || '2px'}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 크기</label>
+                                    <input type="text" id="menuFontSize" value="${menuSettings.fontSize}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨체 (폰트)</label>
+                                    <select id="menuFontFamily">
+                                        <option value="Malgun Gothic" ${menuSettings.fontFamily === 'Malgun Gothic' ? 'selected' : ''}>맑은 고딕</option>
+                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial)</option>
+                                        <option value="Apple SD Gothic Neo, sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>애플 SD 산돌고딕</option>
+                                        <option value="Courier New, monospace" ${menuSettings.fontFamily.includes('Courier New') ? 'selected' : ''}>고정폭 폰트 (Courier)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>고품질 시각 효과 선택</label>
+                                    <select id="menuEffect">
+                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
+                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 네온 글로우 발광 효과</option>
+                                        <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록</option>
+                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>순환 방식 선택</label>
+                                    <select id="menuScrollMode">
+                                        <option value="page" ${menuSettings.scrollMode === 'page' ? 'selected' : ''}>📄 페이지 단위 전환 (정해진 시간마다 끊어 넘김)</option>
+                                        <option value="ticker" ${menuSettings.scrollMode === 'ticker' ? 'selected' : ''}>🔄 스크롤 순환 (위로 부드럽게 무한 롤링)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>페이지 전환 시간 (초) - [페이지 모드 전용]</label>
+                                    <input type="number" id="menuScrollInterval" min="1" max="30" value="${menuSettings.scrollInterval || 3}">
+                                </div>
+                                <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 5. 계정 설정 탭 -->
+                    <div id="tab-account" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
+                            <div class="overlay-box">
+                                <span>${user.apiKey}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${user.apiKey}')">키 복사</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🐱 리액션 추가 및 관리 팝업 모달 (바깥 클릭 방지 적용) -->
+    <div id="reactionModal" class="modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="closeReactionModal()">&times;</span>
+            <h3 style="margin-bottom: 20px;">🎨 신규 커스텀 리액션 등록</h3>
+            <form id="reactionForm">
+                <div class="form-group"><label>리액션 이름</label><input type="text" id="modal-name" placeholder="예: 폭탄 리액션" required></div>
+                <div class="form-group"><label>특정 후원 금액 (원)</label><input type="number" id="modal-amount" placeholder="예: 9999" required></div>
+                <div class="form-group"><label>이미지 파일 선택 (PNG, JPG, GIF)</label><input type="file" id="modal-imageFile" accept="image/*"></div>
+                <div class="form-group"><label>오디오 파일 선택 (MP3, WAV 등)</label><input type="file" id="modal-audioFile" accept="audio/*"></div>
+                <button type="button" id="modalUploadBtn" class="btn-green" style="width:100%; padding:10px; margin-top:10px;">리액션 업로드 및 등록</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleDropdown() { document.getElementById('profileDropdown').classList.toggle('active'); }
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(btn) btn.classList.add('active');
+        }
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('클립보드에 복사되었습니다!');
+        }
+        
+        // 팝업 모달 제어 함수
+        function openReactionModal() {
+            document.getElementById('reactionModal').style.display = 'flex';
+            document.getElementById('profileDropdown').classList.remove('active');
+        }
+        function closeReactionModal() {
+            document.getElementById('reactionModal').style.display = 'none';
+        }
+
+        // 모달 내 리액션 업로드 처리 (새로고침 없이 비동기 추가 및 탭 유지)
+        document.getElementById('modalUploadBtn').addEventListener('click', async () => {
+            const name = document.getElementById('modal-name').value;
+            const amount = document.getElementById('modal-amount').value;
+            const imageInput = document.getElementById('modal-imageFile').files[0];
+            const audioInput = document.getElementById('modal-audioFile').files[0];
+            
+            if (!name || !amount) { alert('리액션 이름과 금액을 입력해주세요.'); return; }
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('amount', amount);
+            if (imageInput) formData.append('image', imageInput);
+            if (audioInput) formData.append('audio', audioInput);
+            
+            const btn = document.getElementById('modalUploadBtn');
+            btn.innerText = '업로드 중...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/reactions/' + '${user.apiKey}', { method: 'POST', body: formData });
+                const result = await res.json();
+                if (result.success) { 
+                    alert('리액션이 성공적으로 등록되었습니다!'); 
+                    document.getElementById('reactionForm').reset(); 
+                    closeReactionModal();
+                    
+                    // 새로고침 없이 리액션 목록 비동기 갱신
+                    fetchReactionsAndRefreshUI();
+                } else { 
+                    alert('등록 실패: ' + result.error); 
+                }
+            } catch (err) { 
+                console.error(err); 
+                alert('업로드 중 오류가 발생했습니다.'); 
+            } finally { 
+                btn.innerText = '리액션 업로드 및 등록'; 
+                btn.disabled = false; 
+            }
+        });
+
+        // 리액션 목록을 비동기로 다시 불러와 화면(대시보드 리액션 탭)만 갱신
+        async function fetchReactionsAndRefreshUI() {
+            try {
+                const res = await fetch('/api/reactions/' + '${user.apiKey}');
+                const reactions = await res.json();
+                
+                document.getElementById('reactionCount').innerText = reactions.length;
+                const container = document.getElementById('reactionGridContainer');
+                container.innerHTML = '';
+
+                if (reactions.length === 0) {
+                    container.innerHTML = '<div style="color:#94a3b8; grid-column:span 3; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>';
+                    return;
+                }
+
+                reactions.forEach(r => {
+                    const imgSrc = r.imageUrl && r.imageUrl.startsWith('http') ? r.imageUrl : '/alerticon.gif';
+                    const card = document.createElement('div');
+                    card.className = 'reaction-item-card';
+                    card.innerHTML = \`
+                        <img src="\${imgSrc}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
+                        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px;">\${r.name}</div>
+                        <div style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:4px;">\${r.amount.toLocaleString()}원 일치</div>
+                    \`;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                console.error("리액션 목록 갱신 실패:", e);
+            }
+        }
+
+        async function saveMenuSettings() {
+            const data = {
+                textColor: document.getElementById('menuTextColor').value,
+                borderColor: document.getElementById('menuBorderColor').value,
+                borderWidth: document.getElementById('menuBorderWidth').value,
+                fontSize: document.getElementById('menuFontSize').value,
+                fontFamily: document.getElementById('menuFontFamily').value,
+                effect: document.getElementById('menuEffect').value,
+                scrollMode: document.getElementById('menuScrollMode').value,
+                scrollInterval: document.getElementById('menuScrollInterval').value
+            };
+            try {
+                const res = await fetch('/api/settings/menu/${user.apiKey}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if(result.success) alert('메뉴판 설정이 성공적으로 저장되었습니다!');
+                else alert('저장 실패');
+            } catch(e) {
+                console.error(e);
+                alert('서버 통신 오류');
+            }
+        }
+        window.onclick = function(e) {
+            if (!e.target.closest('.user-profile-menu')) {
+                document.getElementById('profileDropdown').classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
+        `);
+    } catch (e) {
+        console.error("로그인 에러 발생:", e);
+        res.status(500).send('Server Error: ' + e.message);
+    }
+});
+
+// 📋 메뉴판 오버레이 엔드포인트
+app.get('/menu-overlay/:apiKey', async (req, res) => {
+    try {
+        const { apiKey } = req.params;
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(404).send('Streamer not found');
+
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        const menuSettings = user.menuSettings || {
+            textColor: '#ffffff',
+            fontSize: '24px',
+            fontFamily: 'Malgun Gothic',
+            effect: 'shadow',
+            borderColor: '#000000',
+            borderWidth: '2px',
+            scrollMode: 'page',
+            scrollInterval: 3
+        };
+
+        const bw = menuSettings.borderWidth || '2px';
+        const bc = menuSettings.borderColor || '#000000';
+        const tc = menuSettings.textColor;
+        const scrollMode = menuSettings.scrollMode || 'page';
+        const intervalSec = menuSettings.scrollInterval || 3;
+        
+        let extraStyle = `
+            -webkit-text-stroke: ${bw} ${bc};
+            paint-order: stroke fill;
+        `;
+
+        if (menuSettings.effect === 'shadow') {
+            extraStyle += ` text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);`;
+        } else if (menuSettings.effect === 'neon') {
+            extraStyle += ` text-shadow: 0 0 8px ${tc}, 0 0 16px ${tc};`;
+        } else if (menuSettings.effect === '3d') {
+            extraStyle += ` text-shadow: 2px 2px 0px #222222, 4px 4px 8px rgba(0,0,0,0.8);`;
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>SelyPay Menu Overlay</title>
+                <style>
+                    body {
+                        background: transparent !important;
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                        font-family: ${menuSettings.fontFamily};
+                        height: 100vh;
+                        width: 100vw;
+                    }
+                    #menu-container {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        width: fit-content;
+                        padding: 10px;
+                    }
+                    .menu-row {
+                        color: ${tc};
+                        font-size: ${menuSettings.fontSize};
+                        font-weight: 800;
+                        ${extraStyle}
+                        white-space: nowrap;
+                    }
+                    @keyframes scrollTicker {
+                        0% { transform: translateY(0); }
+                        100% { transform: translateY(-50%); }
+                    }
+                    .ticker-wrapper {
+                        overflow: hidden;
+                        height: 100vh;
+                        width: 100vw;
+                        position: relative;
+                    }
+                    .ticker-content {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        position: absolute;
+                        width: fit-content;
+                        padding: 10px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div id="app"></div>
+                <script>
+                    const reactions = ${JSON.stringify(reactions)};
+                    const mode = "${scrollMode}";
+                    const intervalTime = ${intervalSec} * 1000;
+                    const app = document.getElementById('app');
+
+                    if (reactions.length === 0) {
+                        app.innerHTML = '<div style="padding:10px;" class="menu-row" style="-webkit-text-stroke:0px; color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>';
+                    } else {
+                        const rowsHTML = reactions.map(r => 
+                            '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                        ).join('');
+
+                        if (mode === 'ticker') {
+                            app.className = 'ticker-wrapper';
+                            app.innerHTML = '<div class="ticker-content">' + rowsHTML + rowsHTML + '</div>';
+                            
+                            setTimeout(() => {
+                                const content = app.querySelector('.ticker-content');
+                                const totalHeight = content.scrollHeight / 2;
+                                if (totalHeight > window.innerHeight) {
+                                    const duration = totalHeight / 35;
+                                    content.style.animation = 'scrollTicker ' + duration + 's linear infinite';
+                                }
+                            }, 100);
+                        } else {
+                            app.innerHTML = '<div id="menu-container"></div>';
+                            const container = document.getElementById('menu-container');
+                            let pages = [];
+                            let currentPageItems = [];
+
+                            const measureDiv = document.createElement('div');
+                            measureDiv.className = 'menu-row';
+                            measureDiv.style.visibility = 'hidden';
+                            measureDiv.style.position = 'absolute';
+                            document.body.appendChild(measureDiv);
+
+                            function buildPages() {
+                                pages = [];
+                                currentPageItems = [];
+                                const maxH = window.innerHeight - 20;
+                                let currentH = 0;
+                                const gap = 10;
+
+                                reactions.forEach((r) => {
+                                    measureDiv.innerHTML = r.name + '<span style="display:inline-block; width: 1.5em;"></span>' + r.amount.toLocaleString() + '원';
+                                    const itemH = measureDiv.getBoundingClientRect().height;
+
+                                    if (currentPageItems.length > 0 && (currentH + gap + itemH > maxH)) {
+                                        pages.push(currentPageItems);
+                                        currentPageItems = [r];
+                                        currentH = itemH;
+                                    } else {
+                                        currentPageItems.push(r);
+                                        currentH += (currentPageItems.length === 1 ? itemH : gap + itemH);
+                                    }
+                                });
+                                if (currentPageItems.length > 0) {
+                                    pages.push(currentPageItems);
+                                }
+                            }
+
+                            buildPages();
+                            if (document.body.contains(measureDiv)) {
+                                document.body.removeChild(measureDiv);
+                            }
+
+                            let pageIndex = 0;
+                            function renderPage() {
+                                if (pages.length === 0) return;
+                                const items = pages[pageIndex];
+                                container.innerHTML = items.map(r => 
+                                    '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                                ).join('');
+
+                                pageIndex = (pageIndex + 1) % pages.length;
+                            }
+
+                            renderPage();
+                            let timer = null;
+                            if (pages.length > 1) {
+                                timer = setInterval(renderPage, intervalTime);
+                            }
+
+                            window.addEventListener('resize', () => {
+                                if (timer) clearInterval(timer);
+                                buildPages();
+                                pageIndex = 0;
+                                renderPage();
+                                if (pages.length > 1) {
+                                    timer = setInterval(renderPage, intervalTime);
+                                }
+                            });
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Menu Overlay Error');
+    }
+});
+
+// 회원가입 페이지 라우트
+app.get('/register', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>스트리머 회원가입</title></head>
+        <body style="font-family:sans-serif; background:#f4f7f6; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+            <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:300px;">
+                <h2>스트리머 회원가입</h2>
+                <form action="/api/register" method="POST">
+                    <div style="margin-bottom:15px;">
+                        <label>아이디</label><br>
+                        <input type="text" name="username" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>비밀번호</label><br>
+                        <input type="password" name="password" style="width:100%; padding:8px; margin-top:5px;" required>
+                    </div>
+                    <button type="submit" style="width:100%; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">가입하기</button>
+                </form>
+                <p style="text-align:center; margin-top:15px;"><a href="/login">이미 계정이 있으신가요? 로그인</a></p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 로그인 페이지 라우트
+app.get('/login', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <title>슬네이션 - 스트리머 로그인</title>
+            <style>
+                * { box-sizing: border-box; }
+                body { margin: 0; padding: 0; height: 100vh; background: #f0f4f8; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
+                .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+                .input-group { margin-bottom: 15px; text-align: left; }
+                .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+                .input-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; }
+                .login-btn { width: 100%; padding: 12px; background: #52b735; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="login-box">
+                <h2>스트리머 로그인</h2>
+                <form action="/api/login" method="POST" style="margin-top: 20px;">
+                    <div class="input-group">
+                        <label>아이디</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="input-group">
+                        <label>비밀번호</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <button type="submit" class="login-btn">로그인</button>
+                </form>
+                <p style="margin-top: 15px; font-size: 13px;"><a href="/register">계정이 없으신가요? 회원가입</a></p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// 스트리머별 OBS 알림 오버레이 화면
+app.get('/overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+
+    const settings = user.alertSettings || {};
+    const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+    const useImage = settings.useImage !== undefined ? settings.useImage : true;
+
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Alert Overlay</title>
+            <style>
+                body { background: transparent; margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
+                #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
+                #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
+                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 4px 4px 8px rgba(0, 0, 0, 0.9); width: 90vw; word-break: break-word; line-height: 1.2; }
+            </style>
+        </head>
+        <body>
+            <div id="alert-container">
+                <img id="alert-image" src="" alt="리액션 이미지" onerror="this.src='/alerticon.gif'">
+                <div class="text-box" id="alert-line1"></div>
+                <div class="text-box" id="alert-line2"></div>
+            </div>
+            <script>
+            const reactions = ${JSON.stringify(reactions)};
+            const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
+            const defaultImage = "/alerticon.gif";
+            const useImageSetting = ${useImage};
+            let lastCheckedTime = "";
+            const alertQueue = [];
+            let isPlaying = false;
+
+            async function checkNewDonation() {
+                try {
+                    const response = await fetch('/api/logs/' + '${apiKey}');
+                    const logs = await response.json();
+                    if (logs.length > 0) {
+                        const latest = logs[0];
+                        if (latest.datetime !== lastCheckedTime) {
+                            lastCheckedTime = latest.datetime;
+                            alertQueue.push(latest);
+                            processQueue();
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function checkManualPlay() {
+                try {
+                    const response = await fetch('/api/manual-play/' + '${apiKey}');
+                    const items = await response.json();
+                    if (items && items.length > 0) {
+                        items.forEach(item => { alertQueue.push(item); });
+                        processQueue();
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            function processQueue() {
+                if (isPlaying || alertQueue.length === 0) return;
+                isPlaying = true;
+                const donation = alertQueue.shift();
+                showAlert(donation);
+            }
+
+            function showAlert(donation) {
+                const container = document.getElementById('alert-container');
+                const imgElement = document.getElementById('alert-image');
+                const line1 = document.getElementById('alert-line1');
+                const line2 = document.getElementById('alert-line2');
+                const message = donation.message;
+                const amount = donation.amount || 0;
+                let firstText = message;
+                let secondText = "";
+                const newlineIdx = message.indexOf('\\n');
+                if (newlineIdx !== -1) {
+                    firstText = message.substring(0, newlineIdx);
+                    secondText = message.substring(newlineIdx + 1);
+                }
+                line1.innerText = firstText;
+                line2.innerText = secondText;
+                const matchedReaction = reactions.find(r => r.amount === amount);
+                if (useImageSetting) {
+                    if (matchedReaction && matchedReaction.imageUrl) {
+                        imgElement.src = matchedReaction.imageUrl;
+                        imgElement.style.display = 'block';
+                    } else {
+                        imgElement.src = defaultImage;
+                        imgElement.style.display = 'block';
+                    }
+                } else {
+                    imgElement.style.display = 'none';
+                }
+                const audioSrc = (matchedReaction && matchedReaction.audioUrl) ? matchedReaction.audioUrl : defaultSound;
+                const sound = new Audio(audioSrc);
+                container.style.display = 'flex';
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("사운드 재생 실패:", e));
+
+                sound.onended = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+                sound.onerror = () => {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                        isPlaying = false;
+                        processQueue();
+                    }, 3500);
+                };
+            }
+            setInterval(checkNewDonation, 1000);
+            setInterval(checkManualPlay, 1000);
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// 방송용 실시간 랭킹 OBS 오버레이 화면
+app.get('/ranking-overlay/:apiKey', async (req, res) => {
+    const { apiKey } = req.params;
+    const user = await User.findOne({ apiKey });
+    if (!user) return res.status(404).send('Streamer not found');
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SelyPay Ranking Overlay</title>
+            <style>
+                body { background-color: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
+                .ranking-board { background: rgba(0, 0, 0, 0.75); color: white; padding: 20px; border-radius: 10px; width: fit-content; min-width: 250px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+                h3 { margin: 0 0 15px 0; font-size: 18px; text-align: center; color: #f1c40f; }
+                .rank-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-size: 15px; }
+                .rank-item:last-child { border-bottom: none; }
+                .name { font-weight: bold; }
+                .amount { color: #ffffff; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="ranking-board">
+                <h3>🏆 오늘의 후원 랭킹</h3>
+                <div id="ranking-content">불러오는 중...</div>
+            </div>
+            <script>
+                async function fetchOverlayRanking() {
+                    try {
+                        const response = await fetch('/api/ranking/' + '${apiKey}');
+                        const ranking = await response.json();
+                        const container = document.getElementById('ranking-content');
+                        container.innerHTML = '';
+                        if (!ranking || ranking.length === 0) {
+                            container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">오늘 후원 내역이 없습니다.</div>';
+                            return;
+                        }
+                        ranking.forEach((item, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'rank-item';
+                            div.innerHTML = '<span class="name">' + (index + 1) + '. ' + item._id + '</span><span class="amount">' + item.totalamount.toLocaleString() + '원</span>';
+                            container.appendChild(div);
+                        });
+                    } catch (e) { console.error(e); }
+                }
+                fetchOverlayRanking();
+                setInterval(fetchOverlayRanking, 5000);
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// 기타 API 라우트들
+app.get('/api/logs/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const logs = await Donation.find({ streamerId: user._id }).sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/ranking/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const todayKey = getKSTDateKey();
+        const todayDonations = await Donation.find(
+            { streamerId: user._id, dateKey: todayKey },
+            { nickname: 1, amount: 1, timestamp: 1 }
+        ).sort({ timestamp: 1 });
+
+        const rankingMap = {};
+        todayDonations.forEach(d => {
+            if (d.nickname === '테스트후원알림') return;
+            let cleanName = d.nickname.trim();
+            if (cleanName.endsWith("님")) cleanName = cleanName.slice(0, -1).trim();
+            if (!rankingMap[cleanName]) {
+                rankingMap[cleanName] = { totalamount: 0, count: 0, firstDonationTime: d.timestamp };
+            }
+            rankingMap[cleanName].totalamount += d.amount;
+            rankingMap[cleanName].count += 1;
+        });
+
+        const rankingList = Object.keys(rankingMap).map(name => ({
+            _id: name,
+            totalamount: rankingMap[name].totalamount,
+            count: rankingMap[name].count,
+            firstDonationTime: rankingMap[name].firstDonationTime
+        }));
+
+        rankingList.sort((a, b) => {
+            if (b.totalamount !== a.totalamount) return b.totalamount - a.totalamount;
+            return new Date(a.firstDonationTime) - new Date(b.firstDonationTime);
+        });
+
+        res.json(rankingList.slice(0, 5));
+    } catch (e) {
+        console.error(e);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/reactions/:apiKey', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json([]);
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        res.json(reactions);
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
+app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        const { name, amount } = req.body;
+        let imageUrl = "";
+        let audioUrl = "";
+
+        const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
+        const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
+        const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'reactions';
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        if (req.files && req.files['image']) {
+            const file = req.files['image'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+            const { error: imgError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+            if (imgError) throw imgError;
+            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
+            imageUrl = imgPublic.publicUrl;
+        }
+
+        if (req.files && req.files['audio']) {
+            const file = req.files['audio'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+            const { error: audioError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+            if (audioError) throw audioError;
+            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
+            audioUrl = audioPublic.publicUrl;
+        }
+
+        const newReaction = new Reaction({ streamerId: user._id, name: name || "기본 리액션", amount: Number(amount), imageUrl, audioUrl });
+        await newReaction.save();
+        res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
+    }
+});
+
+app.post('/api/notification', async (req, res) => {
+    const { apiKey, message } = req.body;
+    if (!apiKey || !message) return res.status(400).json({ success: false, error: 'API Key or Message is missing' });
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(401).json({ success: false, error: 'Invalid API Key' });
+
+        let amount = 0;
+        const amountMatch = message.match(/([0-9,]+)\s*원/);
+        if (amountMatch) {
+            const parsed = parseInt(amountMatch[1].replace(/,/g, ''), 10);
+            if (!isNaN(parsed)) amount = parsed;
+        }
+
+        let nickname = "익명";
+        if (message.includes("님")) nickname = message.split("님")[0].trim();
+
+        const donationData = new Donation({
+            streamerId: user._id,
+            nickname,
+            amount, 
+            message, 
+            datetime: getKSTDateTime(),
+            dateKey: getKSTDateKey()
+        });
+
+        await donationData.save();
+        res.status(200).json({ success: true, data: donationData });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+const manualPlayStore = {};
+app.post('/api/play/:apiKey/:donationId', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        const donation = await Donation.findOne({ _id: req.params.donationId, streamerId: user._id });
+        if (!donation) return res.status(404).json({ success: false, error: 'Donation not found' });
+
+        if (!manualPlayStore[user.apiKey]) manualPlayStore[user.apiKey] = [];
+        manualPlayStore[user.apiKey].push(donation.toObject());
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+app.get('/api/manual-play/:apiKey', async (req, res) => {
+    const apiKey = req.params.apiKey;
+    if (manualPlayStore[apiKey] && manualPlayStore[apiKey].length > 0) {
+        const items = [...manualPlayStore[apiKey]];
+        manualPlayStore[apiKey] = [];
+        res.json(items);
+    } else {
+        res.json([]);
+    }
+});
+
+// 서버 구동
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
