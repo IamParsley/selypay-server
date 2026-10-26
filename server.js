@@ -43,9 +43,11 @@ const userSchema = new mongoose.Schema({
         textColor: { type: String, default: '#ffffff' },
         fontSize: { type: String, default: '24px' },
         fontFamily: { type: String, default: 'Malgun Gothic' },
-        effect: { type: String, default: 'shadow' }, // shadow, neon, 3d, none
+        effect: { type: String, default: 'shadow' },
         borderColor: { type: String, default: '#000000' },
-        borderWidth: { type: String, default: '2px' }
+        borderWidth: { type: String, default: '2px' },
+        scrollMode: { type: String, default: 'page' }, // page (페이지 전환), ticker (스크롤 순환)
+        scrollInterval: { type: Number, default: 3 } // 페이지 전환 시간 (초)
     }
 });
 
@@ -102,7 +104,7 @@ app.post('/api/register', async (req, res) => {
 // 메뉴판 설정 저장 API
 app.post('/api/settings/menu/:apiKey', async (req, res) => {
     try {
-        const { textColor, fontSize, fontFamily, effect, borderColor, borderWidth } = req.body;
+        const { textColor, fontSize, fontFamily, effect, borderColor, borderWidth, scrollMode, scrollInterval } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
@@ -111,7 +113,9 @@ app.post('/api/settings/menu/:apiKey', async (req, res) => {
                 'menuSettings.fontFamily': fontFamily,
                 'menuSettings.effect': effect,
                 'menuSettings.borderColor': borderColor,
-                'menuSettings.borderWidth': borderWidth
+                'menuSettings.borderWidth': borderWidth,
+                'menuSettings.scrollMode': scrollMode,
+                'menuSettings.scrollInterval': Number(scrollInterval) || 3
             }},
             { new: true }
         );
@@ -144,7 +148,9 @@ app.post('/api/login', async (req, res) => {
             fontFamily: 'Malgun Gothic',
             effect: 'shadow',
             borderColor: '#000000',
-            borderWidth: '2px'
+            borderWidth: '2px',
+            scrollMode: 'page',
+            scrollInterval: 3
         };
 
         res.send(`
@@ -297,7 +303,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 부드러운 테두리와 함께 나열되는 OBS 브라우저 소스 주소입니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">전환 방식(페이지 전환 또는 스크롤 순환)과 노출 시간을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -339,6 +345,17 @@ app.post('/api/login', async (req, res) => {
                                         <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
                                     </select>
                                 </div>
+                                <div class="form-group">
+                                    <label>순환 방식 선택</label>
+                                    <select id="menuScrollMode">
+                                        <option value="page" ${menuSettings.scrollMode === 'page' ? 'selected' : ''}>📄 페이지 단위 전환 (정해진 시간마다 끊어 넘김)</option>
+                                        <option value="ticker" ${menuSettings.scrollMode === 'ticker' ? 'selected' : ''}>🔄 스크롤 순환 (위로 부드럽게 무한 롤링)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>페이지 전환 시간 (초) - [페이지 모드 전용]</label>
+                                    <input type="number" id="menuScrollInterval" min="1" max="30" value="${menuSettings.scrollInterval || 3}">
+                                </div>
                                 <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
                             </form>
                         </div>
@@ -377,7 +394,9 @@ app.post('/api/login', async (req, res) => {
                 borderWidth: document.getElementById('menuBorderWidth').value,
                 fontSize: document.getElementById('menuFontSize').value,
                 fontFamily: document.getElementById('menuFontFamily').value,
-                effect: document.getElementById('menuEffect').value
+                effect: document.getElementById('menuEffect').value,
+                scrollMode: document.getElementById('menuScrollMode').value,
+                scrollInterval: document.getElementById('menuScrollInterval').value
             };
             try {
                 const res = await fetch('/api/settings/menu/${user.apiKey}', {
@@ -408,7 +427,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 배경 없는 투명 메뉴판 오더레이 엔드포인트 (부드러운 표준 테두리 적용)
+// 📋 페이지 전환 vs 스크롤 순환 모드가 모두 지원되는 오버레이 엔드포인트
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -422,14 +441,17 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             fontFamily: 'Malgun Gothic',
             effect: 'shadow',
             borderColor: '#000000',
-            borderWidth: '2px'
+            borderWidth: '2px',
+            scrollMode: 'page',
+            scrollInterval: 3
         };
 
         const bw = menuSettings.borderWidth || '2px';
         const bc = menuSettings.borderColor || '#000000';
         const tc = menuSettings.textColor;
+        const scrollMode = menuSettings.scrollMode || 'page';
+        const intervalSec = menuSettings.scrollInterval || 3;
         
-        // 표준 웹킷 외곽선(webkit-text-stroke)을 사용하여 모서리가 깨지지 않고 부드럽게 렌더링
         let extraStyle = `
             -webkit-text-stroke: ${bw} ${bc};
             paint-order: stroke fill;
@@ -448,19 +470,23 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>SelyPay Clean Menu Overlay</title>
+                <title>SelyPay Menu Overlay</title>
                 <style>
                     body {
                         background: transparent !important;
                         margin: 0;
-                        padding: 10px;
+                        padding: 0;
+                        overflow: hidden;
                         font-family: ${menuSettings.fontFamily};
+                        height: 100vh;
+                        width: 100vw;
                     }
-                    .menu-container {
+                    #menu-container {
                         display: flex;
                         flex-direction: column;
                         gap: 10px;
                         width: fit-content;
+                        padding: 10px;
                     }
                     .menu-row {
                         color: ${tc};
@@ -469,15 +495,128 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                         ${extraStyle}
                         white-space: nowrap;
                     }
+                    /* 스크롤 순환 모드용 애니메이션 스타일 */
+                    @keyframes scrollTicker {
+                        0% { transform: translateY(0); }
+                        100% { transform: translateY(-50%); }
+                    }
+                    .ticker-wrapper {
+                        overflow: hidden;
+                        height: 100vh;
+                        width: 100vw;
+                        position: relative;
+                    }
+                    .ticker-content {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        position: absolute;
+                        width: fit-content;
+                        padding: 10px;
+                    }
                 </style>
             </head>
             <body>
-                <div class="menu-container">
-                    ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>' : ''}
-                    ${reactions.map(r => `
-                        <div class="menu-row">${r.name}<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>${r.amount.toLocaleString()}원</div>
-                    `).join('')}
-                </div>
+                <div id="app"></div>
+                <script>
+                    const reactions = ${JSON.stringify(reactions)};
+                    const mode = "${scrollMode}";
+                    const intervalTime = ${intervalSec} * 1000;
+                    const app = document.getElementById('app');
+
+                    if (reactions.length === 0) {
+                        app.innerHTML = '<div style="padding:10px;" class="menu-row" style="-webkit-text-stroke:0px; color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>';
+                    } else {
+                        const rowsHTML = reactions.map(r => 
+                            '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                        ).join('');
+
+                        if (mode === 'ticker') {
+                            // 스크롤 무한 순환 모드
+                            app.className = 'ticker-wrapper';
+                            app.innerHTML = '<div class="ticker-content">' + rowsHTML + rowsHTML + '</div>';
+                            
+                            // 높이에 따른 애니메이션 동적 속도 조절
+                            setTimeout(() => {
+                                const content = app.querySelector('.ticker-content');
+                                const totalHeight = content.scrollHeight / 2;
+                                if (totalHeight > window.innerHeight) {
+                                    const duration = totalHeight / 35; // 속도 조절
+                                    content.style.animation = 'scrollTicker ' + duration + 's linear infinite';
+                                }
+                            }, 100);
+                        } else {
+                            // 페이지 전환 모드
+                            app.innerHTML = '<div id="menu-container"></div>';
+                            const container = document.getElementById('menu-container');
+                            let pages = [];
+                            let currentPageItems = [];
+
+                            const measureDiv = document.createElement('div');
+                            measureDiv.className = 'menu-row';
+                            measureDiv.style.visibility = 'hidden';
+                            measureDiv.style.position = 'absolute';
+                            document.body.appendChild(measureDiv);
+
+                            function buildPages() {
+                                pages = [];
+                                currentPageItems = [];
+                                const maxH = window.innerHeight - 20;
+                                let currentH = 0;
+                                const gap = 10;
+
+                                reactions.forEach((r) => {
+                                    measureDiv.innerHTML = r.name + '<span style="display:inline-block; width: 1.5em;"></span>' + r.amount.toLocaleString() + '원';
+                                    const itemH = measureDiv.getBoundingClientRect().height;
+
+                                    if (currentPageItems.length > 0 && (currentH + gap + itemH > maxH)) {
+                                        pages.push(currentPageItems);
+                                        currentPageItems = [r];
+                                        currentH = itemH;
+                                    } else {
+                                        currentPageItems.push(r);
+                                        currentH += (currentPageItems.length === 1 ? itemH : gap + itemH);
+                                    }
+                                });
+                                if (currentPageItems.length > 0) {
+                                    pages.push(currentPageItems);
+                                }
+                            }
+
+                            buildPages();
+                            if (document.body.contains(measureDiv)) {
+                                document.body.removeChild(measureDiv);
+                            }
+
+                            let pageIndex = 0;
+                            function renderPage() {
+                                if (pages.length === 0) return;
+                                const items = pages[pageIndex];
+                                container.innerHTML = items.map(r => 
+                                    '<div class="menu-row">' + r.name + '<span style="display:inline-block; width: 1.5em; -webkit-text-stroke: 0px transparent;"></span>' + r.amount.toLocaleString() + '원</div>'
+                                ).join('');
+
+                                pageIndex = (pageIndex + 1) % pages.length;
+                            }
+
+                            renderPage();
+                            let timer = null;
+                            if (pages.length > 1) {
+                                timer = setInterval(renderPage, intervalTime);
+                            }
+
+                            window.addEventListener('resize', () => {
+                                if (timer) clearInterval(timer);
+                                buildPages();
+                                pageIndex = 0;
+                                renderPage();
+                                if (pages.length > 1) {
+                                    timer = setInterval(renderPage, intervalTime);
+                                }
+                            });
+                        }
+                    }
+                </script>
             </body>
             </html>
         `);
