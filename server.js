@@ -126,7 +126,7 @@ app.post('/api/settings/menu/:apiKey', async (req, res) => {
     }
 });
 
-// 로그인 및 대시보드 UI (리액션 추가/관리 팝업 모달 탑재)
+// 로그인 및 대시보드 UI
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -305,7 +305,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">전환 방식(페이지 전환 또는 스크롤 순환)과 노출 시간을 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">이쁜 효과들과 전환 방식(페이지 전환 또는 스크롤 순환)을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -339,10 +339,14 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>고품질 시각 효과 선택</label>
+                                    <label>고품질 시각 효과 선택 (신규 효과 추가됨!)</label>
                                     <select id="menuEffect">
                                         <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
-                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 네온 글로우 발광 효과</option>
+                                        <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 기본 네온 글로우 발광 효과</option>
+                                        <option value="rainbow" ${menuSettings.effect === 'rainbow' ? 'selected' : ''}>🌈 화려한 무지개 네온 효과</option>
+                                        <option value="gold" ${menuSettings.effect === 'gold' ? 'selected' : ''}>🏆 고급 골드 메탈릭 효과</option>
+                                        <option value="cyber" ${menuSettings.effect === 'cyber' ? 'selected' : ''}>🧊 사이버틱 네온 블루 효과</option>
+                                        <option value="sunset" ${menuSettings.effect === 'sunset' ? 'selected' : ''}>🔥 불타는 썬셋 그라데이션 효과</option>
                                         <option value="3d" ${menuSettings.effect === '3d' ? 'selected' : ''}>🧊 3D 입체 블록</option>
                                         <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>외곽선 테두리만 사용</option>
                                     </select>
@@ -378,7 +382,7 @@ app.post('/api/login', async (req, res) => {
         </div>
     </div>
 
-    <!-- 🐱 리액션 추가 및 관리 팝업 모달 (바깥 클릭 방지 적용) -->
+    <!-- 🐱 리액션 추가 및 관리 팝업 모달 -->
     <div id="reactionModal" class="modal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="closeReactionModal()">&times;</span>
@@ -406,7 +410,6 @@ app.post('/api/login', async (req, res) => {
             alert('클립보드에 복사되었습니다!');
         }
         
-        // 팝업 모달 제어 함수
         function openReactionModal() {
             document.getElementById('reactionModal').style.display = 'flex';
             document.getElementById('profileDropdown').classList.remove('active');
@@ -415,7 +418,6 @@ app.post('/api/login', async (req, res) => {
             document.getElementById('reactionModal').style.display = 'none';
         }
 
-        // 모달 내 리액션 업로드 처리 (새로고침 없이 비동기 추가 및 탭 유지)
         document.getElementById('modalUploadBtn').addEventListener('click', async () => {
             const name = document.getElementById('modal-name').value;
             const amount = document.getElementById('modal-amount').value;
@@ -441,8 +443,6 @@ app.post('/api/login', async (req, res) => {
                     alert('리액션이 성공적으로 등록되었습니다!'); 
                     document.getElementById('reactionForm').reset(); 
                     closeReactionModal();
-                    
-                    // 새로고침 없이 리액션 목록 비동기 갱신
                     fetchReactionsAndRefreshUI();
                 } else { 
                     alert('등록 실패: ' + result.error); 
@@ -456,7 +456,6 @@ app.post('/api/login', async (req, res) => {
             }
         });
 
-        // 리액션 목록을 비동기로 다시 불러와 화면(대시보드 리액션 탭)만 갱신
         async function fetchReactionsAndRefreshUI() {
             try {
                 const res = await fetch('/api/reactions/' + '${user.apiKey}');
@@ -527,7 +526,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 메뉴판 오버레이 엔드포인트
+// 📋 메뉴판 오버레이 엔드포인트 (신규 이쁜 효과 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -549,6 +548,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const bw = menuSettings.borderWidth || '2px';
         const bc = menuSettings.borderColor || '#000000';
         const tc = menuSettings.textColor;
+        const effect = menuSettings.effect;
         const scrollMode = menuSettings.scrollMode || 'page';
         const intervalSec = menuSettings.scrollInterval || 3;
         
@@ -557,11 +557,19 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             paint-order: stroke fill;
         `;
 
-        if (menuSettings.effect === 'shadow') {
+        if (effect === 'shadow') {
             extraStyle += ` text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);`;
-        } else if (menuSettings.effect === 'neon') {
+        } else if (effect === 'neon') {
             extraStyle += ` text-shadow: 0 0 8px ${tc}, 0 0 16px ${tc};`;
-        } else if (menuSettings.effect === '3d') {
+        } else if (effect === 'rainbow') {
+            extraStyle += ` text-shadow: 0 0 6px #ff0055, 0 0 12px #ff9900, 0 0 18px #33ccff;`;
+        } else if (effect === 'gold') {
+            extraStyle += ` text-shadow: 0 0 5px #ffd700, 2px 2px 4px rgba(0,0,0,0.9), 4px 4px 10px rgba(184,134,11,0.6);`;
+        } else if (effect === 'cyber') {
+            extraStyle += ` text-shadow: 0 0 8px #00ffff, 0 0 20px #0088ff, 2px 2px 4px rgba(0,0,0,0.9);`;
+        } else if (effect === 'sunset') {
+            extraStyle += ` text-shadow: 0 0 8px #ff4500, 0 0 18px #ff1493, 2px 2px 5px rgba(0,0,0,0.9);`;
+        } else if (effect === '3d') {
             extraStyle += ` text-shadow: 2px 2px 0px #222222, 4px 4px 8px rgba(0,0,0,0.8);`;
         }
 
