@@ -305,7 +305,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">가시성이 대폭 개선된 이펙트들과 전환 방식을 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">이쁜 효과들과 전환 방식을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -314,7 +314,7 @@ app.post('/api/login', async (req, res) => {
 
                             <form id="menuSettingsForm" style="margin-top:20px;">
                                 <div class="form-group">
-                                    <label>글씨 색상</label>
+                                    <label>글씨 색상 (기본: 하얀색)</label>
                                     <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
                                 </div>
                                 <div class="form-group">
@@ -339,7 +339,7 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>고품질 시각 효과 선택 (가시성 대폭 강화)</label>
+                                    <label>고품질 시각 효과 선택</label>
                                     <select id="menuEffect">
                                         <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>✨ 부드러운 입체 그림자 (추천)</option>
                                         <option value="neon" ${menuSettings.effect === 'neon' ? 'selected' : ''}>🔥 쨍하게 빛나는 네온 글로우</option>
@@ -526,7 +526,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 메뉴판 오버레이 엔드포인트 (가시성이 확실하게 보이도록 개선된 효과 적용)
+// 📋 메뉴판 오버레이 엔드포인트 (글씨는 원래대로 깔끔한 본연의 색상 유지 + 외곽선/효과 분리 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -547,32 +547,32 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
 
         const bw = menuSettings.borderWidth || '2px';
         const bc = menuSettings.borderColor || '#000000';
-        const tc = menuSettings.textColor;
+        const tc = menuSettings.textColor; // 사용자가 고른 글씨 색상 (기본 하얀색)
         const effect = menuSettings.effect;
         const scrollMode = menuSettings.scrollMode || 'page';
         const intervalSec = menuSettings.scrollInterval || 3;
         
-        // paint-order를 fill stroke로 설정하여 텍스트 안쪽 색상이 먼저 채워지고 외곽선이 바깥에 그려지도록 개선
+        // 텍스트 속은 깔끔하게 본래 색상(tc)으로 채워지고, 외곽선이 바깥쪽에 깔끔하게 그려지도록 paint-order 설정
         let extraStyle = `
             -webkit-text-stroke: ${bw} ${bc};
             paint-order: fill stroke;
         `;
 
+        // 이펙트별 네온 및 그림자 발광 (글씨 속을 침범하지 않고 외부로 은은하고 선명하게 발광하도록 최적화)
         if (effect === 'shadow') {
             extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.95), 4px 4px 10px rgba(0, 0, 0, 0.8);`;
         } else if (effect === 'neon') {
-            // 네온 발광을 쨍하고 선명하게 확대
-            extraStyle += ` text-shadow: 0 0 5px #fff, 0 0 10px ${tc}, 0 0 20px ${tc}, 0 0 35px ${tc};`;
+            extraStyle += ` text-shadow: 0 0 6px #ffffff, 0 0 12px #ff1493, 0 0 25px #ff1493;`;
         } else if (effect === 'rainbow') {
-            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
+            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 12px #ff0055, 0 0 24px #ff9900, 0 0 35px #33ccff;`;
         } else if (effect === 'gold') {
-            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.95), 5px 5px 12px rgba(184,134,11,0.8);`;
+            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #ffd700, 3px 3px 6px rgba(0,0,0,0.95), 6px 6px 15px rgba(184,134,11,0.8);`;
         } else if (effect === 'cyber') {
-            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #00ffff, 0 0 25px #0088ff, 2px 2px 5px rgba(0,0,0,0.95);`;
+            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #00ffff, 0 0 30px #0088ff, 3px 3px 6px rgba(0,0,0,0.95);`;
         } else if (effect === 'sunset') {
-            extraStyle += ` text-shadow: 0 0 4px #fff, 0 0 12px #ff4500, 0 0 25px #ff1493, 2px 2px 5px rgba(0,0,0,0.95);`;
+            extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 15px #ff4500, 0 0 30px #ff1493, 3px 3px 6px rgba(0,0,0,0.95);`;
         } else if (effect === '3d') {
-            extraStyle += ` text-shadow: 2px 2px 0px #111, 4px 4px 0px #000, 6px 6px 12px rgba(0,0,0,0.9);`;
+            extraStyle += ` text-shadow: 2px 2px 0px #111111, 4px 4px 0px #000000, 6px 6px 12px rgba(0,0,0,0.9);`;
         }
 
         res.send(`
