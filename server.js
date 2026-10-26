@@ -332,8 +332,8 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>글씨체 (폰트)</label>
                                     <select id="menuFontFamily">
-                                        <option value="Malgun Gothic" ${menuSettings.fontFamily === 'Malgun Gothic' ? 'selected' : ''}>맑은 고딕</option>
-                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial)</option>
+                                        <option value="Malgun Gothic" ${menuSettings.fontFamily === 'Malgun Gothic' ? 'selected' : ''}>맑은 고딕 (추천 굵은체)</option>
+                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial Black)</option>
                                         <option value="Apple SD Gothic Neo, sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>애플 SD 산돌고딕</option>
                                         <option value="Courier New, monospace" ${menuSettings.fontFamily.includes('Courier New') ? 'selected' : ''}>고정폭 폰트 (Courier)</option>
                                     </select>
@@ -526,7 +526,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 메뉴판 오버레이 엔드포인트 (글씨는 원래대로 깔끔한 본연의 색상 유지 + 외곽선/효과 분리 적용)
+// 📋 메뉴판 오버레이 엔드포인트 (글씨 굵기를 900으로 대폭 강화하여 통통하고 묵직한 느낌 부여)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -547,22 +547,21 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
 
         const bw = menuSettings.borderWidth || '2px';
         const bc = menuSettings.borderColor || '#000000';
-        const tc = menuSettings.textColor; // 사용자가 고른 글씨 색상 (기본 하얀색)
+        const tc = menuSettings.textColor;
         const effect = menuSettings.effect;
         const scrollMode = menuSettings.scrollMode || 'page';
         const intervalSec = menuSettings.scrollInterval || 3;
         
-        // 텍스트 속은 깔끔하게 본래 색상(tc)으로 채워지고, 외곽선이 바깥쪽에 깔끔하게 그려지도록 paint-order 설정
+        // 텍스트 속은 깔끔하게 본래 색상(tc)으로 채우고, 외곽선과 그림자로 볼륨감/통통함 강화
         let extraStyle = `
             -webkit-text-stroke: ${bw} ${bc};
             paint-order: fill stroke;
         `;
 
-        // 이펙트별 네온 및 그림자 발광 (글씨 속을 침범하지 않고 외부로 은은하고 선명하게 발광하도록 최적화)
         if (effect === 'shadow') {
             extraStyle += ` text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.95), 4px 4px 10px rgba(0, 0, 0, 0.8);`;
         } else if (effect === 'neon') {
-            extraStyle += ` text-shadow: 0 0 6px #ffffff, 0 0 12px #ff1493, 0 0 25px #ff1493;`;
+            extraStyle += ` text-shadow: 0 0 6px #ffffff, 0 0 14px ${tc}, 0 0 28px ${tc};`;
         } else if (effect === 'rainbow') {
             extraStyle += ` text-shadow: 0 0 5px #ffffff, 0 0 12px #ff0055, 0 0 24px #ff9900, 0 0 35px #33ccff;`;
         } else if (effect === 'gold') {
@@ -601,7 +600,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                     .menu-row {
                         color: ${tc};
                         font-size: ${menuSettings.fontSize};
-                        font-weight: 800;
+                        font-weight: 900;
                         ${extraStyle}
                         white-space: nowrap;
                     }
