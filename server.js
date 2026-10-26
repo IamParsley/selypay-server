@@ -43,9 +43,9 @@ const userSchema = new mongoose.Schema({
         textColor: { type: String, default: '#ffffff' },
         fontSize: { type: String, default: '24px' },
         fontFamily: { type: String, default: 'Malgun Gothic' },
-        effect: { type: String, default: 'none' }, // glow, none
-        borderColor: { type: String, default: '#000000' }, // 독립된 테두리 색상
-        borderWidth: { type: String, default: '2px' } // 독립된 테두리 두께
+        effect: { type: String, default: 'none' },
+        borderColor: { type: String, default: '#000000' },
+        borderWidth: { type: String, default: '2px' }
     }
 });
 
@@ -297,7 +297,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 [리액션명 금액] 형태로 나열되는 OBS 브라우저 소스 주소입니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">배경 없이 [리액션명 &nbsp;&nbsp; 금액] 형태로 간격이 맞춰져 나열되는 OBS 브라우저 소스 주소입니다.</p>
                             
                             <div class="overlay-box">
                                 <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
@@ -406,7 +406,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 📋 배경 없는 투명 메뉴판 오버레이 엔드포인트 (독립된 테두리 적용)
+// 📋 배경 없는 투명 메뉴판 오버레이 엔드포인트 (글씨 크기에 비례한 두 칸 공백 적용)
 app.get('/menu-overlay/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
@@ -426,7 +426,6 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const bw = menuSettings.borderWidth || '2px';
         const bc = menuSettings.borderColor || '#000000';
         
-        // 사방으로 테두리 픽셀을 뿌려 깔끔한 스트로크 효과 생성
         let textShadowStyle = `
             -${bw} -${bw} 0 ${bc},
              ${bw} -${bw} 0 ${bc},
@@ -458,7 +457,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                     .menu-container {
                         display: flex;
                         flex-direction: column;
-                        gap: 8px;
+                        gap: 10px;
                         width: fit-content;
                     }
                     .menu-row {
@@ -474,7 +473,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                 <div class="menu-container">
                     ${reactions.length === 0 ? '<div style="color:#aaa; font-size:16px;">등록된 리액션이 없습니다.</div>' : ''}
                     ${reactions.map(r => `
-                        <div class="menu-row">${r.name}&nbsp;${r.amount.toLocaleString()}원</div>
+                        <div class="menu-row">${r.name}<span style="display:inline-block; width: 1.5em;"></span>${r.amount.toLocaleString()}원</div>
                     `).join('')}
                 </div>
             </body>
