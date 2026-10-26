@@ -38,6 +38,13 @@ const userSchema = new mongoose.Schema({
         duration: { type: Number, default: 5 },
         fontSize: { type: String, default: '7.5vh' },
         useImage: { type: Boolean, default: true }
+    },
+    menuSettings: {
+        title: { type: String, default: '🏆 후원 메뉴판' },
+        textColor: { type: String, default: '#ffffff' },
+        fontSize: { type: String, default: '16px' },
+        effect: { type: String, default: 'glow' }, // glow, shadow, none
+        bgColor: { type: String, default: 'rgba(0, 0, 0, 0.75)' }
     }
 });
 
@@ -92,7 +99,29 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 로그인 및 대시보드 UI[cite: 7, 8, 9]
+// 메뉴판 설정 저장 API
+app.post('/api/settings/menu/:apiKey', async (req, res) => {
+    try {
+        const { title, textColor, fontSize, effect, bgColor } = req.body;
+        const user = await User.findOneAndUpdate(
+            { apiKey: req.params.apiKey },
+            { $set: { 
+                'menuSettings.title': title,
+                'menuSettings.textColor': textColor,
+                'menuSettings.fontSize': fontSize,
+                'menuSettings.effect': effect,
+                'menuSettings.bgColor': bgColor
+            }},
+            { new: true }
+        );
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        res.json({ success: true, message: '메뉴판 설정이 저장되었습니다.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
+// 로그인 및 대시보드 UI (메뉴판 관리 탭 추가)
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -107,6 +136,14 @@ app.post('/api/login', async (req, res) => {
         } catch (err) {
             console.error("리액션 조회 에러:", err);
         }
+
+        const menuSettings = user.menuSettings || {
+            title: '🏆 후원 메뉴판',
+            textColor: '#ffffff',
+            fontSize: '16px',
+            effect: 'glow',
+            bgColor: 'rgba(0, 0, 0, 0.75)'
+        };
 
         res.send(`
 <!DOCTYPE html>
@@ -154,6 +191,9 @@ app.post('/api/login', async (req, res) => {
         .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; background: #fafafa; }
         .reaction-thumb { width: 80px; height: 80px; border-radius: 12px; object-fit: contain; margin-bottom: 12px; background: #eee; }
         .btn-green { background-color: #52b735; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -173,7 +213,7 @@ app.post('/api/login', async (req, res) => {
                     <div class="username">${user.username}</div>
                 </div>
                 <a href="#" class="dropdown-item" onclick="showTab('tab-account')">👤 계정 관리</a>
-                <a href="#" class="dropdown-item" onclick="showTab('tab-settings')">⚙️ 설정</a>
+                <a href="#" class="dropdown-item" onclick="showTab('tab-menu')">📋 메뉴판 오버레이 설정</a>
                 <a href="/" class="dropdown-item logout">🚪 로그아웃</a>
             </div>
         </div>
@@ -190,6 +230,7 @@ app.post('/api/login', async (req, res) => {
                         <li><button class="menu-btn" onclick="showTab('tab-logs', this)">💰 후원 내역</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-settings', this)">🔔 기본 알림 설정</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-reactions', this)">🐱 리액션 설정</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-menu', this)">📋 메뉴판 오버레이</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-account', this)">⚙️ 계정 설정</button></li>
                     </ul>
                     <div class="sidebar-footer">
@@ -199,6 +240,7 @@ app.post('/api/login', async (req, res) => {
                 </div>
 
                 <div class="main-content">
+                    <!-- 1. 랭킹 탭 -->
                     <div id="tab-ranking" class="tab-content active">
                         <div class="content-grid">
                             <div class="card-panel">
@@ -220,13 +262,15 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
+                    <!-- 2. 후원 내역 탭 -->
                     <div id="tab-logs" class="tab-content">
                         <div class="card-panel">
-                            <div class="card-panel-title">모든 후원 내역 아카이브 <span style="font-size:12px; color:#94a3b8; font-weight:normal;">앱을 통해 수신된 내역입니다</span></div>
+                            <div class="card-panel-title">모든 후원 내역 아카이브</div>
                             <div style="color:#94a3b8; font-size:14px; text-align:center; padding:80px 0;">수신된 후원 내역이 없습니다.</div>
                         </div>
                     </div>
 
+                    <!-- 3. 기본 알림 설정 탭 -->
                     <div id="tab-settings" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">🔔 기본 알림 세부 설정</div>
@@ -234,6 +278,7 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
+                    <!-- 4. 리액션 설정 탭 -->
                     <div id="tab-reactions" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">
@@ -254,6 +299,48 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
+                    <!-- 5. 📋 메뉴판 오버레이 설정 탭 (신규 추가) -->
+                    <div id="tab-menu" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">📋 방송용 메뉴판 오버레이 설정</div>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">등록된 리액션들이 화면에 [리액션명 - 가격] 형태로 출력되는 메뉴판 소스 주소입니다.</p>
+                            
+                            <div class="overlay-box">
+                                <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/menu-overlay/${user.apiKey}')">주소 복사</button>
+                            </div>
+
+                            <form id="menuSettingsForm" style="margin-top:20px;">
+                                <div class="form-group">
+                                    <label>메뉴판 제목 텍스트</label>
+                                    <input type="text" id="menuTitle" value="${menuSettings.title}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 색상</label>
+                                    <input type="color" id="menuTextColor" value="${menuSettings.textColor}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 크기 (예: 16px, 1.2rem)</label>
+                                    <input type="text" id="menuFontSize" value="${menuSettings.fontSize}">
+                                </div>
+                                <div class="form-group">
+                                    <label>텍스트 효과</label>
+                                    <select id="menuEffect">
+                                        <option value="glow" ${menuSettings.effect === 'glow' ? 'selected' : ''}>네온 발광 효과 (Glow)</option>
+                                        <option value="shadow" ${menuSettings.effect === 'shadow' ? 'selected' : ''}>검은색 외곽선 (Shadow)</option>
+                                        <option value="none" ${menuSettings.effect === 'none' ? 'selected' : ''}>효과 없음</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>배경 색상 및 투명도 (예: rgba(0,0,0,0.75))</label>
+                                    <input type="text" id="menuBgColor" value="${menuSettings.bgColor}">
+                                </div>
+                                <button type="button" class="btn-green" onclick="saveMenuSettings()">메뉴판 설정 저장하기</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 6. 계정 설정 탭 -->
                     <div id="tab-account" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
@@ -280,6 +367,28 @@ app.post('/api/login', async (req, res) => {
             navigator.clipboard.writeText(text);
             alert('클립보드에 복사되었습니다!');
         }
+        async function saveMenuSettings() {
+            const data = {
+                title: document.getElementById('menuTitle').value,
+                textColor: document.getElementById('menuTextColor').value,
+                fontSize: document.getElementById('menuFontSize').value,
+                effect: document.getElementById('menuEffect').value,
+                bgColor: document.getElementById('menuBgColor').value
+            };
+            try {
+                const res = await fetch('/api/settings/menu/${user.apiKey}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if(result.success) alert('메뉴판 설정이 성공적으로 저장되었습니다!');
+                else alert('저장 실패');
+            } catch(e) {
+                console.error(e);
+                alert('서버 통신 오류');
+            }
+        }
         window.onclick = function(e) {
             if (!e.target.closest('.user-profile-menu')) {
                 document.getElementById('profileDropdown').classList.remove('active');
@@ -292,6 +401,101 @@ app.post('/api/login', async (req, res) => {
     } catch (e) {
         console.error("로그인 에러 발생:", e);
         res.status(500).send('Server Error: ' + e.message);
+    }
+});
+
+// 📋 방송용 메뉴판 OBS 오버레이 엔드포인트 (신규 추가)
+app.get('/menu-overlay/:apiKey', async (req, res) => {
+    try {
+        const { apiKey } = req.params;
+        const user = await User.findOne({ apiKey });
+        if (!user) return res.status(404).send('Streamer not found');
+
+        const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
+        const menuSettings = user.menuSettings || {
+            title: '🏆 후원 메뉴판',
+            textColor: '#ffffff',
+            fontSize: '16px',
+            effect: 'glow',
+            bgColor: 'rgba(0, 0, 0, 0.75)'
+        };
+
+        let textShadowStyle = 'none';
+        if (menuSettings.effect === 'glow') {
+            textShadowStyle = '0 0 10px ' + menuSettings.textColor + ', 0 0 20px ' + menuSettings.textColor;
+        } else if (menuSettings.effect === 'shadow') {
+            textShadowStyle = '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000';
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>SelyPay Menu Overlay</title>
+                <style>
+                    body { background: transparent; margin: 0; font-family: 'Malgun Gothic', sans-serif; }
+                    .menu-board {
+                        background: ${menuSettings.bgColor};
+                        color: ${menuSettings.textColor};
+                        padding: 20px;
+                        border-radius: 12px;
+                        width: 320px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                        box-sizing: border-box;
+                    }
+                    .menu-title {
+                        font-size: 18px;
+                        font-weight: 900;
+                        text-align: center;
+                        margin-bottom: 15px;
+                        border-bottom: 2px solid rgba(255,255,255,0.2);
+                        padding-bottom: 10px;
+                        text-shadow: ${textShadowStyle};
+                    }
+                    .menu-list {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .menu-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: ${menuSettings.fontSize};
+                        font-weight: bold;
+                        text-shadow: ${textShadowStyle};
+                    }
+                    .item-name {
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        margin-right: 10px;
+                    }
+                    .item-amount {
+                        color: #f1c40f;
+                        white-space: nowrap;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="menu-board">
+                    <div class="menu-title">${menuSettings.title}</div>
+                    <div class="menu-list">
+                        ${reactions.length === 0 ? '<div style="text-align:center; color:#aaa; font-size:14px;">등록된 메뉴(리액션)가 없습니다.</div>' : ''}
+                        ${reactions.map(r => `
+                            <div class="menu-item">
+                                <span class="item-name">${r.name}</span>
+                                <span class="item-amount">${r.amount.toLocaleString()}원</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+    } catch (e) {
+        res.status(500).send('Menu Overlay Error');
     }
 });
 
@@ -330,7 +534,7 @@ app.post('/api/notification', async (req, res) => {
     }
 });
 
-// 스트리머별 OBS 알림 오버레이 화면[cite: 11]
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -459,7 +663,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 알림창 세부 관리 및 설정 페이지[cite: 11]
+// 알림창 세부 관리 및 설정 페이지
 app.get('/manage/alert/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -642,7 +846,7 @@ app.get('/manage/alert/:apiKey', async (req, res) => {
     `);
 });
 
-// 방송용 실시간 랭킹 OBS 오버레이 화면[cite: 11]
+// 방송용 실시간 랭킹 OBS 오버레이 화면
 app.get('/ranking-overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -695,41 +899,7 @@ app.get('/ranking-overlay/:apiKey', async (req, res) => {
     `);
 });
 
-// 랭킹판 세부 관리 및 설정 페이지[cite: 11]
-app.get('/manage/ranking/:apiKey', async (req, res) => {
-    const { apiKey } = req.params;
-    const user = await User.findOne({ apiKey });
-    if (!user) return res.status(404).send('Streamer not found');
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>랭킹판 관리 - ` + user.username + `</title>
-            <style>
-                body { font-family: sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .box { background: #eee; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 5px; margin-top: 5px; }
-                .btn { display: inline-block; margin-top: 15px; padding: 10px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h2>🏆 방송용 랭킹판 설정 및 관리</h2>
-                <p>OBS 브라우저 소스에 아래 주소를 입력하여 사용하세요.</p>
-                <p><b>랭킹 OBS 오버레이 주소:</b></p>
-                <div class="box">https://` + req.get('host') + `/ranking-overlay/` + user.apiKey + `</div>
-                <hr style="margin: 25px 0; border:0; border-top:1px solid #ddd;">
-                <h3>⚙️ 세부 설정 (준비 중)</h3>
-                <p style="color: #666; font-size: 14px;">여기에 랭킹 표시 명수 조절, 배경 투명도 등의 세부 설정을 추가할 예정입니다.</p>
-                <a href="javascript:history.back();" class="btn" style="background:#7f8c8d;">대시보드로 돌아가기</a>
-            </div>
-        </body>
-        </html>
-    `);
-});
-
-// 기타 API 라우트들[cite: 11]
+// 기타 API 라우트들
 app.get('/api/logs/:apiKey', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
