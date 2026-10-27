@@ -36,7 +36,10 @@ const userSchema = new mongoose.Schema({
     alertSettings: {
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 10 },
-        fontSize: { type: String, default: '7.5vh' },
+        fontSize: { type: String, default: '8vh' },
+        fontColor: { type: String, default: '#ffffff' },
+        effect: { type: String, default: 'clean-shadow' },
+        layoutType: { type: String, default: 'default' },
         useImage: { type: Boolean, default: true }
     },
     menuSettings: {
@@ -126,6 +129,27 @@ app.post('/api/settings/menu/:apiKey', async (req, res) => {
     }
 });
 
+// 알림창 설정 저장 API
+app.post('/api/settings/alert/:apiKey', async (req, res) => {
+    try {
+        const { layoutType, fontSize, fontColor, effect } = req.body;
+        const user = await User.findOneAndUpdate(
+            { apiKey: req.params.apiKey },
+            { $set: { 
+                'alertSettings.layoutType': layoutType,
+                'alertSettings.fontSize': fontSize,
+                'alertSettings.fontColor': fontColor,
+                'alertSettings.effect': effect
+            }},
+            { new: true }
+        );
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        res.json({ success: true, message: '알림창 설정이 저장되었습니다.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+});
+
 // 로그인 및 대시보드 UI
 app.post('/api/login', async (req, res) => {
     try {
@@ -151,6 +175,13 @@ app.post('/api/login', async (req, res) => {
             borderWidth: '0px',
             scrollMode: 'page',
             scrollInterval: 3
+        };
+
+        const alertSettings = user.alertSettings || {
+            layoutType: 'default',
+            fontSize: '8vh',
+            fontColor: '#ffffff',
+            effect: 'clean-shadow'
         };
 
         res.send(`
@@ -191,12 +222,10 @@ app.post('/api/login', async (req, res) => {
         .tab-content { display: none; width: 100%; overflow: hidden; }
         .tab-content.active { display: block; }
         
-        /* 💡 2열 그리드 및 카드 패널 크기 강제 고정 및 칸 넘침 원인 완벽 차단 */
         .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; }
         .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
         .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; word-break: break-all; }
         
-        /* 오버레이 주소 박스 완벽 고정 */
         .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
         .overlay-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; display: block; flex: 1; min-width: 0; }
         .overlay-link:hover { text-decoration: underline; }
@@ -234,7 +263,7 @@ app.post('/api/login', async (req, res) => {
                     <div class="username">${user.username}</div>
                 </div>
                 <a href="#" class="dropdown-item" onclick="openReactionModal()">🐱 리액션 추가 및 관리</a>
-                <a href="#" class="dropdown-item" onclick="showTab('tab-menu')">📋 메뉴판 오버레이 설정</a>
+                <a href="#" class="dropdown-item" onclick="showTab('tab-alert')">💬 알림창 설정</a>
                 <a href="/login" class="dropdown-item logout">🚪 로그아웃</a>
             </div>
         </div>
@@ -250,6 +279,7 @@ app.post('/api/login', async (req, res) => {
                         <li><button class="menu-btn active" onclick="showTab('tab-ranking', this)">📊 실시간 후원 랭킹</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-logs', this)">💰 후원 내역</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-reactions', this)">🐱 리액션 설정</button></li>
+                        <li><button class="menu-btn" onclick="showTab('tab-alert', this)">💬 알림창 설정</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-menu', this)">📋 메뉴판 오버레이</button></li>
                         <li><button class="menu-btn" onclick="showTab('tab-account', this)">⚙️ 계정 설정</button></li>
                     </ul>
@@ -308,7 +338,49 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
-                    <!-- 4. 메뉴판 오버레이 설정 탭 -->
+                    <!-- 4. 알림창 설정 탭 (신규 추가) -->
+                    <div id="tab-alert" class="tab-content">
+                        <div class="card-panel">
+                            <div class="card-panel-title">💬 실시간 후원 알림창 스타일 설정</div>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상 및 특수 효과를 설정할 수 있습니다.</p>
+
+                            <div class="overlay-box">
+                                <a href="https://${req.get('host')}/overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 알림 오버레이 미리보기 열기">https://${req.get('host')}/overlay/${user.apiKey}</a>
+                                <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/overlay/${user.apiKey}')">주소 복사</button>
+                            </div>
+
+                            <form id="alertSettingsForm" style="margin-top:20px;">
+                                <div class="form-group">
+                                    <label>기본 알림창 형식 선택 (추후 기능 확장)</label>
+                                    <select id="alertLayoutType">
+                                        <option value="default" ${alertSettings.layoutType === 'default' ? 'selected' : ''}>🌟 [기본형] 상단 이미지 + 하단 두 줄 텍스트</option>
+                                        <option value="banner" ${alertSettings.layoutType === 'banner' ? 'selected' : ''}>💬 [배너형] 가로형 일체형 바 (추후 업데이트)</option>
+                                        <option value="compact" ${alertSettings.layoutType === 'compact' ? 'selected' : ''}>⚡ [미니형] 컴팩트 심플 알림 (추후 업데이트)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 크기 (예: 8vh, 64px 등)</label>
+                                    <input type="text" id="alertFontSize" value="${alertSettings.fontSize || '8vh'}">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 색상</label>
+                                    <input type="color" id="alertFontColor" value="${alertSettings.fontColor || '#ffffff'}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 특수 효과 선택</label>
+                                    <select id="alertEffect">
+                                        <option value="clean-shadow" ${alertSettings.effect === 'clean-shadow' ? 'selected' : ''}>✨ 깔끔한 검은색 그림자 (가독성 최우선)</option>
+                                        <option value="wave-glow" ${alertSettings.effect === 'wave-glow' ? 'selected' : ''}>🌊 파도타기 입체 네온 효과 (빛 퍼짐)</option>
+                                        <option value="rainbow-neon" ${alertSettings.effect === 'rainbow-neon' ? 'selected' : ''}>🌈 화려한 무지개빛 네온</option>
+                                        <option value="gold-metal" ${alertSettings.effect === 'gold-metal' ? 'selected' : ''}>🏆 고급 골드 메탈릭 음영</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-green" onclick="saveAlertSettings()">알림창 설정 저장하기</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 5. 메뉴판 오버레이 설정 탭 -->
                     <div id="tab-menu" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">📋 투명 깔끔 메뉴판 오버레이 설정</div>
@@ -371,7 +443,7 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
-                    <!-- 5. 계정 설정 탭 -->
+                    <!-- 6. 계정 설정 탭 -->
                     <div id="tab-account" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
@@ -487,6 +559,28 @@ app.post('/api/login', async (req, res) => {
                 });
             } catch (e) {
                 console.error("리액션 목록 갱신 실패:", e);
+            }
+        }
+
+        async function saveAlertSettings() {
+            const data = {
+                layoutType: document.getElementById('alertLayoutType').value,
+                fontSize: document.getElementById('alertFontSize').value,
+                fontColor: document.getElementById('alertFontColor').value,
+                effect: document.getElementById('alertEffect').value
+            };
+            try {
+                const res = await fetch('/api/settings/alert/${user.apiKey}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if(result.success) alert('알림창 설정이 성공적으로 저장되었습니다!');
+                else alert('저장 실패');
+            } catch(e) {
+                console.error(e);
+                alert('서버 통신 오류');
             }
         }
 
@@ -752,7 +846,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (기본 하얀색 글씨체 및 깔끔한 기본 음영으로 원복)
+// 스트리머별 OBS 알림 오버레이 화면 (사용자 설정 글씨 크기, 색상, 효과 반영)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -761,6 +855,19 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const settings = user.alertSettings || {};
     const reactions = await Reaction.find({ streamerId: user._id }).sort({ amount: 1 });
     const useImage = settings.useImage !== undefined ? settings.useImage : true;
+    
+    const fontSize = settings.fontSize || '8vh';
+    const fontColor = settings.fontColor || '#ffffff';
+    const effect = settings.effect || 'clean-shadow';
+
+    let effectStyle = 'text-shadow: 2px 2px 8px rgba(0,0,0,0.8);';
+    if (effect === 'wave-glow') {
+        effectStyle = `text-shadow: 0 0 2px #ffffff, 0 0 10px ${fontColor}, 0 0 20px ${fontColor};`;
+    } else if (effect === 'rainbow-neon') {
+        effectStyle = `text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
+    } else if (effect === 'gold-metal') {
+        effectStyle = `text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9);`;
+    }
 
     res.send(`
         <!DOCTYPE html>
@@ -772,8 +879,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
-                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
-                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); width: 90vw; word-break: break-word; line-height: 1.2; }
+                #alert-line1 { color: ${fontColor}; font-size: ${fontSize}; font-weight: 800; ${effectStyle} width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { color: ${fontColor}; font-size: calc(${fontSize} * 0.85); font-weight: 800; ${effectStyle} width: 90vw; word-break: break-word; line-height: 1.2; }
             </style>
         </head>
         <body>
