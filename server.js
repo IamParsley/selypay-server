@@ -752,7 +752,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면
+// 스트리머별 OBS 알림 오버레이 화면 (기본 하얀색 글씨체 및 깔끔한 기본 음영으로 원복)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -772,8 +772,8 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
-                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: 0 0 10px rgba(255,42,133,0.8), 2px 2px 5px rgba(0,0,0,0.8); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
-                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: 0 0 10px rgba(255,42,133,0.8), 2px 2px 5px rgba(0,0,0,0.8); width: 90vw; word-break: break-word; line-height: 1.2; }
+                #alert-line1 { color: #ffffff; font-size: 8vh; font-weight: 800; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { color: #ffffff; font-size: 6.5vh; font-weight: 800; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); width: 90vw; word-break: break-word; line-height: 1.2; }
             </style>
         </head>
         <body>
