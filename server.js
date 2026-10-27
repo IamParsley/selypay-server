@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
         soundType: { type: String, default: 'coinsound.mp3' },
         duration: { type: Number, default: 10 },
         fontSize: { type: String, default: '8vh' },
+        fontFamily: { type: String, default: 'Jalnan2, sans-serif' },
         fontColor: { type: String, default: '#ffffff' },
         borderColor: { type: String, default: '#000000' },
         borderWidth: { type: String, default: '2px' },
@@ -134,12 +135,13 @@ app.post('/api/settings/menu/:apiKey', async (req, res) => {
 // 알림창 설정 저장 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
-        const { layoutType, fontSize, fontColor, borderColor, borderWidth, effect } = req.body;
+        const { layoutType, fontSize, fontFamily, fontColor, borderColor, borderWidth, effect } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
                 'alertSettings.layoutType': layoutType,
                 'alertSettings.fontSize': fontSize,
+                'alertSettings.fontFamily': fontFamily,
                 'alertSettings.fontColor': fontColor,
                 'alertSettings.borderColor': borderColor,
                 'alertSettings.borderWidth': borderWidth,
@@ -184,6 +186,7 @@ app.post('/api/login', async (req, res) => {
         const alertSettings = user.alertSettings || {
             layoutType: 'default',
             fontSize: '8vh',
+            fontFamily: 'Jalnan2, sans-serif',
             fontColor: '#ffffff',
             borderColor: '#000000',
             borderWidth: '2px',
@@ -347,7 +350,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-alert" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">💬 실시간 후원 알림창 스타일 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상, 테두리 및 반짝임/파도타기 효과를 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 폰트, 크기, 색상, 테두리 및 애니메이션 효과를 설정할 수 있습니다.</p>
 
                             <div class="overlay-box">
                                 <a href="https://${req.get('host')}/overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 알림 오버레이 미리보기 열기">https://${req.get('host')}/overlay/${user.apiKey}</a>
@@ -356,11 +359,20 @@ app.post('/api/login', async (req, res) => {
 
                             <form id="alertSettingsForm" style="margin-top:20px;">
                                 <div class="form-group">
-                                    <label>기본 알림창 형식 선택 (추후 기능 확장)</label>
+                                    <label>기본 알림창 형식 선택</label>
                                     <select id="alertLayoutType">
                                         <option value="default" ${alertSettings.layoutType === 'default' ? 'selected' : ''}>🌟 [기본형] 상단 이미지 + 하단 두 줄 텍스트</option>
                                         <option value="banner" ${alertSettings.layoutType === 'banner' ? 'selected' : ''}>💬 [배너형] 가로형 일체형 바 (추후 업데이트)</option>
                                         <option value="compact" ${alertSettings.layoutType === 'compact' ? 'selected' : ''}>⚡ [미니형] 컴팩트 심플 알림 (추후 업데이트)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨체 (폰트 선택)</label>
+                                    <select id="alertFontFamily">
+                                        <option value="Jalnan2, sans-serif" ${alertSettings.fontFamily.includes('Jalnan2') ? 'selected' : ''}>🔥 잘난/여기야 폰트 (Jalnan2 커스텀)</option>
+                                        <option value="Apple SD Gothic Neo, 'Malgun Gothic', sans-serif" ${alertSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>✨ 애플 SD 산돌고딕 (세련된 모던)</option>
+                                        <option value="'Pretendard', sans-serif" ${alertSettings.fontFamily.includes('Pretendard') ? 'selected' : ''}>🌟 프리텐다드 (깔끔한 프리미엄)</option>
+                                        <option value="'Black Han Sans', sans-serif" ${alertSettings.fontFamily.includes('Black Han Sans') ? 'selected' : ''}>🔥 블랙한산스 (초특급 볼드)</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -426,10 +438,10 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>글씨체 (폰트)</label>
                                     <select id="menuFontFamily">
+                                        <option value="Jalnan2, sans-serif" ${menuSettings.fontFamily.includes('Jalnan2') ? 'selected' : ''}>🔥 싹둑/여기야 폰트 (Jalnan2)</option>
                                         <option value="Apple SD Gothic Neo, 'Malgun Gothic', sans-serif" ${menuSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>✨ 애플 SD 산돌고딕 (세련된 모던)</option>
                                         <option value="'Pretendard', sans-serif" ${menuSettings.fontFamily.includes('Pretendard') ? 'selected' : ''}>🌟 프리텐다드 (깔끔한 프리미엄)</option>
                                         <option value="'Black Han Sans', sans-serif" ${menuSettings.fontFamily.includes('Black Han Sans') ? 'selected' : ''}>🔥 블랙한산스 (초특급 볼드)</option>
-                                        <option value="Arial, sans-serif" ${menuSettings.fontFamily.includes('Arial') ? 'selected' : ''}>아리얼 (Arial)</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -580,6 +592,7 @@ app.post('/api/login', async (req, res) => {
         async function saveAlertSettings() {
             const data = {
                 layoutType: document.getElementById('alertLayoutType').value,
+                fontFamily: document.getElementById('alertFontFamily').value,
                 fontSize: document.getElementById('alertFontSize').value,
                 fontColor: document.getElementById('alertFontColor').value,
                 borderColor: document.getElementById('alertBorderColor').value,
@@ -652,7 +665,7 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
         const menuSettings = user.menuSettings || {
             textColor: '#ff2a85',
             fontSize: '24px',
-            fontFamily: 'Apple SD Gothic Neo, "Malgun Gothic", sans-serif',
+            fontFamily: 'Jalnan2, sans-serif',
             effect: 'modern-glow',
             borderColor: '#000000',
             borderWidth: '0px',
@@ -696,6 +709,12 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
                 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
                 <style>
                     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+                    @font-face {
+                        font-family: 'Jalnan2';
+                        src: url('/Jalnan2TTF.ttf') format('truetype');
+                        font-weight: normal;
+                        font-style: normal;
+                    }
                     body { background: transparent !important; margin: 0; padding: 0; overflow: hidden; font-family: ${menuSettings.fontFamily}; height: 100vh; width: 100vw; }
                     #menu-container { display: flex; flex-direction: column; gap: 10px; width: fit-content; padding: 10px; }
                     .menu-row { color: ${tc}; font-size: ${menuSettings.fontSize}; font-weight: 800; letter-spacing: -0.5px; ${extraStyle} white-space: nowrap; }
@@ -863,7 +882,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (글자별 개별 파도타기 및 반짝임 효과 반영)
+// 스트리머별 OBS 알림 오버레이 화면 (커스텀 폰트 @font-face 내장)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -874,6 +893,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const useImage = settings.useImage !== undefined ? settings.useImage : true;
     
     const fontSize = settings.fontSize || '8vh';
+    const fontFamily = settings.fontFamily || 'Jalnan2, sans-serif';
     const fontColor = settings.fontColor || '#ffffff';
     const borderColor = settings.borderColor || '#000000';
     const borderWidth = settings.borderWidth || '2px';
@@ -886,7 +906,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
             <meta charset="UTF-8">
             <title>SelyPay Alert Overlay</title>
             <style>
-                body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+                @font-face {
+                    font-family: 'Jalnan2';
+                    src: url('/Jalnan2TTF.ttf') format('truetype');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+                body { background: transparent; margin: 0; overflow: hidden; font-family: ${fontFamily}; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
                 
@@ -912,7 +938,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     paint-order: stroke fill;
                 }
 
-                /* 1. 글자별 개별 파도타기 효과 적용 스타일 */
+                /* 1. 글자별 개별 파도타기 효과 */
                 .char-wave {
                     display: inline-block;
                     animation: letterWave 1.2s ease-in-out infinite;
@@ -1001,7 +1027,6 @@ app.get('/overlay/:apiKey', async (req, res) => {
             function formatTextWithEffect(text, effectName) {
                 if (!text) return '';
                 if (effectName === 'letter-wave') {
-                    // 글자 단위로 쪼개서 각각 순차적인 애니메이션 딜레이 부여
                     let charIndex = 0;
                     return text.split('').map(char => {
                         if (char === ' ') return '<span style="display:inline-block; width:0.3em;"></span>';
