@@ -190,8 +190,13 @@ app.post('/api/login', async (req, res) => {
         .sidebar-footer .status { font-size: 11px; color: #16a34a; font-weight: 700; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; }
-        .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        
+        /* 💡 오버레이 박스 넘침 방지 및 링크 스타일 개선 */
+        .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; max-width: 100%; overflow: hidden; }
+        .overlay-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; display: block; flex: 1; }
+        .overlay-link:hover { text-decoration: underline; }
+        
+        .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
         .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
         .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -259,14 +264,14 @@ app.post('/api/login', async (req, res) => {
                             <div class="card-panel">
                                 <div class="card-panel-title">실시간 후원 알림 오버레이</div>
                                 <div class="overlay-box">
-                                    <span>https://${req.get('host')}/overlay/${user.apiKey}</span>
+                                    <a href="https://${req.get('host')}/overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 오버레이 미리보기 열기">https://${req.get('host')}/overlay/${user.apiKey}</a>
                                     <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/overlay/${user.apiKey}')">복사</button>
                                 </div>
                             </div>
                             <div class="card-panel">
                                 <div class="card-panel-title">실시간 후원 랭킹 오버레이</div>
                                 <div class="overlay-box">
-                                    <span>https://${req.get('host')}/ranking-overlay/${user.apiKey}</span>
+                                    <a href="https://${req.get('host')}/ranking-overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 랭킹 오버레이 미리보기 열기">https://${req.get('host')}/ranking-overlay/${user.apiKey}</a>
                                     <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/ranking-overlay/${user.apiKey}')">복사</button>
                                 </div>
                             </div>
@@ -308,7 +313,7 @@ app.post('/api/login', async (req, res) => {
                             <p style="font-size:13px; color:#64748b; margin-bottom:15px;">색상 맞춤형 세련된 자막 스타일을 설정할 수 있습니다.</p>
                             
                             <div class="overlay-box">
-                                <span>https://${req.get('host')}/menu-overlay/${user.apiKey}</span>
+                                <a href="https://${req.get('host')}/menu-overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 메뉴판 미리보기 열기">https://${req.get('host')}/menu-overlay/${user.apiKey}</a>
                                 <button class="copy-btn" onclick="copyToClipboard('https://${req.get('host')}/menu-overlay/${user.apiKey}')">주소 복사</button>
                             </div>
 
@@ -369,7 +374,7 @@ app.post('/api/login', async (req, res) => {
                         <div class="card-panel">
                             <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
                             <div class="overlay-box">
-                                <span>${user.apiKey}</span>
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">${user.apiKey}</span>
                                 <button class="copy-btn" onclick="copyToClipboard('${user.apiKey}')">키 복사</button>
                             </div>
                         </div>
@@ -557,7 +562,6 @@ app.get('/menu-overlay/:apiKey', async (req, res) => {
             extraStyle += ` -webkit-text-stroke: ${bw} ${bc}; paint-order: fill stroke;`;
         }
 
-        // 사용자가 선택한 색상(tc)에 자연스럽게 어우러지는 세련된 빛 효과
         if (effect === 'modern-glow') {
             extraStyle += ` text-shadow: 0 0 2px #ffffff, 0 0 8px ${tc}, 0 0 16px ${tc};`;
         } else if (effect === 'soft-shadow') {
