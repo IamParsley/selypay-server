@@ -38,7 +38,9 @@ const userSchema = new mongoose.Schema({
         duration: { type: Number, default: 10 },
         fontSize: { type: String, default: '8vh' },
         fontColor: { type: String, default: '#ffffff' },
-        effect: { type: String, default: 'clean-shadow' },
+        borderColor: { type: String, default: '#000000' },
+        borderWidth: { type: String, default: '2px' },
+        effect: { type: String, default: 'wave-bounce' },
         layoutType: { type: String, default: 'default' },
         useImage: { type: Boolean, default: true }
     },
@@ -132,13 +134,15 @@ app.post('/api/settings/menu/:apiKey', async (req, res) => {
 // 알림창 설정 저장 API
 app.post('/api/settings/alert/:apiKey', async (req, res) => {
     try {
-        const { layoutType, fontSize, fontColor, effect } = req.body;
+        const { layoutType, fontSize, fontColor, borderColor, borderWidth, effect } = req.body;
         const user = await User.findOneAndUpdate(
             { apiKey: req.params.apiKey },
             { $set: { 
                 'alertSettings.layoutType': layoutType,
                 'alertSettings.fontSize': fontSize,
                 'alertSettings.fontColor': fontColor,
+                'alertSettings.borderColor': borderColor,
+                'alertSettings.borderWidth': borderWidth,
                 'alertSettings.effect': effect
             }},
             { new: true }
@@ -181,7 +185,9 @@ app.post('/api/login', async (req, res) => {
             layoutType: 'default',
             fontSize: '8vh',
             fontColor: '#ffffff',
-            effect: 'clean-shadow'
+            borderColor: '#000000',
+            borderWidth: '2px',
+            effect: 'wave-bounce'
         };
 
         res.send(`
@@ -239,7 +245,6 @@ app.post('/api/login', async (req, res) => {
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
         .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
         
-        /* 팝업 모달 스타일 */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 30px; border-radius: 16px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
         .close-btn { position: absolute; right: 20px; top: 20px; font-size: 24px; font-weight: bold; cursor: pointer; color: #888; }
@@ -338,11 +343,11 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     </div>
 
-                    <!-- 4. 알림창 설정 탭 (신규 추가) -->
+                    <!-- 4. 알림창 설정 탭 -->
                     <div id="tab-alert" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">💬 실시간 후원 알림창 스타일 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상 및 특수 효과를 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상, 테두리 및 파도타기 효과를 설정할 수 있습니다.</p>
 
                             <div class="overlay-box">
                                 <a href="https://${req.get('host')}/overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 알림 오버레이 미리보기 열기">https://${req.get('host')}/overlay/${user.apiKey}</a>
@@ -359,7 +364,7 @@ app.post('/api/login', async (req, res) => {
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>글씨 크기 (예: 8vh, 64px 등)</label>
+                                    <label>글씨 크기 (예: 8vh 등)</label>
                                     <input type="text" id="alertFontSize" value="${alertSettings.fontSize || '8vh'}">
                                 </div>
                                 <div class="form-group">
@@ -367,10 +372,18 @@ app.post('/api/login', async (req, res) => {
                                     <input type="color" id="alertFontColor" value="${alertSettings.fontColor || '#ffffff'}" style="height:40px; cursor:pointer;">
                                 </div>
                                 <div class="form-group">
+                                    <label>글씨 테두리(외곽선) 색상</label>
+                                    <input type="color" id="alertBorderColor" value="${alertSettings.borderColor || '#000000'}" style="height:40px; cursor:pointer;">
+                                </div>
+                                <div class="form-group">
+                                    <label>글씨 테두리(외곽선) 두께 (예: 2px)</label>
+                                    <input type="text" id="alertBorderWidth" value="${alertSettings.borderWidth || '2px'}">
+                                </div>
+                                <div class="form-group">
                                     <label>글씨 특수 효과 선택</label>
                                     <select id="alertEffect">
-                                        <option value="clean-shadow" ${alertSettings.effect === 'clean-shadow' ? 'selected' : ''}>✨ 깔끔한 검은색 그림자 (가독성 최우선)</option>
-                                        <option value="wave-glow" ${alertSettings.effect === 'wave-glow' ? 'selected' : ''}>🌊 파도타기 입체 네온 효과 (빛 퍼짐)</option>
+                                        <option value="wave-bounce" ${alertSettings.effect === 'wave-bounce' ? 'selected' : ''}>🌊 [추천] 위아래로 출렁이는 파도타기 바운스 효과</option>
+                                        <option value="clean-shadow" ${alertSettings.effect === 'clean-shadow' ? 'selected' : ''}>✨ 깔끔한 기본 입체 그림자</option>
                                         <option value="rainbow-neon" ${alertSettings.effect === 'rainbow-neon' ? 'selected' : ''}>🌈 화려한 무지개빛 네온</option>
                                         <option value="gold-metal" ${alertSettings.effect === 'gold-metal' ? 'selected' : ''}>🏆 고급 골드 메탈릭 음영</option>
                                     </select>
@@ -567,6 +580,8 @@ app.post('/api/login', async (req, res) => {
                 layoutType: document.getElementById('alertLayoutType').value,
                 fontSize: document.getElementById('alertFontSize').value,
                 fontColor: document.getElementById('alertFontColor').value,
+                borderColor: document.getElementById('alertBorderColor').value,
+                borderWidth: document.getElementById('alertBorderWidth').value,
                 effect: document.getElementById('alertEffect').value
             };
             try {
@@ -846,7 +861,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (사용자 설정 글씨 크기, 색상, 효과 반영)
+// 스트리머별 OBS 알림 오버레이 화면 (테두리 및 파도타기 바운스 애니메이션 반영)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -858,11 +873,18 @@ app.get('/overlay/:apiKey', async (req, res) => {
     
     const fontSize = settings.fontSize || '8vh';
     const fontColor = settings.fontColor || '#ffffff';
-    const effect = settings.effect || 'clean-shadow';
+    const borderColor = settings.borderColor || '#000000';
+    const borderWidth = settings.borderWidth || '2px';
+    const effect = settings.effect || 'wave-bounce';
+
+    let strokeStyle = `
+        -webkit-text-stroke: ${borderWidth} ${borderColor};
+        paint-order: stroke fill;
+    `;
 
     let effectStyle = 'text-shadow: 2px 2px 8px rgba(0,0,0,0.8);';
-    if (effect === 'wave-glow') {
-        effectStyle = `text-shadow: 0 0 2px #ffffff, 0 0 10px ${fontColor}, 0 0 20px ${fontColor};`;
+    if (effect === 'wave-bounce') {
+        strokeStyle += ` animation: waveBounce 1.2s ease-in-out infinite; display: inline-block;`;
     } else if (effect === 'rainbow-neon') {
         effectStyle = `text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
     } else if (effect === 'gold-metal') {
@@ -879,15 +901,28 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 body { background: transparent; margin: 0; overflow: hidden; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
-                #alert-line1 { color: ${fontColor}; font-size: ${fontSize}; font-weight: 800; ${effectStyle} width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
-                #alert-line2 { color: ${fontColor}; font-size: calc(${fontSize} * 0.85); font-weight: 800; ${effectStyle} width: 90vw; word-break: break-word; line-height: 1.2; }
+                
+                @keyframes waveBounce {
+                    0%, 100% { transform: translateY(0) scale(1); }
+                    50% { transform: translateY(-15px) scale(1.05); }
+                }
+
+                .text-animated {
+                    color: ${fontColor};
+                    font-weight: 800;
+                    ${strokeStyle}
+                    ${effectStyle}
+                }
+
+                #alert-line1 { font-size: ${fontSize}; width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
+                #alert-line2 { font-size: calc(${fontSize} * 0.85); width: 90vw; word-break: break-word; line-height: 1.2; }
             </style>
         </head>
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="" alt="리액션 이미지" onerror="this.src='/alerticon.gif'">
-                <div class="text-box" id="alert-line1"></div>
-                <div class="text-box" id="alert-line2"></div>
+                <div class="text-animated" id="alert-line1"></div>
+                <div class="text-animated" id="alert-line2"></div>
             </div>
             <script>
             const reactions = ${JSON.stringify(reactions)};
