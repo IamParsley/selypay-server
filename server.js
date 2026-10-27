@@ -179,7 +179,7 @@ app.post('/api/login', async (req, res) => {
         .dropdown-item:hover { background-color: #f8fafc; }
         .dropdown-item.logout { color: #ef4444; border-top: 1px solid #f1f5f9; }
         .dashboard-container { max-width: 1280px; margin: 30px auto; padding: 0 20px; }
-        .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; padding: 30px; }
+        .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; padding: 30px; overflow: hidden; }
         .dashboard-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 30px; }
         .layout-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; min-height: 600px; }
         .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
@@ -188,18 +188,20 @@ app.post('/api/login', async (req, res) => {
         .menu-btn.active { background-color: #e8f7ec; color: #16a34a; }
         .sidebar-footer { background: #f8fafc; padding: 16px; border-radius: 12px; margin-top: auto; text-align: center; }
         .sidebar-footer .status { font-size: 11px; color: #16a34a; font-weight: 700; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; }
-        .tab-content { display: none; }
+        .tab-content { display: none; width: 100%; overflow: hidden; }
         .tab-content.active { display: block; }
         
-        /* 💡 오버레이 박스 넘침 방지 및 링크 스타일 개선 */
-        .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; max-width: 100%; overflow: hidden; }
-        .overlay-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; display: block; flex: 1; }
+        /* 💡 2열 그리드 및 카드 패널 크기 강제 고정 및 칸 넘침 원인 완벽 차단 */
+        .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; }
+        .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
+        .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; word-break: break-all; }
+        
+        /* 오버레이 주소 박스 완벽 고정 */
+        .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
+        .overlay-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; display: block; flex: 1; min-width: 0; }
         .overlay-link:hover { text-decoration: underline; }
         
         .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
-        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-        .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .reaction-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
         .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; background: #fafafa; }
         .reaction-thumb { width: 80px; height: 80px; border-radius: 12px; object-fit: contain; margin-bottom: 12px; background: #eee; }
@@ -374,7 +376,7 @@ app.post('/api/login', async (req, res) => {
                         <div class="card-panel">
                             <div class="card-panel-title">⚙️ 계정 및 API Key 관리</div>
                             <div class="overlay-box">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">${user.apiKey}</span>
+                                <span class="overlay-link" style="cursor: default;" title="${user.apiKey}">${user.apiKey}</span>
                                 <button class="copy-btn" onclick="copyToClipboard('${user.apiKey}')">키 복사</button>
                             </div>
                         </div>
