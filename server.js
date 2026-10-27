@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
         fontColor: { type: String, default: '#ffffff' },
         borderColor: { type: String, default: '#000000' },
         borderWidth: { type: String, default: '2px' },
-        effect: { type: String, default: 'wave-bounce' },
+        effect: { type: String, default: 'letter-wave' },
         layoutType: { type: String, default: 'default' },
         useImage: { type: Boolean, default: true }
     },
@@ -187,7 +187,7 @@ app.post('/api/login', async (req, res) => {
             fontColor: '#ffffff',
             borderColor: '#000000',
             borderWidth: '2px',
-            effect: 'wave-bounce'
+            effect: 'letter-wave'
         };
 
         res.send(`
@@ -347,7 +347,7 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-alert" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">💬 실시간 후원 알림창 스타일 설정</div>
-                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상, 테두리 및 파도타기 효과를 설정할 수 있습니다.</p>
+                            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">방송 화면에 송출되는 알림창의 글씨 크기, 색상, 테두리 및 반짝임/파도타기 효과를 설정할 수 있습니다.</p>
 
                             <div class="overlay-box">
                                 <a href="https://${req.get('host')}/overlay/${user.apiKey}" target="_blank" class="overlay-link" title="클릭하여 알림 오버레이 미리보기 열기">https://${req.get('host')}/overlay/${user.apiKey}</a>
@@ -380,12 +380,14 @@ app.post('/api/login', async (req, res) => {
                                     <input type="text" id="alertBorderWidth" value="${alertSettings.borderWidth || '2px'}">
                                 </div>
                                 <div class="form-group">
-                                    <label>글씨 특수 효과 선택</label>
+                                    <label>유동성 / 애니메이션 효과 선택</label>
                                     <select id="alertEffect">
-                                        <option value="wave-bounce" ${alertSettings.effect === 'wave-bounce' ? 'selected' : ''}>🌊 [추천] 위아래로 출렁이는 파도타기 바운스 효과</option>
+                                        <option value="letter-wave" ${alertSettings.effect === 'letter-wave' ? 'selected' : ''}>🌊 [추천] 글씨가 하나씩 따로따로 움직이는 파도타기 (Letter Wave)</option>
+                                        <option value="wave-bounce" ${alertSettings.effect === 'wave-bounce' ? 'selected' : ''}>🌊 문장 전체가 위아래로 출렁이는 파도타기 (Bounce)</option>
+                                        <option value="glow-pulse" ${alertSettings.effect === 'glow-pulse' ? 'selected' : ''}>✨ 은은하게 반짝이는 네온 글로우 (Pulse)</option>
+                                        <option value="rainbow-neon" ${alertSettings.effect === 'rainbow-neon' ? 'selected' : ''}>🌈 화려한 무지개빛 네온 효과</option>
+                                        <option value="gold-metal" ${alertSettings.effect === 'gold-metal' ? 'selected' : ''}>🏆 고급 골드 메탈릭 입체감</option>
                                         <option value="clean-shadow" ${alertSettings.effect === 'clean-shadow' ? 'selected' : ''}>✨ 깔끔한 기본 입체 그림자</option>
-                                        <option value="rainbow-neon" ${alertSettings.effect === 'rainbow-neon' ? 'selected' : ''}>🌈 화려한 무지개빛 네온</option>
-                                        <option value="gold-metal" ${alertSettings.effect === 'gold-metal' ? 'selected' : ''}>🏆 고급 골드 메탈릭 음영</option>
                                     </select>
                                 </div>
                                 <button type="button" class="btn-green" onclick="saveAlertSettings()">알림창 설정 저장하기</button>
@@ -861,7 +863,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (테두리 및 파도타기 바운스 애니메이션 반영)
+// 스트리머별 OBS 알림 오버레이 화면 (글자별 개별 파도타기 및 반짝임 효과 반영)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -875,21 +877,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
     const fontColor = settings.fontColor || '#ffffff';
     const borderColor = settings.borderColor || '#000000';
     const borderWidth = settings.borderWidth || '2px';
-    const effect = settings.effect || 'wave-bounce';
-
-    let strokeStyle = `
-        -webkit-text-stroke: ${borderWidth} ${borderColor};
-        paint-order: stroke fill;
-    `;
-
-    let effectStyle = 'text-shadow: 2px 2px 8px rgba(0,0,0,0.8);';
-    if (effect === 'wave-bounce') {
-        strokeStyle += ` animation: waveBounce 1.2s ease-in-out infinite; display: inline-block;`;
-    } else if (effect === 'rainbow-neon') {
-        effectStyle = `text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;`;
-    } else if (effect === 'gold-metal') {
-        effectStyle = `text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9);`;
-    }
+    const effect = settings.effect || 'letter-wave';
 
     res.send(`
         <!DOCTYPE html>
@@ -902,16 +890,59 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 #alert-container { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; box-sizing: border-box; padding: 2vh 3vw; background: transparent !important; }
                 #alert-image { width: 70vw; height: auto; max-width: 80%; max-height: 50vh; object-fit: contain; display: ${useImage ? 'block' : 'none'}; margin-bottom: 5vh; }
                 
+                @keyframes letterWave {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-16px); }
+                }
+
                 @keyframes waveBounce {
                     0%, 100% { transform: translateY(0) scale(1); }
                     50% { transform: translateY(-15px) scale(1.05); }
                 }
 
-                .text-animated {
+                @keyframes glowPulse {
+                    0%, 100% { text-shadow: 0 0 5px ${fontColor}, 0 0 15px ${fontColor}; }
+                    50% { text-shadow: 0 0 15px ${fontColor}, 0 0 30px ${fontColor}, 0 0 40px #ffffff; }
+                }
+
+                .base-text {
                     color: ${fontColor};
                     font-weight: 800;
-                    ${strokeStyle}
-                    ${effectStyle}
+                    -webkit-text-stroke: ${borderWidth} ${borderColor};
+                    paint-order: stroke fill;
+                }
+
+                /* 1. 글자별 개별 파도타기 효과 적용 스타일 */
+                .char-wave {
+                    display: inline-block;
+                    animation: letterWave 1.2s ease-in-out infinite;
+                }
+
+                /* 2. 문장 전체 바운스 효과 */
+                .effect-bounce {
+                    animation: waveBounce 1.2s ease-in-out infinite;
+                    display: inline-block;
+                }
+
+                /* 3. 은은하게 반짝이는 네온 글로우 */
+                .effect-glow {
+                    animation: glowPulse 2s ease-in-out infinite;
+                    text-shadow: 0 0 10px ${fontColor};
+                }
+
+                /* 4. 무지개빛 네온 */
+                .effect-rainbow {
+                    text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;
+                }
+
+                /* 5. 골드 메탈 */
+                .effect-gold {
+                    text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9);
+                }
+
+                /* 6. 깔끔 그림자 */
+                .effect-shadow {
+                    text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
                 }
 
                 #alert-line1 { font-size: ${fontSize}; width: 90vw; word-break: keep-all; overflow-wrap: break-word; line-height: 1.2; margin-bottom: 3vh; }
@@ -921,14 +952,15 @@ app.get('/overlay/:apiKey', async (req, res) => {
         <body>
             <div id="alert-container">
                 <img id="alert-image" src="" alt="리액션 이미지" onerror="this.src='/alerticon.gif'">
-                <div class="text-animated" id="alert-line1"></div>
-                <div class="text-animated" id="alert-line2"></div>
+                <div id="alert-line1"></div>
+                <div id="alert-line2"></div>
             </div>
             <script>
             const reactions = ${JSON.stringify(reactions)};
             const defaultSound = "/${settings.soundType || 'coinsound.mp3'}";
             const defaultImage = "/alerticon.gif";
             const useImageSetting = ${useImage};
+            const currentEffect = "${effect}";
             let lastCheckedTime = "";
             const alertQueue = [];
             let isPlaying = false;
@@ -966,6 +998,29 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 showAlert(donation);
             }
 
+            function formatTextWithEffect(text, effectName) {
+                if (!text) return '';
+                if (effectName === 'letter-wave') {
+                    // 글자 단위로 쪼개서 각각 순차적인 애니메이션 딜레이 부여
+                    let charIndex = 0;
+                    return text.split('').map(char => {
+                        if (char === ' ') return '<span style="display:inline-block; width:0.3em;"></span>';
+                        const delay = (charIndex * 0.08).toFixed(2);
+                        charIndex++;
+                        return '<span class="base-text char-wave" style="animation-delay: ' + delay + 's;">' + char + '</span>';
+                    }).join('');
+                } else {
+                    let effectClass = 'effect-shadow';
+                    if (effectName === 'wave-bounce') effectClass = 'effect-bounce';
+                    else if (effectName === 'glow-pulse') effectClass = 'effect-glow';
+                    else if (effectName === 'rainbow-neon') effectClass = 'effect-rainbow';
+                    else if (effectName === 'gold-metal') effectClass = 'effect-gold';
+                    else if (effectName === 'clean-shadow') effectClass = 'effect-shadow';
+
+                    return '<span class="base-text ' + effectClass + '">' + text + '</span>';
+                }
+            }
+
             function showAlert(donation) {
                 const container = document.getElementById('alert-container');
                 const imgElement = document.getElementById('alert-image');
@@ -980,8 +1035,9 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     firstText = message.substring(0, newlineIdx);
                     secondText = message.substring(newlineIdx + 1);
                 }
-                line1.innerText = firstText;
-                line2.innerText = secondText;
+                
+                line1.innerHTML = formatTextWithEffect(firstText, currentEffect);
+                line2.innerHTML = formatTextWithEffect(secondText, currentEffect);
                 
                 const matchedReaction = reactions.find(r => r.amount === amount);
                 if (useImageSetting) {
