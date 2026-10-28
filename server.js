@@ -246,15 +246,16 @@ app.post('/api/login', async (req, res) => {
         
         .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
         
-        /* 💡 리액션 카드 그리드 및 우측 상단 `⋯` 메뉴 스타일 */
+        /* 💡 반응형 리액션 카드 그리드 (큰 화면 5열, 중간 3~4열, 모바일 1~2열 자동 최적화) */
         .reaction-cards-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
         .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .reaction-thumb { width: 70px; height: 70px; border-radius: 12px; object-fit: contain; margin-bottom: 10px; background: #eee; }
         
-        .card-menu-btn { position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        /* 💡 우측 상단 ⋯ 버튼 및 드롭다운 메뉴 스타일 */
+        .card-menu-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
         .card-menu-btn:hover { background-color: #e2e8f0; color: #0f172a; }
         
-        .card-dropdown-menu { display: none; position: absolute; top: 40px; right: 12px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 50; width: 110px; overflow: hidden; text-align: left; }
+        .card-dropdown-menu { display: none; position: absolute; top: 38px; right: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 50; width: 110px; overflow: hidden; text-align: left; }
         .card-dropdown-menu.active { display: block; }
         .card-dropdown-item { padding: 10px 14px; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; display: block; width: 100%; border: none; background: transparent; text-align: left; }
         .card-dropdown-item:hover { background-color: #f8fafc; }
