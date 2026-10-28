@@ -203,11 +203,13 @@ app.post('/api/login', async (req, res) => {
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f4f8; color: #1e293b; min-height: 100vh; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 16px 40px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; padding: 16px 40px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
         .logo { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 800; color: #101828; text-decoration: none; }
         .logo-icon { width: 28px; height: 28px; background-color: #52b735; border-radius: 6px; display: inline-block; }
         .nav-links { display: flex; gap: 32px; list-style: none; }
         .nav-links a { text-decoration: none; color: #475569; font-size: 15px; font-weight: 600; }
+        
         .user-profile-menu { position: relative; cursor: pointer; }
         .avatar-btn { width: 36px; height: 36px; border-radius: 50%; background-color: #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 2px solid #52b735; }
         .profile-dropdown { display: none; position: absolute; top: 48px; right: 0; width: 220px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 100; overflow: hidden; }
@@ -218,9 +220,11 @@ app.post('/api/login', async (req, res) => {
         .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 12px 18px; text-decoration: none; color: #334155; font-size: 14px; font-weight: 600; cursor: pointer; }
         .dropdown-item:hover { background-color: #f8fafc; }
         .dropdown-item.logout { color: #ef4444; border-top: 1px solid #f1f5f9; }
-        .dashboard-container { max-width: 1280px; margin: 30px auto; padding: 0 20px; }
+
+        .dashboard-container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
         .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; padding: 30px; overflow: hidden; }
         .dashboard-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 30px; }
+        
         .layout-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; min-height: 600px; }
         .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -228,22 +232,44 @@ app.post('/api/login', async (req, res) => {
         .menu-btn.active { background-color: #e8f7ec; color: #16a34a; }
         .sidebar-footer { background: #f8fafc; padding: 16px; border-radius: 12px; margin-top: auto; text-align: center; }
         .sidebar-footer .status { font-size: 11px; color: #16a34a; font-weight: 700; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        
         .tab-content { display: none; width: 100%; overflow: hidden; }
         .tab-content.active { display: block; }
         
         .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; }
         .card-panel { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
-        .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; word-break: break-all; }
+        .card-panel-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; word-break: break-all; flex-wrap: wrap; gap: 10px; }
         
         .overlay-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 13px; color: #475569; margin-top: 8px; margin-bottom: 20px; width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; }
         .overlay-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; display: block; flex: 1; min-width: 0; }
         .overlay-link:hover { text-decoration: underline; }
         
         .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
-        .reaction-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
-        .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; background: #fafafa; }
-        .reaction-thumb { width: 80px; height: 80px; border-radius: 12px; object-fit: contain; margin-bottom: 12px; background: #eee; }
-        .btn-green { background-color: #52b735; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        
+        /* 💡 반응형 리액션 카드 그리드 (큰 화면 5열, 중간 3~4열, 모바일 1~2열 자동 최적화) */
+        .reaction-cards-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+        .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .reaction-thumb { width: 70px; height: 70px; border-radius: 12px; object-fit: contain; margin-bottom: 10px; background: #eee; }
+
+        @media (max-width: 1200px) {
+            .reaction-cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+        @media (max-width: 900px) {
+            .layout-grid { grid-template-columns: 1fr; }
+            .sidebar { border-right: none; border-bottom: 1px solid #f1f5f9; padding-right: 0; padding-bottom: 20px; margin-bottom: 20px; }
+            .sidebar-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+            .reaction-cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-width: 600px) {
+            .sidebar-menu { grid-template-columns: 1fr; }
+            .content-grid { grid-template-columns: 1fr; }
+            .reaction-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            header { padding: 12px 20px; }
+            .dashboard-container { padding: 0 10px; margin: 15px auto; }
+            .dashboard-card { padding: 15px; }
+        }
+
+        .btn-green { background-color: #52b735; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; }
         .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
@@ -330,16 +356,16 @@ app.post('/api/login', async (req, res) => {
                     <div id="tab-reactions" class="tab-content">
                         <div class="card-panel">
                             <div class="card-panel-title">
-                                📋 등록된 리액션 목록 (총 <span id="reactionCount">${reactions.length}</span>개)
+                                <span>📋 등록된 리액션 목록 (총 <span id="reactionCount">${reactions.length}</span>개)</span>
                                 <button type="button" class="btn-green" onclick="openReactionModal()" style="font-size:13px;">+ 새 리액션 추가 / 관리하기</button>
                             </div>
                             <div class="reaction-cards-grid" id="reactionGridContainer">
-                                ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:span 3; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>' : ''}
+                                ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:1 / -1; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>' : ''}
                                 ${reactions.map(r => `
                                     <div class="reaction-item-card">
                                         <img src="${r.imageUrl && r.imageUrl.startsWith('http') ? r.imageUrl : '/alerticon.gif'}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
-                                        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px;">${r.name}</div>
-                                        <div style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:4px;">${r.amount.toLocaleString()}원 일치</div>
+                                        <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; word-break:break-all;">${r.name}</div>
+                                        <div style="font-size:13px; font-weight:800; color:#16a34a;">${r.amount.toLocaleString()}원 일치</div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -569,7 +595,7 @@ app.post('/api/login', async (req, res) => {
                 container.innerHTML = '';
 
                 if (reactions.length === 0) {
-                    container.innerHTML = '<div style="color:#94a3b8; grid-column:span 3; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>';
+                    container.innerHTML = '<div style="color:#94a3b8; grid-column:1 / -1; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>';
                     return;
                 }
 
@@ -579,8 +605,8 @@ app.post('/api/login', async (req, res) => {
                     card.className = 'reaction-item-card';
                     card.innerHTML = \`
                         <img src="\${imgSrc}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
-                        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:4px;">\${r.name}</div>
-                        <div style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:4px;">\${r.amount.toLocaleString()}원 일치</div>
+                        <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; word-break:break-all;">\${r.name}</div>
+                        <div style="font-size:13px; font-weight:800; color:#16a34a;">\${r.amount.toLocaleString()}원 일치</div>
                     \`;
                     container.appendChild(card);
                 });
@@ -882,7 +908,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (커스텀 폰트 @font-face 내장)
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -938,35 +964,29 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     paint-order: stroke fill;
                 }
 
-                /* 1. 글자별 개별 파도타기 효과 */
                 .char-wave {
                     display: inline-block;
                     animation: letterWave 1.2s ease-in-out infinite;
                 }
 
-                /* 2. 문장 전체 바운스 효과 */
                 .effect-bounce {
                     animation: waveBounce 1.2s ease-in-out infinite;
                     display: inline-block;
                 }
 
-                /* 3. 은은하게 반짝이는 네온 글로우 */
                 .effect-glow {
                     animation: glowPulse 2s ease-in-out infinite;
                     text-shadow: 0 0 10px ${fontColor};
                 }
 
-                /* 4. 무지개빛 네온 */
                 .effect-rainbow {
                     text-shadow: 0 0 4px #ffffff, 0 0 10px #ff0055, 0 0 20px #ff9900, 0 0 30px #33ccff;
                 }
 
-                /* 5. 골드 메탈 */
                 .effect-gold {
                     text-shadow: 0 0 4px #ffffff, 0 0 12px #ffd700, 2px 2px 4px rgba(0,0,0,0.9);
                 }
 
-                /* 6. 깔끔 그림자 */
                 .effect-shadow {
                     text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
                 }
@@ -1101,7 +1121,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     if (hasCustomAudio && sound.duration && !isNaN(sound.duration) && sound.duration > 0) {
                         hideTimer = setTimeout(closeAlert, sound.duration * 1000);
                     } else {
-                        hideTimer = setTimeout(closeAlert, 10000); // 기본 10초
+                        hideTimer = setTimeout(closeAlert, 10000);
                     }
                 };
 
