@@ -246,12 +246,10 @@ app.post('/api/login', async (req, res) => {
         
         .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
         
-        /* 💡 반응형 리액션 카드 그리드 (큰 화면 5열, 중간 3~4열, 모바일 1~2열 자동 최적화) */
         .reaction-cards-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
         .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .reaction-thumb { width: 70px; height: 70px; border-radius: 12px; object-fit: contain; margin-bottom: 10px; background: #eee; }
         
-        /* 💡 우측 상단 ⋯ 버튼 및 드롭다운 메뉴 스타일 */
         .card-menu-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
         .card-menu-btn:hover { background-color: #e2e8f0; color: #0f172a; }
         
@@ -578,7 +576,6 @@ app.post('/api/login', async (req, res) => {
             document.getElementById('reactionModal').style.display = 'none';
         }
 
-        // ⋯ 카드 메뉴 토글
         function toggleCardMenu(event, id) {
             event.stopPropagation();
             document.querySelectorAll('.card-dropdown-menu').forEach(el => {
@@ -588,7 +585,6 @@ app.post('/api/login', async (req, res) => {
             if (menu) menu.classList.toggle('active');
         }
 
-        // 수정 모달 열기
         function openEditModal(id, name, amount) {
             document.querySelectorAll('.card-dropdown-menu').forEach(el => el.classList.remove('active'));
             document.getElementById('edit-id').value = id;
@@ -600,7 +596,6 @@ app.post('/api/login', async (req, res) => {
             document.getElementById('editReactionModal').style.display = 'none';
         }
 
-        // 리액션 삭제 API 호출
         async function deleteReaction(id) {
             if (!confirm('정말 이 리액션을 삭제하시겠습니까?')) return;
             try {
@@ -618,7 +613,6 @@ app.post('/api/login', async (req, res) => {
             }
         }
 
-        // 리액션 수정 저장 API 호출
         document.getElementById('editUploadBtn').addEventListener('click', async () => {
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('edit-name').value;
@@ -1025,7 +1019,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면
+// 스트리머별 OBS 알림 오버레이 화면 (대기열 & 10초 유지 타이머 적용)
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -1238,7 +1232,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     if (hasCustomAudio && sound.duration && !isNaN(sound.duration) && sound.duration > 0) {
                         hideTimer = setTimeout(closeAlert, sound.duration * 1000);
                     } else {
-                        hideTimer = setTimeout(closeAlert, 10000);
+                        hideTimer = setTimeout(closeAlert, 10000); // 기본 사운드이거나 금액이 없으면 10초 유지
                     }
                 };
 
@@ -1250,6 +1244,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     closeAlert();
                 };
 
+                // 메타데이터 로딩 실패/지연 대비 안전망 (10초)
                 setTimeout(() => {
                     if (!timerCleared && (!hasCustomAudio || isNaN(sound.duration))) {
                         hideTimer = setTimeout(closeAlert, 10000);
@@ -1257,7 +1252,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }, 200);
 
                 sound.play().catch(e => {
-                    console.log("사운드 재생 실패:", e);
+                    console.log("사운드 자동재생 차단/실패:", e);
                     hideTimer = setTimeout(closeAlert, 10000);
                 });
             }
@@ -1429,7 +1424,7 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
     }
 });
 
-// 💡 리액션 수정 API (PUT)
+// 리액션 수정 API (PUT)
 app.put('/api/reaction/:apiKey/:id', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
@@ -1475,7 +1470,7 @@ app.put('/api/reaction/:apiKey/:id', upload.fields([{ name: 'image' }, { name: '
     }
 });
 
-// 💡 리액션 삭제 API (DELETE)
+// 리액션 삭제 API (DELETE)
 app.delete('/api/reaction/:apiKey/:id', async (req, res) => {
     try {
         const user = await User.findOne({ apiKey: req.params.apiKey });
