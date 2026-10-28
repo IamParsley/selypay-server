@@ -223,10 +223,20 @@ app.post('/api/login', async (req, res) => {
 
         .dashboard-container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
         .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; padding: 30px; overflow: hidden; }
-        .dashboard-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 30px; }
         
-        .layout-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; min-height: 600px; }
-        .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        /* 💡 상단 타이틀 영역 (사이드바 토글 버튼 포함) */
+        .dashboard-header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
+        .sidebar-toggle-btn { background: #f1f5f9; border: 1px solid #cbd5e1; width: 38px; height: 38px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #475569; flex-shrink: 0; }
+        .sidebar-toggle-btn:hover { background-color: #e2e8f0; color: #0f172a; }
+        .dashboard-title { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }
+        
+        /* 💡 사이드바 접기 상태를 위한 그리드 변환 */
+        .layout-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; min-height: 600px; transition: grid-template-columns 0.3s ease; }
+        .layout-grid.collapsed { grid-template-columns: 0px 1fr; }
+        
+        .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; transition: opacity 0.2s ease, padding 0.3s ease; white-space: nowrap; }
+        .layout-grid.collapsed .sidebar { opacity: 0; padding-right: 0; pointer-events: none; border-right: none; }
+
         .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
         .menu-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; border: none; background: transparent; border-radius: 12px; font-size: 14px; font-weight: 700; color: #475569; cursor: pointer; text-align: left; }
         .menu-btn.active { background-color: #e8f7ec; color: #16a34a; }
@@ -250,7 +260,8 @@ app.post('/api/login', async (req, res) => {
         .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .reaction-thumb { width: 70px; height: 70px; border-radius: 12px; object-fit: contain; margin-bottom: 10px; background: #eee; }
         
-        .card-menu-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+        /* 💡 세로 점 3개 (⋮) 버튼 및 드롭다운 스타일 */
+        .card-menu-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 4px; letter-spacing: -2px; }
         .card-menu-btn:hover { background-color: #e2e8f0; color: #0f172a; }
         
         .card-dropdown-menu { display: none; position: absolute; top: 38px; right: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 50; width: 110px; overflow: hidden; text-align: left; }
@@ -263,8 +274,8 @@ app.post('/api/login', async (req, res) => {
             .reaction-cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         }
         @media (max-width: 900px) {
-            .layout-grid { grid-template-columns: 1fr; }
-            .sidebar { border-right: none; border-bottom: 1px solid #f1f5f9; padding-right: 0; padding-bottom: 20px; margin-bottom: 20px; }
+            .layout-grid { grid-template-columns: 1fr !important; }
+            .sidebar { opacity: 1 !important; padding-right: 0 !important; border-right: none !important; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px; }
             .sidebar-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
             .reaction-cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
@@ -313,9 +324,12 @@ app.post('/api/login', async (req, res) => {
 
     <div class="dashboard-container">
         <div class="dashboard-card">
-            <div class="dashboard-title"><span class="logo-icon" style="width:22px; height:22px;"></span> Slenation Dashboard</div>
+            <div class="dashboard-header-top">
+                <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="사이드바 접기/펼치기">☰</button>
+                <div class="dashboard-title"><span class="logo-icon" style="width:22px; height:22px;"></span> Slenation Dashboard</div>
+            </div>
             
-            <div class="layout-grid">
+            <div class="layout-grid" id="layoutGrid">
                 <div class="sidebar">
                     <ul class="sidebar-menu">
                         <li><button class="menu-btn active" onclick="showTab('tab-ranking', this)">📊 실시간 후원 랭킹</button></li>
@@ -371,7 +385,7 @@ app.post('/api/login', async (req, res) => {
                                 ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:1 / -1; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>' : ''}
                                 ${reactions.map(r => `
                                     <div class="reaction-item-card">
-                                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '${r._id}')">⋯</button>
+                                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '${r._id}')">⋮</button>
                                         <div class="card-dropdown-menu" id="menu-${r._id}">
                                             <button class="card-dropdown-item" onclick="openEditModal('${r._id}', '${r.name}', ${r.amount})">수정하기</button>
                                             <button class="card-dropdown-item delete" onclick="deleteReaction('${r._id}')">삭제하기</button>
@@ -557,6 +571,12 @@ app.post('/api/login', async (req, res) => {
 
     <script>
         function toggleDropdown() { document.getElementById('profileDropdown').classList.toggle('active'); }
+        
+        // 💡 사이드바 접기/펼치기 토글 함수
+        function toggleSidebar() {
+            document.getElementById('layoutGrid').classList.toggle('collapsed');
+        }
+
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
@@ -708,7 +728,7 @@ app.post('/api/login', async (req, res) => {
                     const card = document.createElement('div');
                     card.className = 'reaction-item-card';
                     card.innerHTML = \`
-                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '\${r._id}')">⋯</button>
+                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '\${r._id}')">⋮</button>
                         <div class="card-dropdown-menu" id="menu-\${r._id}">
                             <button class="card-dropdown-item" onclick="openEditModal('\${r._id}', '\${r.name}', \${r.amount})">수정하기</button>
                             <button class="card-dropdown-item delete" onclick="deleteReaction('\${r._id}')">삭제하기</button>
@@ -1019,7 +1039,7 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 스트리머별 OBS 알림 오버레이 화면 (대기열 & 10초 유지 타이머 적용)
+// 스트리머별 OBS 알림 오버레이 화면
 app.get('/overlay/:apiKey', async (req, res) => {
     const { apiKey } = req.params;
     const user = await User.findOne({ apiKey });
@@ -1232,19 +1252,13 @@ app.get('/overlay/:apiKey', async (req, res) => {
                     if (hasCustomAudio && sound.duration && !isNaN(sound.duration) && sound.duration > 0) {
                         hideTimer = setTimeout(closeAlert, sound.duration * 1000);
                     } else {
-                        hideTimer = setTimeout(closeAlert, 10000); // 기본 사운드이거나 금액이 없으면 10초 유지
+                        hideTimer = setTimeout(closeAlert, 10000);
                     }
                 };
 
-                sound.onended = () => {
-                    closeAlert();
-                };
+                sound.onended = () => { closeAlert(); };
+                sound.onerror = () => { closeAlert(); };
 
-                sound.onerror = () => {
-                    closeAlert();
-                };
-
-                // 메타데이터 로딩 실패/지연 대비 안전망 (10초)
                 setTimeout(() => {
                     if (!timerCleared && (!hasCustomAudio || isNaN(sound.duration))) {
                         hideTimer = setTimeout(closeAlert, 10000);
@@ -1252,7 +1266,7 @@ app.get('/overlay/:apiKey', async (req, res) => {
                 }, 200);
 
                 sound.play().catch(e => {
-                    console.log("사운드 자동재생 차단/실패:", e);
+                    console.log("사운드 재생 실패:", e);
                     hideTimer = setTimeout(closeAlert, 10000);
                 });
             }
