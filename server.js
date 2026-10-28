@@ -246,10 +246,19 @@ app.post('/api/login', async (req, res) => {
         
         .copy-btn { background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
         
-        /* 💡 반응형 리액션 카드 그리드 (큰 화면 5열, 중간 3~4열, 모바일 1~2열 자동 최적화) */
+        /* 💡 리액션 카드 그리드 및 우측 상단 `⋯` 메뉴 스타일 */
         .reaction-cards-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-        .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .reaction-item-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .reaction-thumb { width: 70px; height: 70px; border-radius: 12px; object-fit: contain; margin-bottom: 10px; background: #eee; }
+        
+        .card-menu-btn { position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 18px; font-weight: bold; color: #64748b; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        .card-menu-btn:hover { background-color: #e2e8f0; color: #0f172a; }
+        
+        .card-dropdown-menu { display: none; position: absolute; top: 40px; right: 12px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 50; width: 110px; overflow: hidden; text-align: left; }
+        .card-dropdown-menu.active { display: block; }
+        .card-dropdown-item { padding: 10px 14px; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; display: block; width: 100%; border: none; background: transparent; text-align: left; }
+        .card-dropdown-item:hover { background-color: #f8fafc; }
+        .card-dropdown-item.delete { color: #ef4444; border-top: 1px solid #f1f5f9; }
 
         @media (max-width: 1200px) {
             .reaction-cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -363,6 +372,11 @@ app.post('/api/login', async (req, res) => {
                                 ${reactions.length === 0 ? '<div style="color:#94a3b8; grid-column:1 / -1; text-align:center; padding:40px;" id="noReactionMsg">등록된 리액션이 없습니다.</div>' : ''}
                                 ${reactions.map(r => `
                                     <div class="reaction-item-card">
+                                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '${r._id}')">⋯</button>
+                                        <div class="card-dropdown-menu" id="menu-${r._id}">
+                                            <button class="card-dropdown-item" onclick="openEditModal('${r._id}', '${r.name}', ${r.amount})">수정하기</button>
+                                            <button class="card-dropdown-item delete" onclick="deleteReaction('${r._id}')">삭제하기</button>
+                                        </div>
                                         <img src="${r.imageUrl && r.imageUrl.startsWith('http') ? r.imageUrl : '/alerticon.gif'}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
                                         <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; word-break:break-all;">${r.name}</div>
                                         <div style="font-size:13px; font-weight:800; color:#16a34a;">${r.amount.toLocaleString()}원 일치</div>
@@ -395,7 +409,7 @@ app.post('/api/login', async (req, res) => {
                                 <div class="form-group">
                                     <label>글씨체 (폰트 선택)</label>
                                     <select id="alertFontFamily">
-                                        <option value="Jalnan2, sans-serif" ${alertSettings.fontFamily.includes('Jalnan2') ? 'selected' : ''}>🔥 잘난/여기야 폰트 (Jalnan2 커스텀)</option>
+                                        <option value="Jalnan2, sans-serif" ${alertSettings.fontFamily.includes('Jalnan2') ? 'selected' : ''}>🔥 싹둑/여기야 폰트 (Jalnan2 커스텀)</option>
                                         <option value="Apple SD Gothic Neo, 'Malgun Gothic', sans-serif" ${alertSettings.fontFamily.includes('Apple SD Gothic Neo') ? 'selected' : ''}>✨ 애플 SD 산돌고딕 (세련된 모던)</option>
                                         <option value="'Pretendard', sans-serif" ${alertSettings.fontFamily.includes('Pretendard') ? 'selected' : ''}>🌟 프리텐다드 (깔끔한 프리미엄)</option>
                                         <option value="'Black Han Sans', sans-serif" ${alertSettings.fontFamily.includes('Black Han Sans') ? 'selected' : ''}>🔥 블랙한산스 (초특급 볼드)</option>
@@ -511,7 +525,7 @@ app.post('/api/login', async (req, res) => {
         </div>
     </div>
 
-    <!-- 🐱 리액션 추가 및 관리 팝업 모달 -->
+    <!-- 🐱 리액션 추가 팝업 모달 -->
     <div id="reactionModal" class="modal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="closeReactionModal()">&times;</span>
@@ -522,6 +536,22 @@ app.post('/api/login', async (req, res) => {
                 <div class="form-group"><label>이미지 파일 선택 (PNG, JPG, GIF)</label><input type="file" id="modal-imageFile" accept="image/*"></div>
                 <div class="form-group"><label>오디오 파일 선택 (MP3, WAV 등)</label><input type="file" id="modal-audioFile" accept="audio/*"></div>
                 <button type="button" id="modalUploadBtn" class="btn-green" style="width:100%; padding:10px; margin-top:10px;">리액션 업로드 및 등록</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ✏️ 리액션 수정 팝업 모달 -->
+    <div id="editReactionModal" class="modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+            <h3 style="margin-bottom: 20px;">✏️ 커스텀 리액션 수정</h3>
+            <form id="editReactionForm">
+                <input type="hidden" id="edit-id">
+                <div class="form-group"><label>리액션 이름</label><input type="text" id="edit-name" required></div>
+                <div class="form-group"><label>특정 후원 금액 (원)</label><input type="number" id="edit-amount" required></div>
+                <div class="form-group"><label>새 이미지 파일 변경 (선택사항)</label><input type="file" id="edit-imageFile" accept="image/*"></div>
+                <div class="form-group"><label>새 오디오 파일 변경 (선택사항)</label><input type="file" id="edit-audioFile" accept="audio/*"></div>
+                <button type="button" id="editUploadBtn" class="btn-green" style="width:100%; padding:10px; margin-top:10px;">리액션 수정 저장하기</button>
             </form>
         </div>
     </div>
@@ -546,6 +576,85 @@ app.post('/api/login', async (req, res) => {
         function closeReactionModal() {
             document.getElementById('reactionModal').style.display = 'none';
         }
+
+        // ⋯ 카드 메뉴 토글
+        function toggleCardMenu(event, id) {
+            event.stopPropagation();
+            document.querySelectorAll('.card-dropdown-menu').forEach(el => {
+                if (el.id !== 'menu-' + id) el.classList.remove('active');
+            });
+            const menu = document.getElementById('menu-' + id);
+            if (menu) menu.classList.toggle('active');
+        }
+
+        // 수정 모달 열기
+        function openEditModal(id, name, amount) {
+            document.querySelectorAll('.card-dropdown-menu').forEach(el => el.classList.remove('active'));
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-amount').value = amount;
+            document.getElementById('editReactionModal').style.display = 'flex';
+        }
+        function closeEditModal() {
+            document.getElementById('editReactionModal').style.display = 'none';
+        }
+
+        // 리액션 삭제 API 호출
+        async function deleteReaction(id) {
+            if (!confirm('정말 이 리액션을 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch('/api/reaction/' + '${user.apiKey}/' + id, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    alert('리액션이 삭제되었습니다.');
+                    fetchReactionsAndRefreshUI();
+                } else {
+                    alert('삭제 실패: ' + result.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('서버 오류가 발생했습니다.');
+            }
+        }
+
+        // 리액션 수정 저장 API 호출
+        document.getElementById('editUploadBtn').addEventListener('click', async () => {
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value;
+            const amount = document.getElementById('edit-amount').value;
+            const imageInput = document.getElementById('edit-imageFile').files[0];
+            const audioInput = document.getElementById('edit-audioFile').files[0];
+
+            if (!name || !amount) { alert('이름과 금액을 입력해주세요.'); return; }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('amount', amount);
+            if (imageInput) formData.append('image', imageInput);
+            if (audioInput) formData.append('audio', audioInput);
+
+            const btn = document.getElementById('editUploadBtn');
+            btn.innerText = '수정 중...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/reaction/' + '${user.apiKey}/' + id, { method: 'PUT', body: formData });
+                const result = await res.json();
+                if (result.success) {
+                    alert('리액션이 성공적으로 수정되었습니다!');
+                    closeEditModal();
+                    fetchReactionsAndRefreshUI();
+                } else {
+                    alert('수정 실패: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('수정 중 오류가 발생했습니다.');
+            } finally {
+                btn.innerText = '리액션 수정 저장하기';
+                btn.disabled = false;
+            }
+        });
 
         document.getElementById('modalUploadBtn').addEventListener('click', async () => {
             const name = document.getElementById('modal-name').value;
@@ -604,6 +713,11 @@ app.post('/api/login', async (req, res) => {
                     const card = document.createElement('div');
                     card.className = 'reaction-item-card';
                     card.innerHTML = \`
+                        <button class="card-menu-btn" onclick="toggleCardMenu(event, '\${r._id}')">⋯</button>
+                        <div class="card-dropdown-menu" id="menu-\${r._id}">
+                            <button class="card-dropdown-item" onclick="openEditModal('\${r._id}', '\${r.name}', \${r.amount})">수정하기</button>
+                            <button class="card-dropdown-item delete" onclick="deleteReaction('\${r._id}')">삭제하기</button>
+                        </div>
                         <img src="\${imgSrc}" class="reaction-thumb" alt="리액션" onerror="this.src='/alerticon.gif'">
                         <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; word-break:break-all;">\${r.name}</div>
                         <div style="font-size:13px; font-weight:800; color:#16a34a;">\${r.amount.toLocaleString()}원 일치</div>
@@ -665,9 +779,11 @@ app.post('/api/login', async (req, res) => {
                 alert('서버 통신 오류');
             }
         }
+
         window.onclick = function(e) {
-            if (!e.target.closest('.user-profile-menu')) {
+            if (!e.target.closest('.user-profile-menu') && !e.target.closest('.card-menu-btn')) {
                 document.getElementById('profileDropdown').classList.remove('active');
+                document.querySelectorAll('.card-dropdown-menu').forEach(el => el.classList.remove('active'));
             }
         }
     </script>
@@ -1306,6 +1422,68 @@ app.post('/api/reactions/:apiKey', upload.fields([{ name: 'image' }, { name: 'au
         const newReaction = new Reaction({ streamerId: user._id, name: name || "기본 리액션", amount: Number(amount), imageUrl, audioUrl });
         await newReaction.save();
         res.json({ success: true, message: '리액션이 성공적으로 등록되었습니다!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
+    }
+});
+
+// 💡 리액션 수정 API (PUT)
+app.put('/api/reaction/:apiKey/:id', upload.fields([{ name: 'image' }, { name: 'audio' }]), async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+        
+        const reaction = await Reaction.findOne({ _id: req.params.id, streamerId: user._id });
+        if (!reaction) return res.status(404).json({ success: false, error: 'Reaction not found' });
+
+        const { name, amount } = req.body;
+        if (name) reaction.name = name;
+        if (amount) reaction.amount = Number(amount);
+
+        const SUPABASE_URL = process.env.SUPABASE_URL || 'https://당신의프로젝트주소.supabase.co';
+        const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '당신의Publishable키';
+        const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'reactions';
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        if (req.files && req.files['image']) {
+            const file = req.files['image'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const imgName = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+            const { error: imgError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(imgName, file.buffer, { contentType: file.mimetype, upsert: false });
+            if (imgError) throw imgError;
+            const { data: imgPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(imgName);
+            reaction.imageUrl = imgPublic.publicUrl;
+        }
+
+        if (req.files && req.files['audio']) {
+            const file = req.files['audio'][0];
+            const fileExt = file.originalname.split('.').pop();
+            const audioName = 'audio_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + fileExt;
+            const { error: audioError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(audioName, file.buffer, { contentType: file.mimetype, upsert: false });
+            if (audioError) throw audioError;
+            const { data: audioPublic } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(audioName);
+            reaction.audioUrl = audioPublic.publicUrl;
+        }
+
+        await reaction.save();
+        res.json({ success: true, message: '리액션이 수정되었습니다.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message || 'Server Error' });
+    }
+});
+
+// 💡 리액션 삭제 API (DELETE)
+app.delete('/api/reaction/:apiKey/:id', async (req, res) => {
+    try {
+        const user = await User.findOne({ apiKey: req.params.apiKey });
+        if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+        const result = await Reaction.findOneAndDelete({ _id: req.params.id, streamerId: user._id });
+        if (!result) return res.status(404).json({ success: false, error: 'Reaction not found' });
+
+        res.json({ success: true, message: '리액션이 삭제되었습니다.' });
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, error: e.message || 'Server Error' });
